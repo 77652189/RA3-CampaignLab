@@ -32,3 +32,10 @@ bench = "CampA1CapB (11-25, A382): 归属 1000 from s11; 占打 0 to s11, 1 at s
 proves = "takes_by_itself: the coil's idle pick of a building is by its owner now (the plant the engineer took is an enemy's)"
 mismatch = "sim 归属 0, 占打 0 throughout: the engineer dies on its way in (bench: in at s11, the coil's first shot at s12)"
 expect = ["win(1, 10, '占打') == [0] * 10", "win(11, 11, '归属') == [1000]", "1 <= win(13, 13, '占打')[0] <= 2", "win(45, 45, '占打')[0] >= 7"]
+
+[[reading]]
+id = "h_a_named_attack_on_a_neutral_target_is_dropped"
+scene = {build = "engine_a1gate", check = "h", until = 31}
+bench = "CampA1GateH (11-25, A382, head 756e44ab): 甲 111 at s1-s31 -- Tanya never leaves her 30 square for a neutral wall, gate or rock (NAMED_ATTACK_NAMED at 3 s), all three stand"
+proves = "engine/orders/order.order_attack: a target of a neutral side is turned down without force, as one of its own (INFERRED: one order, NAMED_ATTACK_NAMED, one shooter, Tanya)"
+expect = "win(1, 30, '甲') == [111] * 30"

@@ -130,12 +130,14 @@ def _target(world, target):
 
 def order_attack(world, peers, b, target_name, force=False):
     """True where `b` goes for the target (already on it too), False where the order is turned down: a unit or target
-    missing or dead, or one of its own side without force (review 11-19 m: the port read a success there)."""
+    missing or dead, or one of its own side or a neutral one without force (review 11-19 m: the port read a success
+    there)."""
     world.used.add('attack')
     target = _target(world, target_name)
-    if b and target and not force and _relation(world, b, target) == 'ALLIES':
+    if b and target and not force and _relation(world, b, target) in ('ALLIES', 'NEUTRAL'):
         return False    # bench 11-13 engine_acts flow 友血: NAMED_ATTACK_NAMED on one of its own side, no shot (d115
-        #                 13: FORCE_ATTACK_NAMED is the order that takes any relation); a neutral one not benched, kept
+        #                 13: FORCE_ATTACK_NAMED is the order that takes any relation); a neutral wall, gate or rock
+        #                 likewise (11-25 engine_a1gate h, review 135 ③; INFERRED for other shooters than Tanya)
     if not (b and target and target.alive and b.alive):
         return False
     walk = b.goal is not target or b.mode != 'attack' or not b.aiupdate.ordered   # a goal the AI's pursuit set
