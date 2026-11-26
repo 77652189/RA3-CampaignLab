@@ -3,6 +3,7 @@ special powers ready and cast, power, credits, upgrades, and who plays the side 
 
 Each condition is `fn(sim, name, a)`, moved verbatim out of Sim.cond's chain; simcond.cond looks them up in
 CONDITIONS. None back: not taken (a gap; SKIRMISH_SPECIAL_POWER_READY of a power no protocol gives)."""
+import engine.objects.power as simpower
 import engine.players.tech as simtech
 from engine.script.common import CMP, players_of
 from engine.world.handle import inside
@@ -23,8 +24,11 @@ def player_has_player_tech(sim, name, a):
 
 
 def skirmish_special_power_ready(sim, name, a):
-    if not ((simtech.power_needs(str(a[1])) or (None,))[0]):
+    needs = simtech.power_needs(str(a[1]))
+    if needs is None:
         return None
+    if not needs[0]:                        # a thing's own power (the superweapons): its charge (simpower.charged)
+        return simpower.charged(sim, players_of(sim, a[0], books=False), str(a[1]))
     sim.used.add('protocols')
     return sim.spellbook_ready(a[0], str(a[1]))
 

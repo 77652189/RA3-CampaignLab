@@ -490,7 +490,9 @@ class Sell(Interface):
 class SpecialPower(Interface):
     """A SpecialPowerModule, several a thing (step M8; the engine's isModuleForPower / getReadyFrame / setReadyFrame):
     the SpecialPowerTemplate it serves (power), the frame its reload ends (ready_at: None, no cast started one) and a
-    cast starting it anew (set_ready_at: that frame). The cast itself (cast) comes with the step that models it."""
+    cast starting it anew (set_ready_at: that frame). The cast itself (cast) comes with the step that models it.
+    AvailableAtStart false: the frame its first charge is over (first_charge, kept by simpower.charge_due); ready_by:
+    that charge or a cast's reload over by the frame."""
     __slots__ = ()
 
     def power(self):
@@ -500,6 +502,15 @@ class SpecialPower(Interface):
         raise NotImplementedError
 
     def set_ready_at(self, frame):
+        raise NotImplementedError
+
+    def first_charge(self):
+        raise NotImplementedError
+
+    def set_first_charge(self, frame):
+        raise NotImplementedError
+
+    def ready_by(self, frame):
         raise NotImplementedError
 
     def cast(self, target):

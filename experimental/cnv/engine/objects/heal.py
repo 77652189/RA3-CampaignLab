@@ -41,8 +41,8 @@ class Heal:
         and self/beneficiary-cap interaction remain gaps.
         """
         cache = self.passive_area_of
-        sources = []
-        for b in world.bodies.values():
+        sources, bodies = [], world.bodies.values()
+        for b in bodies:
             if not b.alive:
                 continue
             if b.template not in cache:
@@ -64,7 +64,7 @@ class Heal:
         if any(rule[2] for _, rule in sources):
             world.gap('物体模块', 'PassiveAreaEffectBehavior beneficiary order',
                      'INFERRED: E145只量受益人数；按物体遍历次序选满一人，具体身份顺序未测，见work/re/e145_modulebatch.md')
-        for target in world.bodies.values():
+        for target in bodies:
             if not target.alive or target.hp >= target.max_hp or 'INFANTRY' not in target.kinds:
                 continue
             if target.template == 'SovietScoutVehicle':

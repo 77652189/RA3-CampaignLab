@@ -2,7 +2,35 @@
 lag and the deploy / pack buttons' powers, moved out of sim.py so the action files read them without importing sim.
 sim re-exports them all (`sim.SUPERWEAPON_HITS`, `sim.CURTAIN` still work). The reloads' host half (step M8):
 the body's `ready_at` forward and starting a reload on the SpecialPower modules (engine/modules/specialpower.py)."""
+import engine.data.units as simunits
 from engine.kernel import interfaces
+
+
+def charge_due(world, frame, unpowered):
+    """The first charge of a SpecialPower module with AvailableAtStart false, kept on the module (first_charge): over
+    ReloadTime after the frame its thing was made, a frame later for each frame the thing is unpowered before then
+    (A382 bench 11-25 engine_a1cd g: a Chronosphere's 180 s, its owner short of power 30 s, ready 30 s late, paused
+    not reset). INFERRED: the other disabled kinds (EMP ...) and a reload a cast started are not paused."""
+    for b in world.bodies.values():
+        for m in b.find(interfaces.SpecialPower) if b.alive and b.modules else ():
+            if m.data.at_start or m.ready_at() is not None:
+                continue
+            at = m.first_charge()
+            if at is None:
+                rules = simunits.power_rules(b.template, m.power(), world.own)
+                m.set_first_charge(round(b.made_at * 15) + (rules['reload'] if rules else 0))
+            elif frame < at and 'POWERED' in b.kinds and unpowered(b):
+                m.set_first_charge(at + 1)
+
+
+def charged(world, players, power):
+    """SKIRMISH_SPECIAL_POWER_READY of a thing's own power (no RequiredPlayerTech: the superweapons): a living thing of
+    the players has a SpecialPower module serving it whose first charge or reload is over (ready_by; bench engine_a1cd
+    g: a Chronosphere ready ~180 s after the start). INFERRED: AvailableAtStart true, never cast, ready at once."""
+    now, key = world.frame_now(), power.lower()
+    return any(b.alive and b.owner in players and any(m.power().lower() == key and m.ready_by(now)
+                                                      for m in b.find(interfaces.SpecialPower))
+               for b in world.bodies.values() if b.modules)
 
 
 def ready_at(mods):

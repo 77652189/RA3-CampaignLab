@@ -89,7 +89,8 @@ class Life:
         if m is None or m.gone_frame() is not None:
             return
         garrison.empty(b)
-        if b.unpack_end is not None and world.frame_now() < b.unpack_end:
+        now = world.frame_now()
+        if b.unpack_end is not None and now < b.unpack_end:
             return                                                  # engine_sell c: refused while it unpacks
         world.used.add('sell')
         cost = simunits.production(b.template, world.own)[0]
@@ -97,7 +98,7 @@ class Life:
         credit(b.owner, refund)
         b.script_status.add('SOLD')
         modify(b)
-        m.start_sale(world.frame_now())
+        m.start_sale(now)
         world.note('出售', f'{world.label(b)}（退 {refund}）')
 
     def kill(self, world, b, why, death='NORMAL', cause=''):

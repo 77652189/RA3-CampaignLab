@@ -50,7 +50,7 @@ FORWARDER_CALLS = {
     ('engine.combat.host', 'queue_projectile_hit'): 1,
     # simloop: the frame table's cells, each the Sim's forwarder of its block
     **dict.fromkeys([('engine.loop.frame', n) for n in (
-        'blast_due', 'deal', 'death_blast_due', 'self_power_due', 'suppression_tick',
+        'blast_due', 'deal', 'death_blast_due', 'suppression_tick',
         'wfire_due')], 1),     # S2 (ADR 0037): seq / flee / hunt / fight / follow / capture call engine.orders
     # simai's Peers loan (step 9d-2, R: the calls it made on self.sim before, counted since it joined the registry;
     # step 10 can call simorder / simmodifier / simdamage itself; its orders go through the command port since R3

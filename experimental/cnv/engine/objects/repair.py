@@ -46,7 +46,8 @@ class Repairs:
         world = self.world
         if not self.players or frame < 5:  # D42: default AI dispatch before the scripted wake.
             return
-        for b in world.bodies.values():
+        bodies = world.bodies.values()
+        for b in bodies:
             mods = b.find(interfaces.Repair)
             m = mods[0] if mods else None       # several blocks: never the measured shape, never repaired
             state = m.job() if m else None
@@ -64,7 +65,7 @@ class Repairs:
                 if b.owner not in self.players:
                     continue
                 if any(x.alive and x.owner == b.owner and {'REFINERY', 'HARVESTER'} & x.kinds
-                       for x in world.bodies.values()):
+                       for x in bodies):
                     world.gap('物体模块', 'RepairUpdate economy', '有矿场/矿车时的AI经济门禁未测')
                     continue
                 if not self.ai_switches.get(b.owner, {}).get('SKIRMISH_AI_USE_REPAIRS', 1):

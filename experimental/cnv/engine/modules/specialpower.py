@@ -42,18 +42,27 @@ class SpecialPowerData(module.ModuleData):
 
     @classmethod
     def parse(cls, head, inner):
+        """read's data, AvailableAtStart read here for every family (the Chronosphere's StoreObjects read true)."""
+        return cls.read(head, inner).starts((templates.attr(head, 'AvailableAtStart') or 'true').lower() != 'false')
+
+    def starts(self, at_start):
+        self.at_start = at_start
+        return self
+
+    @classmethod
+    def read(cls, head, inner):
         return cls(templates.attr(head, 'SpecialPowerTemplate'),
-                   (templates.attr(head, 'AvailableAtStart') or 'true').lower() != 'false',
-                   templates.attr(head, 'TeleportLinkID') or templates.attr(head, 'StoreObjectsLinkID'))
+                   link=templates.attr(head, 'TeleportLinkID') or templates.attr(head, 'StoreObjectsLinkID'))
 
 
 @factory.module(*(t for t in TAGS if t not in (ASSIGN, RECALL, RETURN, DOMINATE, STORE, OCL)))
 class SpecialPower(module.Module, interfaces.SpecialPower):
     """Data and a reload frame; no update of its own (a reload is over once the frame passes it)."""
     DATA = SpecialPowerData
-    STATE = ('ready',)
+    STATE = ('ready', 'first')
     RECORDED = ()
     ready = None        # the frame its reload ends; None: no cast started one
+    first = None        # AvailableAtStart false: the frame its first charge is over (simpower.charge_due keeps it)
 
     def power(self):
         return self.data.power
@@ -64,6 +73,16 @@ class SpecialPower(module.Module, interfaces.SpecialPower):
     def set_ready_at(self, frame):
         self.ready = frame
 
+    def first_charge(self):
+        return self.first
+
+    def set_first_charge(self, frame):
+        self.first = frame
+
+    def ready_by(self, frame):
+        at = self.ready if self.ready is not None else 0 if self.data.at_start else self.first
+        return at is not None and at <= frame
+
 
 class MonitorData(SpecialPowerData):
     def __init__(self, power=None, condition=None):
@@ -71,7 +90,7 @@ class MonitorData(SpecialPowerData):
         self.condition = condition      # ReadyCondition: the model condition it sets while its power is ready
 
     @classmethod
-    def parse(cls, head, inner):
+    def read(cls, head, inner):
         return cls(templates.attr(head, 'SpecialPowerTemplate'), templates.attr(head, 'ReadyCondition'))
 
 
@@ -80,18 +99,16 @@ class Monitor(module.Module, interfaces.ReadyMonitor):
     """MonitorSpecialPowerTimerUpdate (E145, checks/engine_modulebatch.readings.toml): its thing has ReadyCondition
     while the reload of every SpecialPower module of its thing serving its power is over, and not otherwise (the
     proton collider's SPECIALPOWER1_READY after a countdown of 0, gone after 10000; none on the one without it). A
-    module with AvailableAtStart="false" no reload has started is not ready (the bench's collider: 0 at s1-s6), nor
-    is a power its thing has no module for (review yy #6). Asked when the condition is read (Sim.has_model_condition).
-    Not modelled: disabled / unpacking hosts (INFERRED: the reload alone); the cast itself still ignores
-    AvailableAtStart."""
+    module with AvailableAtStart="false" no reload has started is ready once its first charge is over (the bench's
+    collider: 0 at s1-s6; A388 the Chronosphere's, simpower.charge_due), nor is a power its thing has no module for
+    (review yy #6). Asked when the condition is read (Sim.has_model_condition). Not modelled: disabled / unpacking
+    hosts (INFERRED: the reload alone); the cast itself still ignores AvailableAtStart."""
     DATA = MonitorData
 
     def shows(self, condition, frame):
         d = self.data
         mods = [m for m in self.thing.find(interfaces.SpecialPower) if m.power() == d.power]
-        return bool(d.condition) and condition == d.condition and bool(mods) and all(
-            (m.ready_at() if m.ready_at() is not None else 0 if m.data.at_start else frame + 1) <= frame
-            for m in mods)
+        return bool(d.condition) and condition == d.condition and bool(mods) and all(m.ready_by(frame) for m in mods)
 
 
 class RecallData(SpecialPowerData):
@@ -100,7 +117,7 @@ class RecallData(SpecialPowerData):
         self.most = most            # MaxAircraftToRecall (the XSD's default 4)
 
     @classmethod
-    def parse(cls, head, inner):
+    def read(cls, head, inner):
         return cls(templates.attr(head, 'SpecialPowerTemplate'),
                    int(templates.num(templates.attr(head, 'MaxAircraftToRecall'), 4.0)))
 
@@ -127,7 +144,7 @@ class DominateData(SpecialPowerData):
         self.kinds = kinds
 
     @classmethod
-    def parse(cls, head, inner):
+    def read(cls, head, inner):
         a = re.search(r'<AttributeModifierAffects\b[^>]*', inner or '')
         f = lambda name: (templates.attr(a.group(0), name) or '').split() if a else []    # noqa: E731
         keep = (templates.attr(head, 'PermanentlyConvert') or '').lower() == 'true' and not f('StatusBitFlags')
@@ -156,7 +173,7 @@ class StoreData(SpecialPowerData):
         self.radius, self.filter = radius, filter_      # Radius; CanAffectObjectFilter (its name)
 
     @classmethod
-    def parse(cls, head, inner):
+    def read(cls, head, inner):
         return cls(templates.attr(head, 'SpecialPowerTemplate'), templates.attr(head, 'TeleportLinkID'),
                    templates.num(templates.attr(head, 'Radius')), templates.attr(head, 'CanAffectObjectFilter'))
 
@@ -174,7 +191,7 @@ class StoreObjects(SpecialPower, interfaces.Store):
     engine/modules/teleport.py). A filter other than CHRONO takes no one (a gap; INFERRED as the private model's
     unfiltered store). Not modelled: the OCL's markers."""
     DATA = StoreData
-    STATE = ('ready', 'stored_at', 'carried')
+    STATE = ('ready', 'first', 'stored_at', 'carried')
     stored_at = None    # the stored point; None: never stored, or cleared
     carried = ()        # the stored things
 
@@ -204,7 +221,7 @@ class ReturnData(SpecialPowerData):
         self.condition, self.seconds = condition, seconds      # SetModelCondition, SetModelConditionTime
 
     @classmethod
-    def parse(cls, head, inner):
+    def read(cls, head, inner):
         return cls(templates.attr(head, 'SpecialPowerTemplate'), templates.attr(head, 'SetModelCondition'),
                    templates.secs(templates.attr(head, 'SetModelConditionTime')))
 
@@ -230,7 +247,7 @@ class AssignData(SpecialPowerData):
         self.plain = plain          # no attribute but SpecialPowerTemplate (and id), no inner text: the measured shape
 
     @classmethod
-    def parse(cls, head, inner):
+    def read(cls, head, inner):
         names = set(re.findall(r'(\w+)\s*=', head))
         return cls(templates.attr(head, 'SpecialPowerTemplate'),
                    not inner.strip() and names == {'id', 'SpecialPowerTemplate'})
@@ -247,7 +264,7 @@ class AssignSlaves(SpecialPower, interfaces.Assign, interfaces.Update):
     is changed by anything else (a conservative stop, INFERRED). Asleep without a target. Its state was a store's, never in the frame record: RECORDED names none."""
     DATA = AssignData
     PHASE = 'assignments'
-    STATE = ('ready', 'tgt', 'rate', 'last', 'spots')
+    STATE = ('ready', 'first', 'tgt', 'rate', 'last', 'spots')
     RECORDED = ()
     ALIGN = {'assigned repair': '部分对齐：无人机全忙时显式派发从按下起按无人机脉冲治疗（E181 第四台）；'
                                 '"第四架、不飞"与中断即停为 INFERRED'}
@@ -325,7 +342,7 @@ class OCLRun(SpecialPower, interfaces.OCLRun, interfaces.Update):
     once (INFERRED); one shot down before it is over drops nothing (review 133; the retail cut-off not measured,
     INFERRED). Not modelled: the bomb's other nuggets."""
     PHASE = 'seq'
-    STATE = ('ready', 'runs', 'firing', 'aim')
+    STATE = ('ready', 'first', 'runs', 'firing', 'aim')
     runs = ()           # (target, its spot at the call, made, hit, gone frame, the curve, the bomber made or None)
     firing = 0          # the last frame the master counts as attacking
     aim = None          # the target of its last call

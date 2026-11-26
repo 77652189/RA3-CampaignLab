@@ -125,8 +125,9 @@ def drive(world, b, dt, precise, targets, entry, at_site):
     if precise and b.jet_motion is not None:
         left = simjet.distance(world, b)
     elif precise:
-        speed, acceleration = simtopple.motion(b.template, world.own)
-        base = simunits.stats(b.template, world.own)['speed']
+        own = world.own
+        speed, acceleration = simtopple.motion(b.template, own)
+        base = simunits.stats(b.template, own)['speed']
         speed = speed * b.speed / base if speed is not None and base else b.speed
         locomotor.write(world, b, drive_speed=min(speed, b.drive_speed + speed * dt / acceleration)
                         if acceleration else speed)

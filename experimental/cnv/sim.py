@@ -2130,9 +2130,9 @@ class Sim:
         return self._specials().leap_press(self, b, button, p, self.emp_book)
 
     def self_power_due(self, frame):
-        """simspecial.Specials.self_power_due (L2): leaps landing, rushes and self powers' bits running out."""
-        self._specials().self_power_due(self, frame, self.world.modify, self.projectile_detonate,
-                                        lambda x, y: simdamage.impact_ground_z(self, x, y))
+        """simspecial.Specials.self_power_due (L2): leaps landing, rushes and self powers' bits running out; simpower.charge_due."""
+        self._specials().self_power_due(self, frame, self.world.modify, self.projectile_detonate, lambda x, y: simdamage.impact_ground_z(self, x, y))
+        simpower.charge_due(self, frame, self.unpowered)
 
     def wfire_press(self, b, button, target=None):
         """simspecial.Specials.wfire_press (L2): a WeaponFireSpecialAbilityUpdate's button."""
