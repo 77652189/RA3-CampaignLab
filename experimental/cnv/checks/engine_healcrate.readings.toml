@@ -38,3 +38,13 @@ bench = "engine_healcrate_r:a, run_queue CampHCRealA_mcp_1123_071522: 箱子位 
 proves = """HealCrateCollide (negative): a with On, Foe and Veh placing the retail HealCrate by its own name (no clone, no new id) -- \
 still none taken, none healed: the clone's id is not why (hypothesis 5)"""
 expect = "all(r['箱子位'] == 15 and r['满血位'] == 0 and r['On 兵血'] == 50 and r['Off 兵血'] == 50 for r in rows)"
+
+[[reading]]
+id = "neither_the_campaign_human_gate_nor_contact_nor_relationship_is_what_is_missing"
+scene = {build = "engine_healcrate_h", check = "a", until = 18}
+bench = "engine_healcrate_h:a, run_queue CampHCHypA_mcp_1126_011501: 箱子位 / 满血位 15 0 at s1-s17"
+proves = """HealCrateCollide (negative, D191's table): a p1 Peacekeeper at 50% takes no crate and heals none when the crate's \
+IsHumanOnlyPickupInSinglePlayerCampaign is false (H2), when it starts on the crate's centre and is never ordered (H1), when \
+the crate's filter is given Relationship ALLIES ENEMIES NEUTRAL SAME_PLAYER (H3), or with all three -- none of them is the \
+missing gate (that the edited XML is what the game read is not checked)"""
+expect = "all(r['箱子位'] == 15 and r['满血位'] == 0 for r in rows)"

@@ -94,6 +94,54 @@ def ordered(m):
     return t
 
 
-MISSION = {'engine_healcrate': mission, 'engine_healcrate_r': lambda: mission(True)}
-CHECKS = {'engine_healcrate': {'a': check, 'b': passed, 'c': ordered}, 'engine_healcrate_r': {'a': check}}
+HUMAN = 'id="ModuleTag_HealCrateCollide" IsHumanOnlyPickupInSinglePlayerCampaign="false"'
+REL = 'Rule="ANY" Relationship="ALLIES ENEMIES NEUTRAL SAME_PLAYER"'
+# engine_healcrate_h (D191's hypotheses): lane: (gun pad, crate edits, mover starts on the crate's centre, mover sent east)
+HYP = {'Hum': ('switch', (HUMAN,), False, True), 'Sit': ('low', (), True, False),
+       'Rel': ('removed', (REL,), False, True), 'All': ('order', (HUMAN, REL), True, True)}
+
+
+def hypotheses():
+    """engine_healcrate_h: a p1 Peacekeeper (50%, NO_ATTACK) per lane. Hum: the clone with
+    IsHumanOnlyPickupInSinglePlayerCampaign false (H2: the bench is no campaign / p1 no human seat), mover sent through
+    at 2 s as in a; Sit: the plain clone, the mover placed on the crate's centre and never ordered (H1: no collision
+    ever happens); Rel: the clone's filter given Relationship ALLIES ENEMIES NEUTRAL SAME_PLAYER (H3), sent through;
+    All: both edits, placed on the centre and sent through. Counters 箱子位 (lane k's crate stands: 2**k) and 满血位
+    (lane k's mover >= 99%)."""
+    m = Mission(name='CampHCHyp', map=probe_range, units=[])
+    for tag, (lane, edits, sit, _) in HYP.items():
+        crate = clone('Neutral/Crates/HealCrate.xml', 'HealCrate', 'CNVHC' + tag)
+        for new in edits:
+            old = new.split(' ')[0] if new.startswith('id=') else 'Rule="ANY"'
+            crate.xml = crate.xml.replace(old, new, 1)
+            assert new in crate.xml
+        m.units.append(crate)
+        m.put(crate.id, lane + ' gun', side='neutral', role=tag + ' crate', name=f'HC {tag} crate')
+        m.put(MAN, lane + ' gun', 0 if sit else -200, 0, side='p1', role=tag + ' man', name=f'HC {tag} man')
+    return m
+
+
+def hyp_check(m):
+    t = Test()
+    hurt, go = [('MAP_REVEAL_ALL_PERM', m.player('p1'))], []
+    for tag, (lane, _, _, move) in HYP.items():
+        name = m.role(tag + ' man').name
+        hurt += [('UNIT_SET_HEALTH', name, 50.0), ('UNIT_CHANGE_OBJECT_STATUS', name, 'NO_ATTACK', 1)]
+        if move:
+            x, y = m.site(lane + ' gun')
+            t.waypoints[f'HC {tag} goal'] = (x + 200, y)
+            go.append(('MOVE_NAMED_UNIT_TO', name, f'HC {tag} goal'))
+    t.scripts.append(Script('Test - HC hurt', [], hurt))
+    s8.at(t, 'go', 2., go)
+    s8.total(t, 'HCCrate', '箱子位', [(2**k, ('NAMED_NOT_DESTROYED', m.role(tag + ' crate').name))
+                                     for k, tag in enumerate(HYP)])
+    s8.total(t, 'HCFull', '满血位', [(2**k, ('UNIT_HEALTH', m.role(tag + ' man').name, 3, 99))
+                                    for k, tag in enumerate(HYP)])
+    s8.watch(t, 16., .5)
+    return t
+
+
+MISSION = {'engine_healcrate': mission, 'engine_healcrate_r': lambda: mission(True), 'engine_healcrate_h': hypotheses}
+CHECKS = {'engine_healcrate': {'a': check, 'b': passed, 'c': ordered}, 'engine_healcrate_r': {'a': check},
+          'engine_healcrate_h': {'a': hyp_check}}
 CONTROL_ARMS = {'engine_healcrate': ('On', 'Off')}
