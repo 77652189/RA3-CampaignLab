@@ -41,7 +41,17 @@ CAND = ({NOCRUSH: (15.13, 0.0)}, {'SM_Auto04': (15.13, 0.0)}, {'MJ_PalaceWall01'
         {'KR_Wall01': (23.3, math.pi / 2)}, {'OD_Wall01': (63.9, math.pi / 2)})
 SIDE = {2: 's1'}
 RUNS |= {'e': ((ZERO,) * 5, CAND), 'f': ((GUARDIAN,) * 5, CAND), 'g': ((GUARDIAN,) * 5, CAND)}
-LONE = {'d': (2, 3, 4, 5), 'g': (1, 2, 3, 4, 5)}
+# E256 h, g's positive control: a Guardian 150 west of one s1 thing a lane -- 1 a Hammer, the Guardian on HOLD_FIRE but
+# ordered; 2 a Hammer, ordered; 3 a Hammer, no order (auto-acquire); 4 s1's SM_Auto04, 5 a neutral one, ordered.
+# The Hammers hold fire. 伤 a digit a lane: how many of 100/75/50/25 % the target's health is under.
+TANK = {HAMMER: (0.0, 0.0)}
+RUNS['h'] = ((GUARDIAN,) * 5, (TANK, TANK, TANK, CAND[1], CAND[1]))
+SIDES = {'e': SIDE, 'f': SIDE, 'g': SIDE, 'h': {1: 's1', 2: 's1', 3: 's1', 4: 's1'}}
+LONE = {'d': (2, 3, 4, 5), 'g': (1, 2, 3, 4, 5), 'h': (1, 2, 3, 4, 5)}
+# E256 i, OD_Wall01 again (e/f drove straight through it): 1 the zero truck at e's wall (angle pi/2), the camera on it;
+# 2 the truck at the wall turned to 0 (the box's long side along the lane, so a thick block); 3 a Guardian at e's wall
+OD = 'OD_Wall01'
+RUNS['i'] = ((ZERO, ZERO, GUARDIAN), ({OD: (63.9, math.pi / 2)}, {OD: (9.47, 0.0)}, {OD: (63.9, math.pi / 2)}))
 
 
 def _kinds(kinds, k):
@@ -91,7 +101,7 @@ def mission(run):
         m.put(mover, 'order gun', -150.0 if lone else -START, _dy(k), angle=0.0, role=f'mover {k}', name=f'A1T Mover {k}')
         first = next(iter(lane or {}), None)
         wall = [(first, 0.0, lane[first][1])] if lone else _wall(lane) if kinds else []
-        side = SIDE.get(k, 'neutral') if kinds is CAND else 'neutral'
+        side = SIDES.get(run, {}).get(k, 'neutral')
         for i, (t, y, ang) in enumerate(wall):
             m.put(t, 'order gun', 0.0, _dy(k) + (0.0 if lone else y), angle=ang, side=side, role=f'car {k} {i}',
                   name=f'A1T Car {k} {i}')
@@ -104,13 +114,17 @@ def check(m, run, view=False):
     x, y = m.site('order gun')
     lanes = range(1, len(movers) + 1)
     hold = [('UNIT_SET_STANCE', m.role(f'mover {k}').name, 3) for k in lanes if k not in LONE.get(run, ())]
+    if run == 'h':
+        hold += [('UNIT_SET_STANCE', m.role(f'car {k} 0').name, 3) for k in (1, 2, 3)]
+        hold.append(('UNIT_SET_STANCE', m.role('mover 1').name, 3))
     t.scripts.append(Script('Test - A1T start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))] + hold))
     go, going = [('SET_FLAG', 'A1T Going', 1)], ('FLAG', 'A1T Going', 1)
     for k in lanes:
         name = m.role(f'mover {k}').name
         t.areas[f'A1T Mid {k}'] = square(x, y + _dy(k), 50.0)
         if k in LONE.get(run, ()):
-            go.append(('NAMED_ATTACK_NAMED', name, m.role(f'car {k} 0').name))
+            if (run, k) != ('h', 3):
+                go.append(('NAMED_ATTACK_NAMED', name, m.role(f'car {k} 0').name))
             t.scripts.append(Script(f'Test - A1T at {k}', [('NAMED_DESTROYED', m.role(f'car {k} 0').name)],
                                     [('SET_FLAG', f'A1T At {k}', 1)]))
             continue
@@ -120,7 +134,7 @@ def check(m, run, view=False):
         t.scripts.append(Script(f'Test - A1T at {k}', [('NAMED_INSIDE_AREA', name, f'A1T Goal {k}')],
                                 [('SET_FLAG', f'A1T At {k}', 1)]))
     s8.at(t, 'go', 2., go)
-    if view:                                    # a's v: the camera on lane 1's middle, to see the truck at the cars
+    if view or run == 'i':                      # a's v: the camera on lane 1's middle, to see the truck at the cars
         t.waypoints['A1T View'] = (x, y + _dy(1))
         s8.at(t, 'view', 1., [('MOVE_CAMERA_TO', 'A1T View', 0.5, 0.0, 1.0, 1.0)])
     if run == 'd':
@@ -133,7 +147,11 @@ def check(m, run, view=False):
             if k in lanes:
                 t.scripts.append(Script(f'Test - {counter} {k}', [going, ('FLAG', f'A1T At {k}', 0)],
                                         [('INCREMENT_COUNTER', 1000 ** j, counter)], once=False))
-    t.counters.append(('A1TMid', '穿心'))
+    if run == 'h':                              # the lone movers' 穿心 says nothing: 伤 takes its line
+        s8.total(t, 'A1THurt', '伤', [(10 ** (k - 1), ('UNIT_HEALTH', m.role(f'car {k} 0').name, 0, pct))
+                                     for k in lanes for pct in (100, 75, 50, 25)])
+    else:
+        t.counters.append(('A1TMid', '穿心'))
     t.scripts += [Script(f'Test - A1T mid {k}', [going, ('NAMED_INSIDE_AREA', m.role(f'mover {k}').name, f'A1T Mid {k}')],
                          [('INCREMENT_COUNTER', 10 ** (k - 1), 'A1TMid')]) for k in lanes]
     if kinds:

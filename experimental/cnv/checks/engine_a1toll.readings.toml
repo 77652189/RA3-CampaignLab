@@ -1,0 +1,44 @@
+# Bench readings of checks/engine_a1toll.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Five lanes along +x, a 300-long wall of neutral parked cars (BaseParkedCar: STRUCTURE CRUSHABLE_OBSTACLE,
+# CrushableLevel 0) or toll booths across each; movers sent across at 2 s. 到时甲 lanes 1..3 (x1, x1000, x1e6),
+# 到时乙 lanes 4..5: frames from the go to the goal; 穿心 / 车存 a digit a lane (10**(k-1)): drove through the
+# middle / how many of the middle three cars stand. a / b movers: zero-crusher truck, conscript, Riptide (crusher 1),
+# Guardian (20), Apocalypse (30); c: truck, Guardian, Apocalypse at toll booths. Bench 11-26 E255, head 58df1365.
+
+[[reading]]
+id = "a_only_infantry_goes_round_the_cars"
+scene = {build = "engine_a1tolla", check = "a", until = 20}
+bench = "CampA1TollA (11-26): 穿心 11101 at the end -- the truck, Riptide, Guardian, Apocalypse straight through, the conscript round"
+proves = "sim.Sim.reblock: a CRUSHABLE_OBSTACLE is in the way of infantry only (Ground surface 'foot'); vehicles, a zero crusher too, drive through"
+expect = "win(17, 19, '穿心') == [11101] * 3"
+
+[[reading]]
+id = "a_the_cars_cost_the_vehicles_nothing"
+scenes = {a = {build = "engine_a1tolla", check = "a", until = 20}, b = {build = "engine_a1tollb", check = "b", until = 20}}
+bench = "CampA1TollA / B: truck 147 / 147, Riptide 70 / 70, Guardian 87 / 87, Apocalypse 140 / 140; conscript 176 / 139 (+37)"
+proves = "sim.Sim.reblock: vehicles keep their open-road way through the cars; the conscript's way round them is longer"
+let = {ta = "a[-1]['到时甲']", tb = "b[-1]['到时甲']", ua = "a[-1]['到时乙']", ub = "b[-1]['到时乙']"}
+expect = ["ta % 1000 == tb % 1000", "ta // 10 ** 6 == tb // 10 ** 6", "ua == ub",
+          "ta // 1000 % 1000 - tb // 1000 % 1000 >= 15"]
+
+[[reading]]
+id = "a_a_crusher_above_zero_crushes_the_car_in_its_way"
+scene = {build = "engine_a1tolla", check = "a", until = 20}
+bench = "CampA1TollA: 车存 12233 -- truck and conscript 3 / 3 cars standing, Riptide 2, Guardian 2, Apocalypse 1"
+proves = "engine/objects/locomotion.crush: a neutral CRUSHABLE_OBSTACLE is crushed (not only an enemy's), by an amphibian on land too"
+expect = "win(19, 19, '车存')[0] % 10000 == 2233"
+
+[[reading]]
+id = "a_the_apocalypse_crushes_two_cars"
+scene = {build = "engine_a1tolla", check = "a", until = 20}
+bench = "CampA1TollA: 车存 lane 5 digit 1 (two of the middle three crushed)"
+proves = "engine/objects/locomotion.crush: the crushed's radius alone about the crusher's line (FITTED) is too narrow for the Apocalypse"
+mismatch = "sim lane 5 digit 2 (one crushed), bench 1 (two)"
+expect = "win(19, 19, '车存')[0] // 10000 == 1"
+
+[[reading]]
+id = "c_toll_booths_hold_nobody_up"
+scene = {build = "engine_a1tollc", check = "c", until = 20}
+bench = "CampA1TollC (11-26): 穿心 111, 车存 333 -- truck, Guardian, Apocalypse straight through, no booth broken"
+proves = "sim.Sim.blocks: HV_TollBooth01 (no STRUCTURE) stands in nobody's way and is not crushed"
+expect = ["win(17, 19, '穿心') == [111] * 3", "win(19, 19, '车存') == [333]"]

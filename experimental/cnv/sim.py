@@ -795,13 +795,13 @@ class Sim:
 
     def reblock(self):
         """The way as it stands now, for the orders given from now on: whoever is on the move keeps the way it was
-        given and goes through what came up since (docs/engine/pathing.md 6, bench 2026-11-04 engine_block wall: the
-        IFV ordered a second before its row of bunkers was made drove straight through it, s4, not round by the gap).
-        A new order goes round a building made in the run, infantry's as a vehicle's (bench 2026-11-08 engine_block
-        foot: the IFV and a peacekeeper ordered 3 s after the row was made both went round by the gap, s13 / s22)."""
-        bodies = self.living()
-        self.ground.set_blocks([s for s in (self.blocks(b) for b in bodies) if s],
-                               [s for s in (self.blocks(b, place=True) for b in bodies) if s])
+        given and goes through what came up since (docs/engine/pathing.md 6, 11-04 engine_block wall: the IFV ordered
+        a second before its bunker row was made drove through it, s4). A new order goes round a building made in the
+        run, infantry's as a vehicle's (11-08 engine_block foot: IFV, peacekeeper ordered 3 s later went round by the
+        gap, s13 / s22); a CRUSHABLE_OBSTACLE infantry's only, vehicles drive through (E256 engine_a1toll)."""
+        bodies, soft = self.living(), lambda b: 'CRUSHABLE_OBSTACLE' in b.kinds
+        self.ground.set_blocks(*([s for s in (self.blocks(b, place) for b in bodies if keep(b)) if s] for place, keep
+                                 in ((False, lambda b: not soft(b)), (True, lambda b: True), (False, soft))))
 
     # ---- the world
     def owner_of(self, side):

@@ -75,7 +75,7 @@ def route_grid(ground, surface):
     try:
         return ground.cache[key]
     except KeyError:
-        grid = RouteGrid(ground.grids[surface], ground.blocked)
+        grid = RouteGrid(ground.grids[surface], ground.shut(surface))
         ground.cache[key] = grid
         return grid
 
@@ -519,8 +519,10 @@ class Ground:
         self.grids['both'] = (fold(land).all(axis=(1, 3)) | self.grids['water'] |
                               fold(land | water | shallow).all(axis=(1, 3)))
         self.fine = {k: a[:hh * d, :ww * d] for k, a in (('ground', walk), ('water', water), ('both', land | water | shallow))}
+        # 'foot', infantry's ground: its cells, shut also by what only infantry goes round (set_blocks' foot)
+        self.grids['foot'], self.fine['foot'] = self.grids['ground'], self.fine['ground']
         self.cache, self.borders = {}, tuple(getattr(mapmod, 'BORDERS', {}).values())    # borders: (x0, y0, x1, y1)
-        self.blocked = np.zeros(self.grids['ground'].shape, bool)
+        self.blocked = self.foot = np.zeros(self.grids['ground'].shape, bool)
         self.placed = self.blocked          # what a new structure's placement sees as taken (set_blocks' place)
         self.version = 0
         # a bridge's deck: what stands on it blocks nobody (bench 2026-10-27, reroute: the warriors walked through an
@@ -528,7 +530,7 @@ class Ground:
         self.deck = np.zeros_like(self.blocked)
         objs = list(getattr(mapmod, 'OBJECTS', []))
         jj, ii = np.mgrid[0:self.blocked.shape[0], 0:self.blocked.shape[1]]
-        self.xy, self.shapes = self.world((jj, ii)), []
+        self.xy, self.shapes, self.foot_shapes = self.world((jj, ii)), [], []
         for o, q in zip(objs, objs[1:]):
             if getattr(o, 'flags', None) == platmap.BRIDGE_START and getattr(q, 'flags', None) == platmap.BRIDGE_END:
                 self.deck |= self.strip((o.x, o.y), (q.x, q.y), platmap.BRIDGE_DECK, 0.0)
@@ -543,16 +545,22 @@ class Ground:
         v = -(x - p[0]) * uy + (y - p[1]) * ux
         return (u >= -over) & (u <= n + over) & (abs(v) <= width / 2)
 
-    def set_blocks(self, shapes, place=None):
+    def set_blocks(self, shapes, place=None, foot=()):
         """What stands in the way now: [(x, y, angle, length, thick) a bar, or (x, y, r) a round building]; off a
         bridge's deck. Routes are worked out anew. place: the shapes a structure's placement sees (open(place=True)),
-        None = the same."""
+        None = the same. foot: what stands in the way of surface 'foot' (infantry) only."""
         m = self._mask(shapes)
+        f = m | self._mask(foot) if foot else m
         self.placed = m if place is None else self._mask(place)
-        if (m != self.blocked).any():
-            self.blocked, self.version, self.cache, self.shapes = m, self.version + 1, {}, list(shapes)
+        if (m != self.blocked).any() or (f != self.foot).any():
+            self.blocked, self.foot, self.version, self.cache = m, f, self.version + 1, {}
+            self.shapes, self.foot_shapes = list(shapes), list(shapes) + list(foot)
             return True
         return False
+
+    def shut(self, surface):
+        """The routing cells shut now for that surface."""
+        return self.foot if surface == 'foot' else self.blocked
 
     def _mask(self, shapes):
         return covered(shapes, *self.xy, GRID) & ~self.deck
@@ -564,7 +572,7 @@ class Ground:
             return True
         c, g = self.cell(x, y), self.grids[surface]
         return (0 <= c[0] < g.shape[0] and 0 <= c[1] < g.shape[1] and bool(g[c])
-                and not (self.placed if place else self.blocked)[c])
+                and not (self.placed if place else self.shut(surface))[c])
 
     def stand(self, surface, x, y):
         """A ground unit may stand in the CELL cell [x, x + CELL) x [y, y + CELL): its four corners dry (as 'ground'
@@ -707,9 +715,10 @@ class Ground:
             import platmap
             fine, d = self.fine[surface], self.d
             jj, ii = np.mgrid[0:fine.shape[0], 0:fine.shape[1]]
-            fb = covered(self.shapes, (ii - self.b) * platmap.CELL, (jj - self.b) * platmap.CELL, platmap.CELL)
+            fb = covered(self.foot_shapes if surface == 'foot' else self.shapes, (ii - self.b) * platmap.CELL,
+                         (jj - self.b) * platmap.CELL, platmap.CELL)
             fb &= ~self.deck.repeat(d, 0).repeat(d, 1)
-            self.cache['sight', surface] = Sight.of(self.grids[surface], fine, self.blocked, fb)
+            self.cache['sight', surface] = Sight.of(self.grids[surface], fine, self.shut(surface), fb)
         return self.cache['sight', surface]
 
     def closest(self, g, a, z, surface):

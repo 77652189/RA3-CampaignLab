@@ -29,10 +29,11 @@ def go_to(world, b, target, reach=0.0, face=None):
     if p is None:
         world.note('卡住', f'{world.label(b)} 找不到要去的地方 {target}')
         return
-    path = world.ground.within(b.surface, (b.x, b.y), p, reach) if reach else None
+    surface = 'foot' if b.surface == 'ground' and 'INFANTRY' in b.kinds else b.surface    # Sim.reblock's foot
+    path = world.ground.within(surface, (b.x, b.y), p, reach) if reach else None
     stands = False
     if path is None:
-        path = world.ground.route(b.surface, (b.x, b.y), p, closest=True)
+        path = world.ground.route(surface, (b.x, b.y), p, closest=True)
         stands = path == []
     if not b.path:
         locomotor.write(world, b, set_off=world.frame_now())
@@ -188,7 +189,7 @@ def crush(world, b, x0, y0, precise, pool, attached, topples, destroy):
     (INFERRED: one's own / neutral units not measured). `pool`: Sim.move's, new each move, filled at its first crusher
     that drives (the crushable ones, not `attached`, as arrays: a big map's tanks all drive). A prop (`topples`) is
     toppled only frame by frame: a way across one is a frame mover's (go_to), with or without the model."""
-    if b.crusher <= 0 or b.surface != 'ground' or (b.x, b.y) == (x0, y0):
+    if b.crusher <= 0 or b.surface not in ('ground', 'both') or (b.x, b.y) == (x0, y0):    # both: E256 a's Riptide
         return
     dx, dy = b.x - x0, b.y - y0
     seg = dx * dx + dy * dy
@@ -203,7 +204,8 @@ def crush(world, b, x0, y0, precise, pool, attached, topples, destroy):
         near = np.hypot(ox - (x0 + k * dx), oy - (y0 + k * dy)) <= orad
         for j in np.nonzero(near & (olevel < b.crusher))[0]:
             o = low[j]
-            if o is b or not o.alive or not world.enemy(b.owner, o.owner):
+            # E256 engine_a1toll a: a neutral CRUSHABLE_OBSTACLE (a parked car) too (one's own INFERRED)
+            if o is b or not o.alive or not (world.enemy(b.owner, o.owner) or 'CRUSHABLE_OBSTACLE' in o.kinds):
                 continue
             world.used.add('crush')
             o.set_last_damage(b.owner, b)
