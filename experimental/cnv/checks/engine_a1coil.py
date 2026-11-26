@@ -197,6 +197,14 @@ def seat_check(m):
     return t
 
 
+# k j with every engineer deleted in the start script (no target): the seats a passenger takes by itself. 88 in every
+# lane = the first two bones in their name hashes' order (04, 07, both south-west), j's others are the target's.
+def bare_seat_check(m):
+    t = seat_check(m)
+    t.scripts[0].do +=[('NAMED_DELETE', 'Man ' + lane) for lane in G_LANES]
+    return t
+
+
 # f javelin (item 4 of 3): the player's javelin 'south' of s1's plant in each lane, ordered to attack it at 4 s;
 # lock lanes toggle SpecialPower_RadarLock at 1 s. 锁远 = base plant's health % (lock, 240 off: past the plain 175),
 # 锁近 = high (lock, 150 off), 平射 = order (no toggle, 150 off). Lock: 3.5 s on, then 40 a shot every 0.2-0.3 s
@@ -375,6 +383,6 @@ def land_check(m):
 
 MISSION = {'engine_a1land': land_mission, 'engine_a1gate': gate_mission, 'engine_a1cd': countdown_mission, 'engine_a1gar': garrison_mission, 'engine_a1jav': javelin_mission,
            'engine_a1coil': mission, 'engine_a1near': lambda: mission(NEAR, 'CampA1Near'), 'engine_a1cap': captured_mission, 'engine_a1pow': power_mission}
-CHECKS = {'engine_a1land': {'i': land_check}, 'engine_a1gate': {'h': gate_check}, 'engine_a1cd': {'g': countdown_check}, 'engine_a1gar': {'e': garrison_check, 'j': seat_check}, 'engine_a1jav': {'f': javelin_check},
+CHECKS = {'engine_a1land': {'i': land_check}, 'engine_a1gate': {'h': gate_check}, 'engine_a1cd': {'g': countdown_check}, 'engine_a1gar': {'e': garrison_check, 'j': seat_check, 'k': bare_seat_check}, 'engine_a1jav': {'f': javelin_check},
           'engine_a1coil': {'a': range_check}, 'engine_a1near': {'d': lambda m: range_check(m, FORCED)}, 'engine_a1cap': {'b': captured_check},
           'engine_a1pow': {'c': power_check}}
