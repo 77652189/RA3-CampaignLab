@@ -42,3 +42,25 @@ scene = {build = "engine_a1tollc", check = "c", until = 20}
 bench = "CampA1TollC (11-26): 穿心 111, 车存 333 -- truck, Guardian, Apocalypse straight through, no booth broken"
 proves = "sim.Sim.blocks: HV_TollBooth01 (no STRUCTURE) stands in nobody's way and is not crushed"
 expect = ["win(17, 19, '穿心') == [111] * 3", "win(19, 19, '车存') == [333]"]
+
+[[reading]]
+id = "r_a_scripted_attack_leaves_a_simple_object_prop_alone"
+scenes = {r = {build = "engine_a1tollr", check = "r", until = 46}, g = {build = "engine_a1tollg", check = "g", until = 46}, h = {build = "engine_a1tollh", check = "h", until = 46}, l = {build = "engine_a1tolll", check = "l", until = 46}}
+bench = "CampA1TollRR (11-26 E261): 车存 1000 -- s1's CIV (NOT_AUTOACQUIRABLE alone), CIVI, BARE, CIVA shot away, ARMI (SIMPLE_OBJECT_PROP and AUTO_ACQUIRABLE_BY_AI) at full health for 45 s; g / h / l (E256-E258): 11111 / 11000 / 11, every car left standing a SIMPLE_OBJECT_PROP"
+proves = "engine/orders/order.order_attack: an attack order without force turns down a SIMPLE_OBJECT_PROP target, an enemy's too (force INFERRED to take it)"
+expect = ["r[-1]['车存'] == 1000", "g[-1]['车存'] == 11111", "h[-1]['车存'] == 11000", "l[-1]['车存'] == 11"]
+
+[[reading]]
+id = "r_a_guardian_takes_a_300_civilian_car_in_126_frames"
+scene = {build = "engine_a1tollr", check = "r", until = 46}
+bench = "CampA1TollRR: 到时甲 126126127, 到时乙 lane 5 126 -- the four cars it may shoot gone 126-127 frames after the go"
+proves = "engine/combat: a Guardian's shots on 300 health of BaseCivilianStructureArmor"
+mismatch = "sim 150 a lane (about 1.6 s slower)"
+expect = "max(r % 1000 for r in (rows[-1]['到时甲'], rows[-1]['到时甲'] // 1000, rows[-1]['到时甲'] // 10 ** 6, rows[-1]['到时乙'])) <= 132"
+
+[[reading]]
+id = "s_a_car_killed_before_the_go_holds_nobody_up"
+scene = {build = "engine_a1tolls", check = "s", until = 46}
+bench = "CampA1TollSS (11-26 E261): 穿心 111, 车存 33000 -- the middle three of a neutral CIV wall NAMED_KILLed at 1 s (the model stays, KEEP_CLASSIFIED_WHEN_DEAD): truck 150, Guardian 87, like the NAMED_DELETEd lane's truck 151; lanes 4 / 5 round (201 / 105)"
+proves = "sim.Sim.reblock: a dead CIV car is out of the way at once, its model left or not"
+expect = ["rows[-1]['穿心'] == 111", "rows[-1]['车存'] == 33000", "abs(rows[-1]['到时甲'] % 1000 - rows[-1]['到时甲'] // 10 ** 6) <= 8"]

@@ -108,6 +108,20 @@ RUNS['q'] = ((GUARDIAN,) * 5, ({CIV: (15.13, 0.0)}, {'MJ_PalaceWall01': (30.0, 0
                                {CIVA: (15.13, 0.0)}, {CIVA: (15.13, 0.0)}))
 LONE['q'], SIDES['q'] = (1, 2, 3, 4, 5), {5: 's1'}
 IDLE |= {('q', k) for k in LONE['q']}
+# r (review 141: the simulator shoots s1's parked cars away, g / h / l's bench never did): five Guardians on HOLD_FIRE,
+# each ordered on one s1 thing -- 1 CIV (NOT_AUTOACQUIRABLE alone), 2 CIVI (CIV with AUTO_ACQUIRABLE_BY_AI too, as every
+# retail base structure), 3 BARE (BaseParkedCar less SIMPLE_OBJECT_PROP), 4 ARMI (ARMORED with AUTO_ACQUIRABLE_BY_AI),
+# 5 CIVA (no NOT_AUTOACQUIRABLE, p 4's control). Is a script's order turned down by NOT_ without AUTO_ACQUIRABLE_BY_AI
+# (1, 3 stand; 2, 4, 5 go) or by SIMPLE_OBJECT_PROP (4 stands)?
+# s (E260's open end): a wall of neutral CIV, the middle three NAMED_KILLed at 1 s (KEEP_CLASSIFIED_WHEN_DEAD, the model
+# stays): 1 the truck, 2 a Guardian; 3 the truck, NAMED_DELETEd; 4 the truck, 5 a Guardian, nothing taken away.
+CIVI, ARMI = 'CNVA1TollCivCarI', 'CNVA1TollArmCarI'
+RUNS['r'] = ((GUARDIAN,) * 5, ({CIV: (15.13, 0.0)}, {CIVI: (15.13, 0.0)}, {BARE: (15.13, 0.0)}, {ARMI: (15.13, 0.0)},
+                               {CIVA: (15.13, 0.0)}))
+LONE['r'], SIDES['r'] = (1, 2, 3, 4, 5), {k: 's1' for k in range(1, 6)}
+RUNS['s'] = ((ZERO, GUARDIAN, ZERO, ZERO, GUARDIAN), {CIV: (15.13, 0.0)})
+KILL['s'] = {1: (1.0, KIL, False), 2: (1.0, KIL, False), 3: (1.0, DEL, False)}
+HOLD = {'h': (1,), 'q': (5,), 'r': (1, 2, 3, 4, 5)}
 CLICK = {5: (240.0, False, (726, 103)), 1: (-160.0, True, (759, 505)), 2: (-80.0, True, (756, 365)),
          3: (0.0, False, (743, 311)), 4: (80.0, True, (736, 233))}
 
@@ -148,13 +162,14 @@ def mission(run):
     assert n == 1
     m.units.append(truck)
     used = {t for lane in (kinds if isinstance(kinds, tuple) else (kinds,)) for t in lane or {}}
-    for ident in sorted({CIV, CIVC, CIVA} & used):
+    for ident in sorted({CIV, CIVC, CIVA, CIVI} & used):
         car = clone('Civilian/Santa_Monica_SA/Props/SM_Auto04.xml', 'SM_Auto04', ident)
         if ident == CIVC:
             car.xml = car.xml.replace('<Shape ', '<Shape ContactPointGeneration="STRUCTURE" ', 1)
         base = 'BaseCivilianStructureNoGarrisonDestructible'
         kindof = (' KindOf="SELECTABLE STRUCTURE IMMOBILE CAN_CAST_REFLECTIONS AUTO_RALLYPOINT COVER KEEP_CLASSIFIED_WHEN_DEAD'
-                  ' CIVILIAN_BUILDING RESIST_EMP ALWAYS_VISIBLE_IN_RADAR"') if ident == CIVA else ''
+                  ' CIVILIAN_BUILDING RESIST_EMP ALWAYS_VISIBLE_IN_RADAR'
+                  + ' NOT_AUTOACQUIRABLE AUTO_ACQUIRABLE_BY_AI' * (ident == CIVI) + '"') if ident in (CIVA, CIVI) else ''
         car.xml = car.xml.replace('BaseObjects/BaseParkedCar.xml', f'BaseObjects/{base}.xml', 1)
         car.xml = car.xml.replace('inheritFrom="BaseParkedCar"', f'inheritFrom="{base}"{kindof}', 1)
         car.xml = car.xml.replace('<Geometry', '<ArmorSet id="DefaultArmor" xai:joinAction="Replace" xmlns:xai='
@@ -163,9 +178,9 @@ def mission(run):
                                   '</Body>\n    <Geometry', 1)
         assert car.xml.count(base) == 2 and 'MaxHealth="300"' in car.xml
         m.units.append(car)
-    for ident in sorted({NOCRUSH, ARMORED, BARE} & used):
+    for ident in sorted({NOCRUSH, ARMORED, BARE, ARMI} & used):
         car = clone('Civilian/Santa_Monica_SA/Props/SM_Auto04.xml', 'SM_Auto04', ident)
-        prop = '' if ident == BARE else ' SIMPLE_OBJECT_PROP'
+        prop = '' if ident == BARE else ' SIMPLE_OBJECT_PROP' + ' AUTO_ACQUIRABLE_BY_AI' * (ident == ARMI)
         car.xml = car.xml.replace('inheritFrom="BaseParkedCar"', 'inheritFrom="BaseParkedCar" KindOf="IMMOBILE '
                                   f'NOT_AUTOACQUIRABLE STRUCTURE CAN_SEE_THROUGH_STRUCTURE RESIST_EMP{prop} '
                                   'CLEARED_BY_BUILD"', 1)
@@ -193,8 +208,7 @@ def check(m, run, view=False):
     hold = [('UNIT_SET_STANCE', m.role(f'mover {k}').name, 3) for k in lanes if k not in LONE.get(run, ())]
     if run == 'h':
         hold += [('UNIT_SET_STANCE', m.role(f'car {k} 0').name, 3) for k in (1, 2, 3)]
-    if run in 'hq':
-        hold.append(('UNIT_SET_STANCE', m.role(f'mover {1 if run == "h" else 5}').name, 3))
+    hold += [('UNIT_SET_STANCE', m.role(f'mover {k}').name, 3) for k in HOLD.get(run, ())]
     t.scripts.append(Script('Test - A1T start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))] + hold))
     go, going = [('SET_FLAG', 'A1T Going', 1)], ('FLAG', 'A1T Going', 1)
     for k in lanes:
@@ -227,10 +241,10 @@ def check(m, run, view=False):
             if k in lanes:
                 t.scripts.append(Script(f'Test - {counter} {k}', [going, ('FLAG', f'A1T At {k}', 0)],
                                         [('INCREMENT_COUNTER', 1000 ** j, counter)], once=False))
-    if run in ('h', 'k', 'm', 'o', 'p', 'q'):   # lone movers' 穿心 says nothing: 伤 takes its line (m keeps both)
+    if run in ('h', 'k', 'm', 'o', 'p', 'q', 'r'):   # lone movers' 穿心 says nothing: 伤 takes its line (m keeps both)
         s8.total(t, 'A1THurt', '伤', [(10 ** (k - 1), ('UNIT_HEALTH', m.role(f'car {k} 0').name, 0, pct))
                                      for k in lanes if k in LONE[run] for pct in (100, 75, 50, 25)])
-    if run not in ('h', 'k', 'o', 'p', 'q'):
+    if run not in ('h', 'k', 'o', 'p', 'q', 'r'):
         t.counters.append(('A1TMid', '穿心'))
     t.scripts += [Script(f'Test - A1T mid {k}', [going, ('NAMED_INSIDE_AREA', m.role(f'mover {k}').name, f'A1T Mid {k}')],
                          [('INCREMENT_COUNTER', 10 ** (k - 1), 'A1TMid')]) for k in lanes]

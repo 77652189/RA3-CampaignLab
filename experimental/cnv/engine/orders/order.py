@@ -134,10 +134,12 @@ def order_attack(world, peers, b, target_name, force=False):
     there)."""
     world.used.add('attack')
     target = _target(world, target_name)
-    if b and target and not force and _relation(world, b, target) in ('ALLIES', 'NEUTRAL'):
+    if b and target and not force and (_relation(world, b, target) in ('ALLIES', 'NEUTRAL')
+                                       or 'SIMPLE_OBJECT_PROP' in target.kinds):
         return False    # bench 11-13 engine_acts flow 友血: NAMED_ATTACK_NAMED on one of its own side, no shot (d115
         #                 13: FORCE_ATTACK_NAMED is the order that takes any relation); a neutral wall, gate or rock
-        #                 likewise (11-25 engine_a1gate h, review 135 ③; INFERRED for other shooters than Tanya)
+        #                 likewise (11-25 engine_a1gate h, review 135 ③; INFERRED for other shooters than Tanya); an
+        #                 enemy's SIMPLE_OBJECT_PROP (a parked car) too, NOT_AUTOACQUIRABLE or not (engine_a1toll r)
     if not (b and target and target.alive and b.alive):
         return False
     walk = b.goal is not target or b.mode != 'attack' or not b.aiupdate.ordered   # a goal the AI's pursuit set
