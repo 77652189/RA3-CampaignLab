@@ -72,12 +72,19 @@ class Money:
             self.income[owner] = (mult, frac - give)
         self.earn(world, owner, give, frame)
 
-    def mined_since(self, player, frame):
-        """What `player`'s collectors paid in from `frame` on: IncomeAdvantageHeuristic's input (read, work/re/l4_states.md
-        11-25: each mining-type deposit goes into the player's tracker as (frame, amount), entries older than the
-        window drop off, the input is the sum left). Refunds and sales do not count; a deposit building's pay
-        (deposit) is left out -- its type is not read (INFERRED)."""
-        return sum(a for f, a in self.mined.get(player, ()) if f >= frame)
+    def mined_since(self, player, frame, until):
+        """What `player`'s collectors paid in at frames `frame` .. `until`: IncomeAdvantageHeuristic's input (read,
+        work/re/l4_states.md 11-25: each mining-type deposit goes into the player's tracker as (frame, amount), entries
+        older than the window drop off, the input is the sum left). The world runs ahead of the AI's frame, so the
+        deposits after `until` are not in yet (review 134 P1). Entries before `frame` are dropped: the AI's window
+        only moves on (review 134 P3). Refunds and sales do not count; a deposit building's pay (deposit) is left out
+        -- its type is not read (INFERRED)."""
+        log = self.mined.get(player)
+        if not log:
+            return 0
+        old = next((i for i, (f, _) in enumerate(log) if f >= frame), len(log))
+        del log[:old]
+        return sum(a for f, a in log if f <= until)
 
     def credit(self, player, amount):
         """Money paid that is no income (a sale's refund, simbody.Life.sell; what a spy takes, siminfiltrator): never

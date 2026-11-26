@@ -176,6 +176,12 @@ def available():
     return model() is not None
 
 
+def reaches(observe, a, t):
+    """Whether one of `a`'s weapons that can hit `t` reaches it (Sim.can_hit, then the range): a Bullfrog's flak does
+    not reach a Peacekeeper however near (review 134 P2)."""
+    return any(observe.can_hit(w, t) and simrange.in_range(a, t, w) for w in a.weapons)
+
+
 class NoModel(RuntimeError):
     """The mission hands a player to the skirmish AI and ra3model.ai is not on this computer (a test's skip)."""
 
@@ -280,7 +286,7 @@ class Unit:
         if t is None and self.hunted is not None:
             t = self.hunted(b.serial)
             t = t if getattr(t, 'alive', False) else None
-        return t is not None and any(observe.can_hit(w, t) and simrange.in_range(b, t, w) for w in b.weapons)
+        return t is not None and reaches(observe, b, t)
 
     def __repr__(self):
         return f'Unit({self.template} {self.body.name})'
@@ -886,7 +892,7 @@ class Brain:
         enemy's <= 0 -> 9999): the owner's mining deposits of the last 90 s (read 11-25: the window is ceil(game speed x
         logic frames a second x 90) frames, an entry kept while its frame >= now - window; when the game drops the old
         ones -- each evaluation or less often -- is not read, INFERRED each)."""
-        return self.systems.mined_since(owner, self.frame - math.ceil(FPS * INCOME_WINDOW))
+        return self.systems.mined_since(owner, self.frame - math.ceil(FPS * INCOME_WINDOW), self.frame)
 
     def tech_buildings(self):
         """ctx 'tech buildings' (TechBuildingShareHeuristic, work/re/l4_states.md): (own, all, players).
@@ -1333,11 +1339,12 @@ class Brain:
         # targeted (work/re/b1125_miner_selfdef.md): an enemy has the member as its target -- ordered or chased with
         # one of its weapons reaching it, or aimed at this tick (volleys not asked). INFERRED: any enemy the AI sees,
         # not only the team's hostile list; the reach is the program's third test read as range (bench airet: a
-        # chaser out of reach raised the Peacekeeper's shield on the way home and one died, the bench's four live)
+        # chaser out of reach raised the Peacekeeper's shield on the way home and one died, the bench's four live);
+        # a weapon that cannot hit the member (a Bullfrog's flak at a Peacekeeper) does not count, nor for the member's
+        # own target_reached (an Apollo by a Peacekeeper; review 134 P2, as Unit.engaged; no bench, INFERRED)
         foes, thing = self.view.enemies, self.observe.is_thing
         aimed = {t.serial for e in self.living() if e.owner in foes
-                 for t in (e.goal, getattr(e, 'chase', None))
-                 if thing(t) and any(simrange.in_range(e, t, w) for w in e.weapons)}
+                 for t in (e.goal, getattr(e, 'chase', None)) if thing(t) and reaches(self.observe, e, t)}
         aimed |= {pick.serial for pick, _, a in self.observe.firing() if a.owner in foes}
         for u in team.members:
             b = u.body
@@ -1351,7 +1358,7 @@ class Brain:
                                  weapon_range=reach, cost=self.host.cost(b.template),
                                  damage=lambda behind, ahead, b=b: self.observe.expected_damage(b, behind, ahead, now=frame),
                                  toggles=toggles, toggle_index=at, targeted=b.serial in aimed,
-                                 target_reached=t is not None and any(simrange.in_range(b, t, w) for w in b.weapons)))
+                                 target_reached=t is not None and reaches(self.observe, b, t)))
             seen.append((mu, b))
         enemies = [sp.Thing((t.x, t.y), t.kindof, int(t.value), name=str(t.id)) for t in self.view.things
                    if t.owner in self.view.enemies]
@@ -2091,6 +2098,8 @@ class Brain:
         if self.seen_t != self.world.t:           # the world changes once a DT tick: look and facts then
             self.look(frame)
             self.ai.ctx.update(self.facts())
+        elif 'income' in self.ai.ctx:             # but the deposits come a frame at a time (review 134 P1)
+            self.ai.ctx['income'] = (self.income(self.player), self.income(min(self.view.enemies)))
         self.ai.tick(frame)
         if self.powers is not None:         # the player powers' clock ends the brain's update (specials.py)
             self.powers.tick(frame)
@@ -2409,7 +2418,12 @@ class SimAI:
         """The personality a side the map names `pid` ends up with (the model's AIData.assigned_personality, work/re
         d123_side.md 1.2): kept unless its SkirmishPersonality gate is open and its Side lacks the player's faction
         (bench aisksd2: a random Japanese skirmish one). The sim's PLAYER_IS_HUMAN_OR_AI_PERSONALITY reads the
-        result (Sim.personality_of). None from the model (no library personality of the faction) keeps pid."""
+        result (Sim.personality_of). None from the model (no library personality of the faction) keeps pid.
+        A pid only the game's own data has, with its cache not here, is NoModel: the brain would think with none
+        (review 134 P2: engine_inform_ai's shields never up)."""
+        if pid not in getattr(self.data, 'personalities', (pid,)) and not (RETAIL_AI and os.path.isfile(RETAIL_AI)):
+            raise NoModel(f'{side} is {pid}, not in the SDK, and the retail AI cache {RETAIL_AI} is not here '
+                          '(python experimental/cnv/retailref.py cache-ai-states)')
         pick = getattr(self.data, 'assigned_personality', None)
         if pick is None:
             return pid

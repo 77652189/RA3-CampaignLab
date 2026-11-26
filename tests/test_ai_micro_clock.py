@@ -59,3 +59,14 @@ def test_model_member_orders_beat_at_the_update_time(build):
     gaps = _gaps(beats)
     p = PERIOD[build]
     assert len(beats) >= 3 and min(gaps) == p and all(g % p == 0 for g in gaps), (build, beats)
+
+
+def test_a_weapon_that_cannot_hit_the_target_does_not_reach_it():
+    """Review 134 P2 (INFERRED, no bench): retreat's 'targeted' / 'target reached' ask only the weapons that can hit."""
+    from types import SimpleNamespace as NS
+    import engine.testing.small as simsmall
+    s = simsmall.small_world([('pk', 'AlliedAntiInfantryInfantry', 'Player_1', 0.0, 0.0),
+                              ('frog', 'SovietAntiAirShip', 'Player_2', 40.0, 0.0),
+                              ('gi', 'AlliedAntiInfantryInfantry', 'Player_2', 40.0, 0.0)])
+    look, b = NS(can_hit=s.can_hit), s.bodies
+    assert not simai.reaches(look, b['frog'], b['pk']) and simai.reaches(look, b['gi'], b['pk'])

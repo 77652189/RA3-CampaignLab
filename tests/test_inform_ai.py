@@ -476,3 +476,13 @@ def test_inform_normal_fire_records_launch_and_deletes_on_arrival(check_name, mo
     assert all(not rows for rows in e.incoming.values())
     # the miners take the shell side-on: x 1.05 (combat.host.flank_of), the bench's 68 / 68 / 89 % (benches/weapon/target_effects/checks.py#engine_inform_ai)
     assert [e.body('Dispatch ' + lane).hp for lane in ('base', 'high', 'removed')] == [342.5, 342.5, 447.5]
+
+
+def test_a_retail_only_personality_without_the_retail_cache_is_no_model(monkeypatch, tmp_path):
+    import simai_run                                       # review 134 P2: not a brain thinking with no personality
+    from types import SimpleNamespace as NS
+    monkeypatch.setattr(simai_run.simai, 'RETAIL_AI', str(tmp_path / 'none.xml'))
+    plugin = NS(data=NS(personalities={'SDKOne': None}))
+    assert simai_run.simai.SimAI.assigned(NS(data=None), 'P', 's1', 'X') == 'X'      # no model data: kept
+    with pytest.raises(simai_run.simai.NoModel, match='RetailOnly'):
+        simai_run.simai.SimAI.assigned(plugin, 'P', 's1', 'RetailOnly')

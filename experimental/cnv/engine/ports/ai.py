@@ -163,9 +163,9 @@ class PlayerSystems:
         """Scale the player's income (a shortcut: the AI personality's resource multiplier)."""
         return self._wallet.multiply_income(player, mult)
 
-    def mined_since(self, player, frame):
-        """What the player's collectors paid in from `frame` on (simmoney.Money.mined_since)."""
-        return self._wallet.mined_since(player, frame)
+    def mined_since(self, player, frame, until):
+        """What the player's collectors paid in at frames `frame` .. `until` (simmoney.Money.mined_since)."""
+        return self._wallet.mined_since(player, frame, until)
 
 
 def drive(world, plugin, frames):
