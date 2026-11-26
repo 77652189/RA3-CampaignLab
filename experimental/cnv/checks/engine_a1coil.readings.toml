@@ -73,20 +73,36 @@ id = "e_two_conscripts_reach_310_east_and_280_north_but_not_255_east"
 scene = {build = "engine_a1gar", check = "e", until = 31}
 bench = "CampA1GarE (11-25, A382, head 3f93950d): 驻甲 100, 驻乙 10 at s1-s31 -- only high (310 east) and order (280 north) hit; j (11-26, head f1df41ba) the same"
 proves = "engine/objects/garrison.Garrisons.spot: a passenger shoots from its seat (a BONEGARRISON bone), not the house's centre -- j: the high house's con 0 sat east (bone 08, 252.6 from 310 east), the order house's at 01 (242.4 from 280 north)"
-mismatch = "sim 驻甲 0, 驻乙 0: every house seats its two at 04 / 07 (south-west: 275.7 from 255 east), the bench's seats are each house's own (k)"
+mismatch = "sim 驻甲 0, 驻乙 0: its seats are its own draws (k), not the game's logic random stream's"
 expect = ["win(1, 30, '驻甲') == [100] * 30", "win(1, 30, '驻乙') == [10] * 30"]
 
 [[reading]]
-id = "k_the_base_house_seats_its_two_at_the_first_two_bones"
+id = "k_every_passenger_sits_at_a_bone_and_the_houses_differ"
 scene = {build = "engine_a1gar", check = "k", until = 31}
-bench = "CampA1GarK (11-26, head a7fb2450; j with every engineer deleted at the start): 位甲 258788 at s1-s31 -- the base house's last two digits 88, both south-west (bones 04 / 07, the first two in their names' hash order)"
-proves = "engine/objects/garrison.seats / spot: a passenger stands at its house's seat bone (data/garrison_bones.json), turned with the house; the first passenger the first free bone in hash order (INFERRED: one house of six)"
-expect = "[v % 100 for v in win(1, 30, '位甲')] == [88] * 30"
+bench = "CampA1GarK (11-26, head a7fb2450; j with every engineer deleted at the start): 位甲 258788, 位乙 788428 at s1-s31 -- no digit 0 (no one at the centre), the same entry seated on four sides"
+proves = "engine/objects/garrison.seats / spot / put: a passenger stands at a free seat bone of its house (data/garrison_bones.json), turned with the house, drawn (not the first free)"
+expect = ["all(c != '0' for v in win(1, 30, '位甲') + win(1, 30, '位乙') for c in str(v).zfill(6))", "len(set(str(win(1, 30, '位甲')[0]) + str(win(1, 30, '位乙')[0]))) > 2"]
 
 [[reading]]
 id = "k_with_no_target_each_house_seats_its_two_its_own_way"
 scene = {build = "engine_a1gar", check = "k", until = 31}
 bench = "CampA1GarK: 驻 0 0, 位甲 258788, 位乙 788428 at s1-s31 -- every lane put in the same way, the seats differ house to house (removed 78, high 52, switch 28, order 84, low 87); j's (238788 / 788428) are these but the high house's con 0 east (bone 08: with its target in reach it moved to the free bone nearest it)"
-proves = "the seat a house gives each passenger: the same game to game (j and k, 11 of 12), not the entry order's; seeded random or by id not told apart"
-mismatch = "sim 位甲 888888, 位乙 888888: every house the first two bones (04 / 07)"
+proves = "the seat a house gives each passenger: the same game to game (j and k, 11 of 12): the logic random stream's draws (l, m)"
+mismatch = "sim 位甲 825855, 位乙 437557: the simulator's own draws"
 expect = ["win(1, 30, '位甲') == [258788] * 30", "win(1, 30, '位乙') == [788428] * 30"]
+
+[[reading]]
+id = "l_put_in_back_to_front_the_nth_in_sits_as_ks_nth"
+scenes = {k = {build = "engine_a1gar", check = "k", until = 31}, l = {build = "engine_a1gar", check = "l", until = 31}}
+bench = "CampA1GarL (11-26, head 92f15360; k with the twelve put in back to front, the same objects): 位甲 824887, 位乙 887852 at s1-s31 -- k's twelve seats read back to front: not by id (k's again), not the house's model"
+proves = "engine/objects/garrison.Garrisons.put: the n-th entry draws the n-th draw, whoever and wherever it is"
+let = {ks = "str(k[-1]['位乙']).zfill(6) + str(k[-1]['位甲']).zfill(6)", ls = "str(l[-1]['位乙']).zfill(6) + str(l[-1]['位甲']).zfill(6)"}
+expect = "ls == ks[::-1]"
+
+[[reading]]
+id = "m_three_script_draws_first_move_every_seat"
+scenes = {k = {build = "engine_a1gar", check = "k", until = 31}, m = {build = "engine_a1gar", check = "m", until = 31}}
+bench = "CampA1GarM (11-26, head 92f15360; k with three SET_RANDOM_COUNTER 1..1000 first, the last 612): 位甲 872755, 位乙 574577 -- other seats than k's: the script's draws and the seats' are one stream"
+proves = "the seats come from the game's logic random stream (shared with SET_RANDOM_COUNTER)"
+mismatch = "sim 位甲 825855, 位乙 437557 in both: its seat draws are its own, the script's another stream"
+expect = ["m[-1]['位甲'] != k[-1]['位甲']", "m[-1]['位乙'] != k[-1]['位乙']"]

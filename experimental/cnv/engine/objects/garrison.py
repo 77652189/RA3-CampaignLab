@@ -39,13 +39,16 @@ Transports (TransportContain: the Bullfrog, the Riptide, the bomber; bench 11-10
   not          the REALLYDAMAGED walk-out (a house's only), the passengers' fire, the parachute (untargeted) eject
 Not modelled: a turret's weapon set by its passenger, clearing weapons, the exit point (they come out where the
 building stands), EjectSpeed, a passenger's change of seat (j: one with a target in reach moved to the free bone
-nearest it), the seat a house gives first (bench: each house its own, the same game to game; here the first free).
+nearest it). A passenger's seat is a free bone drawn from the game's logic random stream, a draw an entry in entry
+order (engine_a1gar l: the twelve put in back to front read k's seats back to front; m: three script draws first,
+other seats); the simulator cannot replay the stream: its n-th entry draws its own n-th draw (the same every run).
 L2 (ADR 0029, docs/engine/sim-layers.md): the world is reached only through simworld.WORLD_API (`world`); a body's end is
 the kernel World's (kill / remove), its walk simlocomotion.go_to, the enter order's walk L5's order_move handed in as
 `move`. This module never imports sim."""
 import json
 import math
 import os
+import random
 import re
 
 import engine.data.units as simunits
@@ -75,9 +78,7 @@ with open(BONES, encoding='utf-8') as _f:
 
 def seats(template):
     """A house's garrison seats: its model's PassengerData BonePrefix bones (BONEGARRISON01..) as (x, y) off its centre
-    at angle 0 (x east, y north), in their names' hash order -- the order the game takes them in, INFERRED from k's
-    base house (04, 07, the first two). GE_TownHouse01 and the houses
-    our 9 levels place (data/garrison_bones.json, from the static stream: work/re/scripts/garrison_bones.py); () else."""
+    at angle 0 (x east, y north), in their names' hash order. GE_TownHouse01 and the houses our 9 levels place (data/garrison_bones.json, from the static stream: work/re/scripts/garrison_bones.py); () else."""
     return _BONES.get(template.lower(), ())
 
 
@@ -298,8 +299,8 @@ class Garrisons:
         if not held and house:
             box.keep_home(g.owner)
         bits = (sp['status'] | INSIDE_STATUS) - u.script_status
-        taken = [self.seat.get(p.serial) for p in held]
-        self.seat[u.serial] = next((s for s in seats(g.template) if s not in taken), (0.0, 0.0)) if house else (0, 0)
+        free = [s for s in seats(g.template) if s not in [self.seat.get(p.serial) for p in held]] if house else ()
+        self.seat[u.serial] = random.Random(f'seat {len(self.log)}').choice(free) if free else (0.0, 0.0)
         box.let_in(u, bits)
         self.where[u.serial] = g
         self.going.pop(u.serial, None)

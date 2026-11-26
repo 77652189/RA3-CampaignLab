@@ -197,11 +197,30 @@ def seat_check(m):
     return t
 
 
-# k j with every engineer deleted in the start script (no target): the seats a passenger takes by itself. 88 in every
-# lane = the first two bones in their name hashes' order (04, 07, both south-west), j's others are the target's.
+# k j with every engineer deleted in the start script (no target): the seats a passenger takes by itself (11-26:
+# 258788 / 788428, each house its own; l / m: drawn from the logic random stream in entry order).
 def bare_seat_check(m):
     t = seat_check(m)
     t.scripts[0].do +=[('NAMED_DELETE', 'Man ' + lane) for lane in G_LANES]
+    return t
+
+
+# l k with the twelve put in in the reverse order (low con 1 first, base con 0 last; the same objects, the same ids):
+# k's 258788 / 788428 again = by id; the n-th put in seated as k's n-th (位甲 824887, 位乙 887852) = drawn in entry
+# order (seeded random).
+def reversed_seat_check(m):
+    t = bare_seat_check(m)
+    do = t.scripts[0].do
+    put = [a for a in do if a[0] == 'NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY']
+    t.scripts[0].do = do[:2] + put[::-1] + do[2 + len(put):]
+    return t
+
+
+# m k with three SET_RANDOM_COUNTER draws (into 驻甲, no engineer to flag it: 1..1000) before the twelve go in: other seats than k's = the seats are
+# the game's logic random stream's (l: in entry order); k's again = a count of their own.
+def drawn_seat_check(m):
+    t = bare_seat_check(m)
+    t.scripts[0].do[2:2] = [('SET_RANDOM_COUNTER', 'Gar A', 1, 1000)] * 3
     return t
 
 
@@ -383,6 +402,6 @@ def land_check(m):
 
 MISSION = {'engine_a1land': land_mission, 'engine_a1gate': gate_mission, 'engine_a1cd': countdown_mission, 'engine_a1gar': garrison_mission, 'engine_a1jav': javelin_mission,
            'engine_a1coil': mission, 'engine_a1near': lambda: mission(NEAR, 'CampA1Near'), 'engine_a1cap': captured_mission, 'engine_a1pow': power_mission}
-CHECKS = {'engine_a1land': {'i': land_check}, 'engine_a1gate': {'h': gate_check}, 'engine_a1cd': {'g': countdown_check}, 'engine_a1gar': {'e': garrison_check, 'j': seat_check, 'k': bare_seat_check}, 'engine_a1jav': {'f': javelin_check},
+CHECKS = {'engine_a1land': {'i': land_check}, 'engine_a1gate': {'h': gate_check}, 'engine_a1cd': {'g': countdown_check}, 'engine_a1gar': {'e': garrison_check, 'j': seat_check, 'k': bare_seat_check, 'l': reversed_seat_check, 'm': drawn_seat_check}, 'engine_a1jav': {'f': javelin_check},
           'engine_a1coil': {'a': range_check}, 'engine_a1near': {'d': lambda m: range_check(m, FORCED)}, 'engine_a1cap': {'b': captured_check},
           'engine_a1pow': {'c': power_check}}
