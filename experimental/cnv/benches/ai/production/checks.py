@@ -562,15 +562,24 @@ def engine_ainodesfull():
         if m.facts.get('share'):     # ains*: home (4) iff own / known x 8 players >= the percent, known 2 x (nodes - 1)
             share = 100 * m.facts['ai refineries'] / (2 * (m.facts['ore nodes'] - 1)) * 8
             later = tuple(4 * (share >= p) for p in m.facts['share'])
-        for second, values, until in ((8, (4, 4), 13), (60, later, 70), (110, later, 120)):
+        windows = ((8, (4, 4), 13), (60, later, 70), (110, later, 120))
+        if m.facts.get('income'):    # aiinc*: woken at 100 s, own / enemy ~1 (a refinery each) or 0; home iff not passed
+            above, values, kill = m.facts['income']
+            ratio = 1.0 if m.facts['ai refineries'] else 0.0
+            home = tuple(4 * ((ratio > v) != (above == 'true')) for v in values)
+            windows = ((8, (4, 4), 95), (110, home, 120), (170, home, 180))
+            if kill is not None:     # the player's deposits all leave the window by kill + 90 s: enemy 0 -> 9999
+                windows += ((kill + 110, tuple(4 * (above != 'true') for _ in values), kill + 120),)
+        for second, values, until in windows:
             for label, value in zip(LABELS, values):
                 t.expect.append((label, second, '==', value, until))
-        t.bench = [('bench_watch', dict(seconds=125, every=2, sheet=False, lines=3))]
+        t.bench = [('bench_watch', dict(seconds=windows[-1][2] + 5, every=2, sheet=False, lines=3))]
         return t
 
 
     CHECKS = {k: {'a': a} for k in ('ainf0', 'ainf1', 'ainf2', 'ainf3', 'ainf4', 'ainf5', 'aiopn1900', 'aiopn2250',
-                                    'ains1', 'ains2', 'ains2l', 'ains2a', 'ains2b', 'ains2c', 'ains2d', 'ains2n')}
+                                    'ains1', 'ains2', 'ains2l', 'ains2a', 'ains2b', 'ains2c', 'ains2d', 'ains2n',
+                                    'aiinca', 'aiincb', 'aiincc')}
     return dict(CHECKS=CHECKS)
 
 

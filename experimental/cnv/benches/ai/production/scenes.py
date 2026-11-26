@@ -584,16 +584,24 @@ def ainodesfull_bench():
     map's 9 nodes the one farthest from the player's yard and plant is 2074 from the plant: open at 1900, none at 2250.
     ains* (B 11-25, ResourceNodeShareHeuristic Above=false on both states, share = their two percents; work/re
     b1125_nodeshare.md): home iff own / known x 8 players >= the percent; ains2n adds a two-node field in the west.
+    aiinc* (B 11-25, IncomeAdvantageHeuristic Value = the two values on the two states, Above as written; work/re
+    b1125_income.md: own / enemy mining deposits of the last 90 s): the player's refinery mines at its base refinery;
+    aiinca / aiincb have no AI refinery (own 0), aiincc ains2's two (the bench paid one refinery's worth, ratio ~1 --
+    either one alone paid nothing, 11-25; simai 2: a world gap in the notes, Values 0.5 / 3 hold on both). The AI wakes at INCOME_WAKE (both well into mining,
+    so no first-deposit race). kill: the player's refinery is deleted then -- its deposits leave the window 90 s later
+    (both 0: the heuristic passes whatever the Value, bench aiinca 11-25).
     """
     import math
 
     from benches.ai.targets.scenes import aistate_bench
+    from parts import Script
     setup = aistate_bench()["shared"]
+    INCOME_WAKE = 100.0
 
     PAD2 = (150.0 * math.sqrt(0.5), 150.0 * math.sqrt(0.5))   # the side node's pad: PAIR_GAP beside the field's pad
 
 
-    def mission(name, refineries, miners=0, open_node=None, share=None, extra=False):
+    def mission(name, refineries, miners=0, open_node=None, share=None, extra=False, income=None):
         m = setup.mission(name, near=True)
         filename, xml, asset = m.assets[0]
         states = [setup._state('CNVNodesFull', '', setup.INF, gate='const').replace(
@@ -602,9 +610,22 @@ def ainodesfull_bench():
         if open_node is not None:
             states[0] = states[0].replace('<AllNearbyNodesFullHeuristic/>',
                                           f'<OpenNodeHeuristic Exists="true" MinDistanceFromEnemy="{open_node}"/>')
-        if share is not None:
-            states = [setup._state(sid, '', unit, gate=f'<ResourceNodeShareHeuristic PercentOfFairShare="{p}%" Above="false"/>')
-                      for sid, unit, p in zip(('CNVNodesFull', 'CNVNodesCtl'), (setup.INF, setup.TANK), share)]
+        gates = [f'<ResourceNodeShareHeuristic PercentOfFairShare="{p}%" Above="false"/>' for p in share or ()]
+        if income is not None:
+            above, values, kill = income
+            gates = [f'<IncomeAdvantageHeuristic Value="{v}" Above="{above}"/>' for v in values]
+            m.put('AlliedRefinery', 'base refinery', name='UNIT - CNV Player Refinery', role='player refinery')
+            start = next(s for s in m.scripts if s.name == 'CNV AI - Start')
+            start.do = [('SET_MILLISECOND_TIMER', 'CNV AI Wake', INCOME_WAKE) if a[1:2] == ('CNV AI Wake',) else a
+                        for a in start.do]
+            if kill is not None:
+                start.do.append(('SET_MILLISECOND_TIMER', 'CNV Income Kill', kill))
+                m.scripts.append(Script('CNV Income - kill', [('TIMER_EXPIRED', 'CNV Income Kill')],
+                                        [('NAMED_DELETE', 'UNIT - CNV Player Refinery')]))
+            m.facts['income'], m.ext = income, True
+        if gates:
+            states = [setup._state(sid, '', unit, gate=g)
+                      for sid, unit, g in zip(('CNVNodesFull', 'CNVNodesCtl'), (setup.INF, setup.TANK), gates)]
         states = [s.replace('ClosestStructureHeuristic', 'CNVNodesTarget') for s in states]
         start = xml.index('  <AIStrategicStateDefinition ')
         end = xml.index('  <AIPersonalityDefinition ')
@@ -661,7 +682,10 @@ def ainodesfull_bench():
                'ains2b': lambda: mission('CampNodeShr2B', 2, share=(100, 125)),
                'ains2c': lambda: mission('CampNodeShr2C', 2, share=(104, 118)),
                'ains2d': lambda: mission('CampNodeShr2D', 2, share=(110, 120)),
-               'ains2n': lambda: mission('CampNodeShr2N', 2, share=(84, 95), extra=True)}
+               'ains2n': lambda: mission('CampNodeShr2N', 2, share=(84, 95), extra=True),
+               'aiinca': lambda: mission('CampIncomeA', 0, income=('true', (0.5, 1.5), 150.0)),
+               'aiincb': lambda: mission('CampIncomeB', 0, income=('false', (0.5, 1.5), None)),
+               'aiincc': lambda: mission('CampIncomeC', 2, income=('true', (0.5, 3.0), None))}
     return dict(MISSION=MISSION)
 
 

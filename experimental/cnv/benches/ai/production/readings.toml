@@ -300,6 +300,26 @@ simai Brain.node_share: own = the nodes an own refinery serves, known = 2 x (the
 only count fitting both maps), x the tech share's players"""
 expect = "[win(60, 69, k) for k in ('满态在家', '常量在家')] == [[h] * 10 for h in home]"
 
+[[reading]]
+bench_id = "engine_ainodesfull"
+id = "income_advantage_is_own_over_enemy_deposits_of_the_last_90_s"
+item = ["AI 启发条件/IncomeAdvantageHeuristic", "AI 启发条件/IncomeAdvantageHeuristic.Value",
+        "AI 启发条件/IncomeAdvantageHeuristic.Above"]
+scene = {build = "aiinca", check = "a", until = 262.0}
+each = [{build = "aiinca", home = [[4, 4], [4, 4], [0, 0]]}, {build = "aiincb", home = [[0, 0], [0, 0], [0, 0]]}, {build = "aiincc", home = [[0, 4], [0, 4], [0, 4]]}]
+bench = """\
+B 11-25 (CampIncomeAA_mcp_1125_221933 / BA_221803 / CA_222404, all PASS; ra3ext inc: lines; work/re/b1125_income.md): Niagara, the \
+player's refinery mining at its base, the AI woken at s100, both states IncomeAdvantage at Value 0.5 / 1.5 (aiincc \
+0.5 / 3). aiinca (no AI refinery, Above=true, the player's refinery deleted at s150): own 0 -> ratio 0, both home; \
+the player's last deposit leaves the window and both 0 pass whatever the Value: both out s241. aiincb (Above=false): \
+ratio 0 passes, both out at the wake. aiincc (two AI refineries, Above=true): the bench paid one refinery's worth \
+(ratio ~1), the Value-0.5 team out at the wake, the Value-3 one home"""
+proves = """\
+simai Brain.income: each side's mining deposits of the last ceil(15 x 90) frames; own / enemy against Value, \
+Above; both 0 passes. aiincc's own is two refineries' worth in simai (ratio 2, a world gap: the bench pays one), \
+both ratios between the Values"""
+expect = "[[win(a, a + 7, k) for k in ('满态在家', '常量在家')] for a in (110, 225, 254)] == [[[h] * 8 for h in hs] for hs in home]"
+
 # Bench readings of benches/ai/production/checks.py#engine_aiomove (format: experimental/cnv/readings.py; runner: tests/conformance).
 # What an OpeningMove line builds (bench 2026-11-09, rounds 83-90).
 
