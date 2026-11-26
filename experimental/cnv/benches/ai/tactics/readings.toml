@@ -975,8 +975,9 @@ bench_id = "engine_aipullback"
 id = "a_hurt_soviet_tank_team_is_pulled_back_to_the_crane"
 scene = {build = "aipullsov", check = "a", until = 40.0}
 bench = "aipullsov (hurt Soviet tanks): 回家 1 or more from s15 on"
-proves = "simai pullback: a hurt Soviet tank team is pulled back to the crane"
+proves = "simai pullback: a hurt Soviet tank team is pulled back to the crane (the Soviet VehicleRepairFacility)"
 expect = "any(r['回家'] >= 1 for r in rows[14:])"
+item = "AI 阵营/ArmyDefinition.VehicleRepairFacility"
 
 [[reading]]
 bench_id = "engine_aipullback"
