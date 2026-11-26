@@ -249,17 +249,26 @@ def countdown_check(m):
 
 
 # h Tanya's C4 on a gate (item 7): her C4 (AlliedCommandoAttachWeapon) takes STRUCTURE VEHICLE VALID_TARGET_FOR_C4
-# but not WALL_PIECE. Per lane a gate piece 150 north of the player's Tanya, ordered to attack it at 3 s; the lane's
-# counter is its health %: base MJ_PalaceWall01 (a1mc's fort wall, STRUCTURE, 3000), high SV_PCampWallGate01 (a small
-# civilian building), order RM_CastleGate01 (BaseRockBig: UNATTACKABLE), removed MJ_PalaceWall01 owned by s1.
-# Predicted: base, high, removed blown (0); order untouched (100).
-GATES = {'base': ('MJ_PalaceWall01', 'civ', '宫墙'), 'high': ('SV_PCampWallGate01', 'civ', '营门'),
-         'order': ('RM_CastleGate01', 'civ', '城门'), 'removed': ('MJ_PalaceWall01', 's1', '敌墙')}
+# but not WALL_PIECE. Per lane a target 150 north of the player's Tanya, ordered to attack it at 3 s: base
+# MJ_PalaceWall01 (a1mc's fort wall, STRUCTURE, 3000), high SV_PCampWallGate01 (a small civilian building), order
+# RM_CastleGate01 (BaseRockBig: UNATTACKABLE), removed MJ_PalaceWall01 owned by s1; controls switch s1's
+# SovietPowerPlant, low s1's Hammer tank (NO_ATTACK; 11-15 kind: her charge killed a King Oni). 11-25 first run
+# (CampA1GateH_mcp_1125_232153, health % only): every wall 100 to s31, nothing told whether she went. So now a digit a
+# lane, every frame: +1 the target stands, +2 Tanya inside a 70 square round it, +4 Tanya out of a 30 square round
+# her start. 甲 = base high order, 乙 = removed switch low; 宫墙 / 敌墙 their health %.
+# Predicted: all but order blown (6 while she is on it, 4 once she has let go); order 1 (no attack) or 5 / 7.
+# 11-25 second run (run_queue, 756e44ab): 甲 111 to s31 -- she never leaves home for a neutral target, wall, gate or
+# rock alike (the script's attack is dropped); 乙 s1 711, s2 655, s3 677, s4 477, s5-s31 066: the s1 wall, the plant
+# and the tank she goes for by herself before the order (enemies), each blown ~1 s after she is on it (the wall s5);
+# back home after the tank. A dead target's health % counter stays at its last value (敌墙 100).
+GATES = {'base': ('MJ_PalaceWall01', 'civ'), 'high': ('SV_PCampWallGate01', 'civ'), 'order': ('RM_CastleGate01', 'civ'),
+         'removed': ('MJ_PalaceWall01', 's1'), 'switch': (PLANT, 's1'), 'low': ('SovietAntiVehicleVehicleTech1', 's1')}
+GATE_LINES = (('Gate A', '甲', ('base', 'high', 'order')), ('Gate B', '乙', ('removed', 'switch', 'low')))
 
 
 def gate_mission():
     m = Mission(name='CampA1Gate', map=probe_range, units=[])
-    for lane, (gate, side, _) in GATES.items():
+    for lane, (gate, side) in GATES.items():
         m.put(gate, lane + ' gun', 0, 150, side=side, role='gate ' + lane, name='Gate ' + lane, angle=0.0)
         m.put('AlliedCommandoTech1', lane + ' gun', role='tanya ' + lane, name='Tanya ' + lane)
     return m
@@ -267,11 +276,23 @@ def gate_mission():
 
 def gate_check(m):
     t = Test()
-    _start(m, t, ('SET_MILLISECOND_TIMER', 'Gate go', 3.0))
+    _start(m, t, ('SET_MILLISECOND_TIMER', 'Gate go', 3.0), ('UNIT_CHANGE_OBJECT_STATUS', 'Gate low', 'NO_ATTACK', 1))
     t.scripts.append(Script('Test - go', [('TIMER_EXPIRED', 'Gate go')],
                             [('NAMED_ATTACK_NAMED', 'Tanya ' + lane, 'Gate ' + lane) for lane in GATES]))
-    for lane, (_, _, label) in GATES.items():
-        counted('Gate ' + lane, label, t, health='Gate ' + lane)
+    for lane in GATES:
+        t.areas['Gate near ' + lane] = square(*m.site(lane + ' gun', 0, 150), 70.0)
+        t.areas['Gate home ' + lane] = square(*m.site(lane + ' gun', 0, 0), 30.0)
+    for counter, label, lanes in GATE_LINES:
+        t.counters.append((counter, label))
+        t.scripts.append(Script(f'Test - {counter} zero', [], [('SET_COUNTER', counter, 0)], once=False))
+        for k, lane in enumerate(lanes):
+            rows = ((('NAMED_NOT_DESTROYED', 'Gate ' + lane), 1),
+                    (('NAMED_INSIDE_AREA', 'Tanya ' + lane, 'Gate near ' + lane), 2),
+                    (('NAMED_OUTSIDE_AREA', 'Tanya ' + lane, 'Gate home ' + lane), 4))
+            t.scripts += [Script(f'Test - {counter} {lane} {v}', [cond], [('INCREMENT_COUNTER', v * 10 ** k, counter)],
+                                 once=False) for cond, v in rows]
+    for lane, label in (('base', '宫墙'), ('removed', '敌墙')):
+        counted('Gate hp ' + lane, label, t, health='Gate ' + lane)
     t.bench = [('bench_watch', dict(seconds=RUN['h'], every=1, sheet=False, lines=4))]
     return t
 
