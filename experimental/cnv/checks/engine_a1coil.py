@@ -24,7 +24,7 @@ COIL, PLANT, ENG = 'SovietBaseDefenseAdvanced', 'SovietPowerPlant', 'AlliedEngin
 A_LANES = {'base': (370, 0), 'removed': (385, 0), 'high': (393, 0), 'switch': (400, 0), 'order': (410, 0),
            'low': (194, 354)}
 A_FLAGS = (('Coil A', '射程甲', ('base', 'removed', 'high', 'switch')), ('Coil B', '射程乙', ('order', 'low')))
-RUN = {'a': 45, 'b': 45, 'c': 35, 'e': 30, 'f': 45, 'g': 290, 'h': 30}
+RUN = {'a': 45, 'b': 45, 'c': 35, 'e': 30, 'f': 45, 'g': 290, 'h': 30, 'i': 60}
 SELECT, SPAWN = 'SpecialPowerChronosphereObjectSelect', 'SpecialPowerChronosphereObjectSpawn'
 
 
@@ -297,8 +297,57 @@ def gate_check(m):
     return t
 
 
-MISSION = {'engine_a1gate': gate_mission, 'engine_a1cd': countdown_mission, 'engine_a1gar': garrison_mission, 'engine_a1jav': javelin_mission,
+# i landing craft (item 7): a1mc's city is a level-1 plateau over the bay; its one ramp is the Aquatic Park beach
+# (Ramp (2880, 3110) -> (2880, 2860), 300 wide). Read on a1mc's own terrain (work/mappage/a1mc/a1mc.py, the draft;
+# its objects are neutral walls and one empty Soviet house). The player's Bullfrog (SovietAntiAirShip, AMPHIBIOUS)
+# per lane in the water, ordered at 1 s to a point ~250 inside the shore: beach in front of the ramp (the control),
+# west 230 west of it, pier between two Soviet piers 700 east. 登陆 a digit a lane (beach 1, west 10, pier 100),
+# latched: +1 at the goal, +2 once in the beach's box. Climbing the cliff straight = 1, round by the beach = 3,
+# never up = 0. Predicted (the ramp is the only way up): 3 3 3, or pier 0 if the way round is past the run.
+# 11-26 (run_queue): s1 22, s3 32, s5 33, s11 233, s19-s61 333. Pier: out past the pier tips, into the beach box at
+# s11, at its goal s19 (~1200 round at ~120 a second) -- not the 250 straight up: the cliff is not climbed. West
+# (80 off the ramp's edge) is in the box by s1 and at its goal by s3: either way is as long, it tells nothing.
+LAND = {'beach': ((2880, 3200), (2880, 2700)), 'west': ((2650, 3100), (2680, 2720)),
+        'pier': ((3580, 3300), (3580, 2950))}
+BEACH_BOX = (2880, 2985, 150)
+
+
+def land_mission():
+    import importlib.util
+    import os
+    import labpaths
+    path = os.path.join(labpaths.WORK, 'mappage', 'a1mc', 'a1mc.py')
+    spec = importlib.util.spec_from_file_location('engine_a1land_map', path)
+    a1mc = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(a1mc)
+    m = Mission(name='CampA1Land', map=a1mc, units=[])
+    bx, by = a1mc.SITES['beach'].x, a1mc.SITES['beach'].y
+    for lane, ((x, y), _) in LAND.items():
+        m.put('SovietAntiAirShip', 'beach', x - bx, y - by, role='frog ' + lane, name='Frog ' + lane)
+    from checks.probe_view import open_in_view
+    return open_in_view(m, 'A1Land')    # a1mc's start is in the city corner, past the screen's reach
+
+
+def land_check(m):
+    t = Test()
+    _start(m, t, ('MAP_REVEAL_ALL_PERM', m.player('p1')))
+    order = []
+    t.areas['Land beach'] = square(*BEACH_BOX)
+    t.counters.append(('Land', '登陆'))
+    for k, (lane, (_, goal)) in enumerate(LAND.items()):
+        t.waypoints['Land ' + lane] = goal
+        t.areas['Land at ' + lane] = square(*goal, 80.0)
+        order += m.order('move', ['Frog ' + lane], 'Land ' + lane, crew='Land' + lane.title())
+        t.scripts += [Script(f'Test - land {lane} {v}', [('NAMED_INSIDE_AREA', 'Frog ' + lane, area)],
+                             [('INCREMENT_COUNTER', v * 10 ** k, 'Land')])
+                      for area, v in (('Land at ' + lane, 1), ('Land beach', 2))]
+    t.scripts.append(Script('Test - land go', [], order))
+    t.bench = [('bench_watch', dict(seconds=RUN['i'], every=2, sheet=False, lines=2))]
+    return t
+
+
+MISSION = {'engine_a1land': land_mission, 'engine_a1gate': gate_mission, 'engine_a1cd': countdown_mission, 'engine_a1gar': garrison_mission, 'engine_a1jav': javelin_mission,
            'engine_a1coil': mission, 'engine_a1near': lambda: mission(NEAR, 'CampA1Near'), 'engine_a1cap': captured_mission, 'engine_a1pow': power_mission}
-CHECKS = {'engine_a1gate': {'h': gate_check}, 'engine_a1cd': {'g': countdown_check}, 'engine_a1gar': {'e': garrison_check}, 'engine_a1jav': {'f': javelin_check},
+CHECKS = {'engine_a1land': {'i': land_check}, 'engine_a1gate': {'h': gate_check}, 'engine_a1cd': {'g': countdown_check}, 'engine_a1gar': {'e': garrison_check}, 'engine_a1jav': {'f': javelin_check},
           'engine_a1coil': {'a': range_check}, 'engine_a1near': {'d': lambda m: range_check(m, FORCED)}, 'engine_a1cap': {'b': captured_check},
           'engine_a1pow': {'c': power_check}}
