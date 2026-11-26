@@ -152,7 +152,7 @@ def deposit(s, frame, tick):
 
 
 def mine(s, frame, tick):
-    s.mining.mine_due(s, frame, lambda owner, give: s.wallet.collect(s, owner, give))   # L2 pays through L4
+    s.mining.mine_due(s, frame, lambda owner, give: s.wallet.collect(s, owner, give, frame))   # L2 pays through L4
 
 
 def produce(s, frame, tick):

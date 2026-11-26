@@ -61,7 +61,7 @@ SIM = {
     '_toggles': CACHE, '_invis': CACHE, '_xy': CACHE, '_cold': CACHE,
     # parts
     'clock': {'frame': STATE},
-    'wallet': {'money': STATE, 'income': STATE, 'sharing': STATE, 'money_cap': STATE},
+    'wallet': {'money': STATE, 'income': STATE, 'sharing': STATE, 'money_cap': STATE, 'mined': STATE},
     'mining': {'nodes': STATE, 'mined_to': STATE, 'docks': STATE},
     'ground': {'waterline': STATIC, 'water': STATIC, 'b': STATIC, 'd': STATIC, 'e': STATIC, 'zgrid': STATIC,
                'grids': STATIC, 'fine': STATIC, 'deck': STATIC, 'xy': STATIC, 'borders': STATIC,

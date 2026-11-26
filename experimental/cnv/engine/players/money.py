@@ -17,6 +17,7 @@ class Money:
         self.income = {}                    # player -> (AI income multiplier, fraction carried) (simai: ResourceMultiplierCheat)
         self.sharing = set()                # players sharing income (PLAYER_TOGGLE_RESOURCE_SHARING)
         self.money_cap = {}                 # PLAYER_SET_MONEY_CAP: player -> cap (scripts' money not held to it)
+        self.mined = {}                     # player -> [(frame, amount)] its collectors' deposits (mined_since)
 
     def start(self, players, sides=None):
         """Each of `players` (a map's PLAYERS: key -> name) starts with its faction's PlayerTemplate StartingMoney
@@ -37,7 +38,7 @@ class Money:
         if owner != CIV:
             self.money[owner] = self.money.get(owner, 0) + amount
 
-    def earn(self, world, owner, amount):
+    def earn(self, world, owner, amount, frame=None):
         """Income (a collector's deposit) with PLAYER_TOGGLE_RESOURCE_SHARING (d115 19, bench 11-14 engine_share all):
         a sharing earner gives each Friend that shares too amount // (k + 1) of every deposit and keeps the rest (one
         sharer: 125 / 125 a load; two: 124 / 63 / 63). Scripts' money is never split (engine_acts flow)."""
@@ -45,10 +46,10 @@ class Money:
             if owner in self.sharing else []
         cut = amount // (len(mates) + 1)
         for p in mates:
-            self._pay(p, cut)
-        self._pay(owner, amount - cut * len(mates))
+            self._pay(p, cut, frame)
+        self._pay(owner, amount - cut * len(mates), frame)
 
-    def _pay(self, player, amount):
+    def _pay(self, player, amount, frame=None):
         """One deposit under PLAYER_SET_MONEY_CAP: not paid at all if it would take the money over the cap (bench 11-15
         mineturn0 cap: cap 400, 8 a frame of the second load paid to 394, nothing after; capz: cap 0, no income ever).
         Scripts' money is not held to it (engine_acts_tel). A shared cut checked by its receiver's cap: INFERRED."""
@@ -57,8 +58,10 @@ class Money:
         if cap is not None and have + amount > cap:
             return
         self.money[player] = have + amount
+        if frame is not None and amount > 0:
+            self.mined.setdefault(player, []).append((frame, amount))
 
-    def collect(self, world, owner, give):
+    def collect(self, world, owner, give, frame=None):
         """A collector's unloading `give` into `owner`'s money (simmine hands this in): an AI's income multiplier first
         (ResourceMultiplierCheat, simai sets self.income: x it, whole units paid, the fraction kept, l2_mining 4), then
         earn."""
@@ -67,7 +70,14 @@ class Money:
             frac += give * mult
             give = int(frac)
             self.income[owner] = (mult, frac - give)
-        self.earn(world, owner, give)
+        self.earn(world, owner, give, frame)
+
+    def mined_since(self, player, frame):
+        """What `player`'s collectors paid in from `frame` on: IncomeAdvantageHeuristic's input (read, work/re/l4_states.md
+        11-25: each mining-type deposit goes into the player's tracker as (frame, amount), entries older than the
+        window drop off, the input is the sum left). Refunds and sales do not count; a deposit building's pay
+        (deposit) is left out -- its type is not read (INFERRED)."""
+        return sum(a for f, a in self.mined.get(player, ()) if f >= frame)
 
     def credit(self, player, amount):
         """Money paid that is no income (a sale's refund, simbody.Life.sell; what a spy takes, siminfiltrator): never

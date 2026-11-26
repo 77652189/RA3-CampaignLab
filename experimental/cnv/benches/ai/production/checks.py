@@ -2261,7 +2261,7 @@ def engine_aiskirm():
             for key, ctr, say in (('overwhelm', 'Ovw', '压倒'), ('bal defense', 'BDef', '均防'),
                                   ('cleanup', 'Cln', '清扫'), ('emergency', 'Emg', '急防')):
                 _members(t, f'CNV_AK_{ctr}', say, ai[key])
-        elif which == 'l':
+        elif which in ('l', 'inc'):
             for key, ctr, say in (('scout', 'Sct', '侦察'), ('scout 2', 'Sct2', '侦察乙'), ('escort', 'Esc', '护送')):
                 _members(t, f'CNV_AK_{ctr}', say, ai[key])
             _members(t, 'CNV_AK_DefT', '防御型', ai['defense type'])
@@ -2310,7 +2310,7 @@ def engine_aiskirm():
             _members(t, 'CNV_AK_AtkI', '进攻名', ai['attack id'])
         w = m.facts['wake at']
         t.expect += [(t.counters[0][1], w + 20.0, '>=', 0, w + 21.0)]      # weak: the readings exist
-        t.bench = [('bench_watch', dict(seconds=w + {'n': 175.0, 'o': 175.0, 'p': 232.0, 'pr': 232.0}.get(which, 160.0), every=1, sheet=False,
+        t.bench = [('bench_watch', dict(seconds=w + {'n': 175.0, 'o': 175.0, 'p': 232.0, 'pr': 232.0, 'inc': 330.0}.get(which, 160.0), every=1, sheet=False,
                                         lines=len(t.counters)))]
         return t
 
@@ -2343,6 +2343,11 @@ def engine_aiskirm():
     def l(m):  # noqa: E743
         """AlliedScout _0_0 / _1_0 / EscortMCV _0_0 / LandDefense _0_0 (the time base: 8 -> 0 at ~s136)."""
         return _teams(m, 'l')
+
+
+    def inc(m):
+        """l run to s330 for ra3ext's inc: lines (IncomeAdvantage's input past its 90 s window: B 11-25)."""
+        return _teams(m, 'inc')
 
 
     def m(mm):
@@ -2852,7 +2857,7 @@ def engine_aiskirm():
               'aiskins': {'ib': ib},
               'aiskmtp': {'mt': mt},
               'aiskirmc': {'l': l, 'm': m, 'u': u},  # opt-in carrier diagnostic; stock aiskirm stays unchanged
-              'aiskxn': {'l': l}, 'aiskxo': {'l': l},  # D 105: which half of the carrier moves the scout team
+              'aiskxn': {'l': l}, 'aiskxo': {'l': l, 'inc': inc},  # D 105: which half of the carrier moves the scout team
               'aiskexp': {'q': q},
               'aiskmod': {'u': u},
               'aiskuc': {'uc': uc},

@@ -135,21 +135,29 @@ class PlayerSystems:
         """Whether the target building lets the body in to capture it."""
         return self._w.engineer_entry(body, target)
 
+    @property
+    def _wallet(self):
+        return self._w.wallet
+
     def held(self, player):
         """The player's money now (its wallet)."""
-        return self._w.wallet.held(player)
+        return self._wallet.held(player)
 
     def charge(self, player, amount):
         """Take the amount off the player's wallet (a shortcut: the AI paying for what it places at once)."""
-        return self._w.wallet.charge(player, amount)
+        return self._wallet.charge(player, amount)
 
     def instal(self, player, job, progress):
         """A yard job's instalment to `progress` taken if held; whether it was (simmoney.Money.instal)."""
-        return self._w.wallet.instal(player, job, progress)
+        return self._wallet.instal(player, job, progress)
 
     def multiply_income(self, player, mult):
         """Scale the player's income (a shortcut: the AI personality's resource multiplier)."""
-        return self._w.wallet.multiply_income(player, mult)
+        return self._wallet.multiply_income(player, mult)
+
+    def mined_since(self, player, frame):
+        """What the player's collectors paid in from `frame` on (simmoney.Money.mined_since)."""
+        return self._wallet.mined_since(player, frame)
 
 
 def drive(world, plugin, frames):

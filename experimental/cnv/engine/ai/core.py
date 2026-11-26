@@ -33,8 +33,8 @@ every frame (the simulator moves in DT ticks; the AI is ticked for each frame of
               'enemy nearby' (enemy value within the distance of its yard), 'path to target' (PathToTargetHeuristic:
               the last enemy with a structure, both base objects by states.base_object, spots by states.spot on
               the simulator's grids, a route for the test template's surface; cached PATH_EVERY), 'harvesters',
-              'money', 'opponent funds' (the first enemy's), 'income' (each side's harvesters while a refinery
-              stands -- INFERRED), 'beacons' (none), 'tech buildings' (SimAI.tech_buildings), 'nodes full' (Brain.open_nodes empty), 'power advantage' (tactics'
+              'money', 'opponent funds' (the first enemy's), 'income' (each side's mining deposits of the last
+              90 s, SimAI.income), 'beacons' (none), 'tech buildings' (SimAI.tech_buildings), 'nodes full' (Brain.open_nodes empty), 'power advantage' (tactics'
               rule over the whole armies -- INFERRED); the other strategic facts stay unmodelled (states.strategic).
   blocks      A's TargetsBlock + TacticsBlock (orders: 'move' / 'attack-move' -> Sim.order_move, 'enter' -> Garrisons;
               houses / defenses = Brain.garrisons, full ones listed too), DefenseBlock (one
@@ -99,6 +99,7 @@ AI_WORLD = frozenset({'bodies', 'blocks', 'enemy', 'frame_now', 'ground', 'human
 
 
 FPS = 15
+INCOME_WINDOW = 90.0    # s: IncomeAdvantage's deposit window (read 11-25, the tracker's constant; game speed 1)
 # the game's own AI data in SDK form (retailref.py cache-ai-states): the model takes what the SDK lacks from it -- a
 # map container's campaign personality and its states (bench engine_inform_ai, B E238); not there = SDK only
 RETAIL_AI = os.path.join(labpaths.WORK, 'retailref', 'ai_states_sdk.xml')
@@ -862,7 +863,7 @@ class Brain:
                # the private AIPlayer.available: no income -> the budget share pays nothing (bench engine_aitower e).
                # A refinery counts: the retail one brings its own miner (SpawnBehavior SpawnOnUnpack), which the
                # simulator's skirmish runs (aiskirm) do not show -- B handoff 137
-               'own income': int(any('REFINERY' in b.kinds for b in mine)) or self.income(self.player)}
+               'own income': int(any('REFINERY' in b.kinds for b in mine))}
         if foes:                                     # INFERRED (work/re/l4_states.md): the engine's enemy = the first of the enemies here
             out['opponent funds'] = self.observe.money().get(foes[0], 0)
             out['income'] = (self.income(self.player), self.income(foes[0]))
@@ -881,13 +882,11 @@ class Brain:
         return out
 
     def income(self, owner):
-        """ctx 'income' (IncomeAdvantageHeuristic, read, work/re/l4_states.md: a per-player value of each side x 1/90; both
-        0 -> 1, the enemy's <= 0 -> 9999): what that per-player value holds is not read -- INFERRED a rate that grows with the miners
-        at work, so here the owner's harvesters while it has a refinery (only the ratio of the two sides counts)."""
-        mine = [b for b in self.living() if b.owner == owner]
-        if not any('REFINERY' in b.kinds for b in mine):
-            return 0
-        return sum('HARVESTER' in b.kinds for b in mine)
+        """ctx 'income' (IncomeAdvantageHeuristic, read, work/re/l4_states.md: each side's value x 1/90; both 0 -> 1, the
+        enemy's <= 0 -> 9999): the owner's mining deposits of the last 90 s (read 11-25: the window is ceil(game speed x
+        logic frames a second x 90) frames, an entry kept while its frame >= now - window; when the game drops the old
+        ones -- each evaluation or less often -- is not read, INFERRED each)."""
+        return self.systems.mined_since(owner, self.frame - math.ceil(FPS * INCOME_WINDOW))
 
     def tech_buildings(self):
         """ctx 'tech buildings' (TechBuildingShareHeuristic, work/re/l4_states.md): (own, all, players).
