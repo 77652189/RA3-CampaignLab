@@ -40,7 +40,7 @@ class SpecialPower:
                 continue
             if power.get('curve'):      # A375: the OCL's bombing run
                 host.call_run(by, effect['power'], t, power['curve'], power['window'])
-                context.gap('OCLSpecialPower', '轰炸：延迟、投弹、MASTER 监视器已接通；轰炸机本体、飞行、炸弹其他弹头未建')
+                context.gap('OCLSpecialPower', '轰炸：延迟、投弹、MASTER 监视器、轰炸机实体已接通；飞行、拦截时点、炸弹其他弹头未建')
                 continue
             if power.get('disguise'):
                 if not set(power['include']) & t.kinds or t.template.lower() in power['exclude_templates']:

@@ -322,7 +322,8 @@ class OCLRun(SpecialPower, interfaces.OCLRun, interfaces.Update):
     (CreateObject, its owner's) is a thing from InitialDelay on till gone (engine_spnbombc counts AIRCRAFT: from 53
     frames after the call), made StartDistance short of the target on the caster's side and left there (INFERRED: the
     side; its flight not modelled); it holds its own gun (the run's bomb is its drop); a run let go takes it away at
-    once (INFERRED). Not modelled: the bomb's other nuggets."""
+    once (INFERRED); one shot down before it is over drops nothing (review 133; the retail cut-off not measured,
+    INFERRED). Not modelled: the bomb's other nuggets."""
     PHASE = 'seq'
     STATE = ('ready', 'runs', 'firing', 'aim')
     runs = ()           # (target, its spot at the call, made, hit, gone frame, the curve, the bomber made or None)
@@ -368,6 +369,8 @@ class OCLRun(SpecialPower, interfaces.OCLRun, interfaces.Update):
                                         at[1] + (me.y - at[1]) * curve['start'] / d)
                 plane.engine_status.add('NO_ATTACK')
                 plane.status.add('NO_ATTACK')
+            if plane is not None and not plane.alive and frame <= hit - FALL:
+                continue                # shot down before it was over: the bomb never left it (INFERRED)
             if frame == hit:
                 self.world.fire(me, curve['bomb'], at=at)
             kept.append((t, spot, made, hit, gone, curve, plane))

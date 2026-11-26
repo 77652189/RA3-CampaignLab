@@ -310,13 +310,18 @@ def test_a_bombing_run_drops_after_its_delay_and_the_monitor_holds_or_lets_it_go
     assert (died.get('a'), died.get('b')) == tuple(want[d] for d in dies)
 
 
-def test_natasha_calls_her_bombing_run_on_the_default_clock_too():
-    """Review 133 P1: her attack order brings the run without the opt-in shot clock (the levels' replays run without)."""
+@pytest.mark.parametrize('shot_down', [False, True])
+def test_natasha_calls_her_bombing_run_on_the_default_clock_too(shot_down):
+    """Review 133: her attack order brings the run without the opt-in shot clock (P1: the levels' replays run
+    without); a bomber killed at f70, before it is over the target, drops nothing (P2, INFERRED)."""
     import engine.testing.small as simsmall
     from engine.ports.command import Command
     s = simsmall.small_world([('n', 'SovietCommandoTech1', 'Player_1', 1400.0, 2400.0),
                               ('t', 'SovietAntiVehicleVehicleTech3', 'Soviet_1', 1400.0, 2530.0)], model=False)
     s.act('UNIT_CHANGE_OBJECT_STATUS', ['t', 'NO_ATTACK', 1], None)
     s.commands.do(Command('attack', units=('n',), target='t'))
-    s.advance(155)
-    assert not s.bodies['t'].alive
+    s.advance(70)
+    if shot_down:
+        s.act('NAMED_KILL', [next(b.name for b in s.bodies.values() if b.template == 'Soviet_BombingRun')], None)
+    s.advance(85)
+    assert s.bodies['t'].alive == shot_down

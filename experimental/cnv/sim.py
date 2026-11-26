@@ -1231,8 +1231,8 @@ class Sim:
         return (0 if self.infiltrators.disabled(owner) else sup), dem
 
     def short_of_power(self, owner):
-        sup, dem = self.power(owner)
-        return self.infiltrators.disabled(owner) or sup < dem
+        sup, dem = self.power(owner)        # dark already zeroes sup: ask again only when that alone can tell
+        return sup < dem or (not sup and self.infiltrators.disabled(owner))
 
     def unpowered(self, b):
         """Holds its fire: still unpacking, or POWERED while its owner is short of power (bench 2026-11-07
