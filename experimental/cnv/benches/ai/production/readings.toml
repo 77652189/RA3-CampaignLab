@@ -775,11 +775,14 @@ scene = {build = "aiskfof", check = "fm", until = 250}
 bench = """\
 B 11-26 aiskfof / aiskfon / aiskgf (05:08-05:14) and aiskmrd (02:09): both kinds leave home in the same second, the \
 first Peacekeeper reaches the player's base 15-17 s after the first Riptide (s173 / s158, s183 / s166, s179 / s163, \
-s172 / s156) -- ~1900 at 50 against 90"""
-proves = "simai attack team: each member walks at its own speed"
+s172 / s156); again with ra3ext (CampAISkFOffXFm_mcp_1126_062325, logic seconds): s175.6 / s159.3. The riders do \
+board: the home count drops 4 -> 0 in one second, and aiskn10's commands (teams host) send 5 + 1 into the two \
+Riptides at f1961, set off at f2105 once the last is in, all get out at f2414 on the attack order. But the two \
+teams-host runs aiskn1 / aiskn10 (logic seconds) have the first Peacekeeper only 0.9 / 2.5 s after the first Riptide"""
+proves = "simai attack team: without the teams host the Cleanup riders reach the player's base well after the first Riptide (where they get out not read)"
 mismatch = """\
-sim Peacekeepers (speed 50) go at the Riptides' 90 beside them, 1 Peacekeeper and 2 Riptides in the base at s158 (B \
-11-26 probe; not looked into: a ride in the Riptide or a shared team speed)"""
+sim riders get out with the Riptides by the base, 1 Peacekeeper and 2 Riptides in it at s158 (as the two teams-host \
+bench runs; why the five runs without the host differ is not known, B 11-26)"""
 let = {riptide = "next(i for i, r in enumerate(rows) if r['激流到'] >= 1)", pk = "next(i for i, r in enumerate(rows) if r['维和到'] >= 1)"}
 expect = "pk - riptide >= 10"
 
