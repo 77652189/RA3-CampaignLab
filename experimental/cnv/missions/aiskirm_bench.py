@@ -430,25 +430,40 @@ AIDATA_RUNS = {'aiskad': {'Optimization_NumTeamsToRecruit': '0'},
                # aiskn1 / aiskn10: the poll's per-pass cap at 1 against 10 (stock), both with the teams host
                'aiskn1': {'Optimization_NumTeamsToRecruit': '1'},
                'aiskn10': {'Optimization_NumTeamsToRecruit': '10'}}
+# aiskga (check fm): GathererTemplate, the ArmyDefinition field no reader was found for (work/re b1126_armydef), made
+# the Peacekeeper; stock AIData beside it. Read anywhere, the miners or the Peacekeepers would read off aiskfon's
+GATHERER_RUN = {'AlliedArmy': {'GathererTemplate': 'AlliedAntiInfantryInfantry'}}
 
 
 class AIDataPack:
-    """The SDK's SkirmishAI/AIData.xml (id AIData) with the attributes of `changes` rewritten, compiled as a static pack
-    (Mission.statics): splice_assets puts it over retail's in the global stream. The map stream's same-id copy
+    """The SDK's SkirmishAI/AIData.xml (id AIData) with the attributes of `changes` rewritten, plus each ArmyDefinition
+    of `army` ({id: {attribute: value}}, from the SDK's ArmyDef*.xml) rewritten the same way, compiled as a static pack
+    (Mission.statics): splice_assets puts them over retail's in the global stream. The map stream's same-id copy
     (Mission.replaces, aiskad 11-12) did not take."""
     FOLDER = 'CNVAIData'
     files = ()
 
-    def __init__(self, changes):
+    def __init__(self, changes, army=None):
         self.changes = dict(changes)
+        self.army = {k: dict(v) for k, v in (army or {}).items()}
 
     def xml(self):
+        import glob
         import re
-        with open(os.path.join(labpaths.SDK3, 'SageXML', 'SkirmishAI', 'AIData.xml'), encoding='utf-8') as f:
-            xml = f.read()
-        for k, v in self.changes.items():
-            xml, n = re.subn(rf'(\s{k}=)"[^"]*"', rf'\1"{v}"', xml)
-            assert n == 1, (k, n)
+
+        def rewrite(xml, changes):
+            for k, v in changes.items():
+                xml, n = re.subn(rf'(\s{k}=)"[^"]*"', rf'\1"{v}"', xml)
+                assert n == 1, (k, n)
+            return xml
+        folder = os.path.join(labpaths.SDK3, 'SageXML', 'SkirmishAI')
+        with open(os.path.join(folder, 'AIData.xml'), encoding='utf-8') as f:
+            xml = rewrite(f.read(), self.changes)
+        for aid, changes in self.army.items():
+            texts = [open(p, encoding='utf-8-sig').read() for p in glob.glob(os.path.join(folder, 'ArmyDef*.xml'))]
+            block, = [b for t in texts for b in re.findall(r'<ArmyDefinition\b.*?</ArmyDefinition>', t, re.S)
+                      if f'id="{aid}"' in b]
+            xml = xml.replace('</AssetDeclaration>', rewrite(block, changes) + '\n</AssetDeclaration>')
         return xml
 
     @property
@@ -460,13 +475,14 @@ class AIDataPack:
         return f'DATA:{self.FOLDER}/Data/aidata.xml'
 
     def check(self, files):
-        """A spliced global stream carries our AIData (it replaced retail's)."""
+        """A spliced global stream carries our AIData and ArmyDefinitions (they replaced retail's)."""
         from ra3voice import manifest, refpack
         unpack = lambda b: refpack.decompress(b) if refpack.is_refpack(b) else b
-        where = [n for n, b in files if n.lower().startswith('data\\global') and n.lower().endswith('.manifest')
-                 and any(a.name == AIDATA for a in manifest.parse(unpack(b)))]
-        assert where, f'{AIDATA} is in no spliced global stream: the override never reaches the game'
-        print(f'aidata: {AIDATA} spliced into {where}')
+        for name in [AIDATA] + [f'ArmyDefinition:{a}' for a in self.army]:
+            where = [n for n, b in files if n.lower().startswith('data\\global') and n.lower().endswith('.manifest')
+                     and any(a.name == name for a in manifest.parse(unpack(b)))]
+            assert where, f'{name} is in no spliced global stream: the override never reaches the game'
+            print(f'aidata: {name} spliced into {where}')
 
 
 UC_PID = 'CNVUnitCap'                 # aiskuc (check uc): 1AlliedBalanced plus two UnitCap lines
@@ -572,7 +588,7 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
             buffer=None, new=None, army=None, two=None, observe=False, cap=None, block=None, off=False,
             ptype=None, mintime=None, aidata=None, dear=None, dear_cost=DEAR_COST, power_more=None, mt_secs=300.0,
             carrier=None, unitcap=None, inert=False, power_adv=None, side=None, inert2=False, flip=False, defpref=None,
-            allied=None, wake='xfer'):
+            allied=None, wake='xfer', armydef=None):
     base = resources.measured(niagara)
     m = Mission(name=name, map=ai_map(flipped(base) if flip else base, lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
@@ -584,9 +600,9 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
         m.facts['side case'] = 2 if side else 1
         m.sides['s1'] = {'playerFaction': SIDE_FACTION, 'aiPersonality': f'AIPersonalityDefinition:{SIDE_PID}'}
         m.assets.append((f'{SIDE_PID}.xml', side_xml(side), f'AIPersonalityDefinition:{SIDE_PID}'))
-    if aidata is not None:               # aiskad / aiskfon / aiskfof: the global AIData overridden in the global stream
-        m.facts['use formations'] = int(aidata.get('UseFormations', 'true') == 'true')
-        m.statics = [AIDataPack(aidata)]
+    if aidata is not None or armydef:    # aiskad / aiskfon / aiskga: the global AIData / ArmyDefinitions overridden
+        m.facts['use formations'] = int((aidata or {}).get('UseFormations', 'true') == 'true')
+        m.statics = [AIDataPack(aidata or {}, armydef)]
     if expire is not None:               # aiskexp (check q): the same AI with SecondsTillTargetsExpire = expire
         m.facts['targets expire'] = expire
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{EXPIRE_PID}'

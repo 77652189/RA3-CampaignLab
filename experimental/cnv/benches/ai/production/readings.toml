@@ -800,6 +800,19 @@ expect = ["max(r['激流到'] for r in rows) >= 3"]
 
 [[reading]]
 bench_id = "engine_aiskirm"
+id = "a_peacekeeper_gatherer_leaves_the_skirmish_ai_as_stock"
+item = "AI 阵营/ArmyDefinition.GathererTemplate"
+scene = {build = "aiskga", check = "fm", until = 250}
+bench = """\
+B 11-26 aiskga (aiskga__fm 09:16; AlliedArmy's GathererTemplate made the Peacekeeper, spliced into the global stream: \
+only that asset differs from aiskfon's in the built .big) reads as aiskfon run beside it within a second: 矿车 1 at \
+s53, 2 from s73 on, the first Riptide in the player's base at s157, 6 Riptides at s216-s230, home again by s238. No \
+reader of the field was found in the program (work/re b1126_armydef.md)"""
+proves = "simai: no GathererTemplate is read -- the miners and the first attack team come as stock"
+expect = ["max(r['激流到'] for r in rows) >= 3", "rows[-1]['矿车'] == 2"]
+
+[[reading]]
+bench_id = "engine_aiskirm"
 id = "a_new_barracks_first_unit_is_the_unit_builders"
 scene = {build = "aiskvveh", check = "t", until = 100}
 bench = """\

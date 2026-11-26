@@ -1778,7 +1778,7 @@ def aiskirm_bench():
     """Skirmish AI build registrations. The scene factory also serves the script and economy benches."""
 
     from missions.aiskirm_bench import (
-        AIDATA_RUNS, ARMY_INF, ARMY_VEH, MT_CONST, MT_TECH, MT_TIMES, UC_CAPS, UMOD_ZERO, mission,
+        AIDATA_RUNS, ARMY_INF, GATHERER_RUN, ARMY_VEH, MT_CONST, MT_TECH, MT_TIMES, UC_CAPS, UMOD_ZERO, mission,
     )
 
 
@@ -1871,6 +1871,7 @@ def aiskirm_bench():
         'aiskmrd': lambda: mission('CampAISkMRD', aidata=AIDATA_RUNS['aiskmrd']),   # check fm: MaxRecruitDistance 1
         'aiskts': lambda: mission('CampAISkTS', aidata=AIDATA_RUNS['aiskts']),      # check fm: TeamSeconds 600
         'aiskgf': lambda: mission('CampAISkGF', aidata=AIDATA_RUNS['aiskgf']),      # check fm: GroupFudge 200
+        'aiskga': lambda: mission('CampAISkGA', armydef=GATHERER_RUN),              # check fm: Gatherer canary
     }
 
     def teams_logged(name, run):

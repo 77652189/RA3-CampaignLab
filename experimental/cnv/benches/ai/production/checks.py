@@ -2665,8 +2665,8 @@ def engine_aiskirm():
     def fm(m):
         """aiskfon / aiskfof (the global AIData overridden in the map stream, UseFormations true / false; aiskad's canary
         first): the first attack team (2 Riptides + 3 Peacekeepers, check a / c) leaving home and reaching the player's
-        base. 激流在家 / 维和在家 = s1's inside 600 around the east base, 激流到 / 维和到 = inside 600 around the player's
-        yard; 1-s rows to 250 s after the wake: who leaves and who arrives in which second (the team's spread in time).
+        base. 激流在家 = s1's inside 600 around the east base, 激流到 / 维和到 = inside 600 around the player's yard, 矿车 =
+        s1's AlliedMiner (维和在家 until 11-26; aiskga's Gatherer canary); 1-s rows to 250 s after the wake: who leaves and who arrives in which second (the team's spread in time).
         aiskad's canary: the map-stream copy of AIData did not take (11-12, CampAISkADA_mcp_1112_130959 read as stock);
         spliced into the global stream (missions/aiskirm_bench.AIDataPack) it does -- Optimization_NumTeamsToRecruit 0
         (11-25, CampAISkADA_mcp_1125_233101): 13 Riptides made, none leaves (出门帧 never stops, to 5254), the
@@ -2687,7 +2687,8 @@ def engine_aiskirm():
         t.areas[AREA] = square(*m.site('east base'), 600.0)
         t.areas[WEST] = square(*m.site('base yard'), 600.0)
         counted('CNV_AK_Home', '激流在家', t, template=RIPTIDE, area=AREA, player=s1)
-        counted('CNV_AK_PkHome', '维和在家', t, template=PK, area=AREA, player=s1)
+        m.spawns.add('AlliedMiner')
+        counted('CNV_AK_Miner', '矿车', t, template='AlliedMiner', player=s1)
         counted('CNV_AK_West', '激流到', t, template=RIPTIDE, area=WEST, player=s1)
         counted('CNV_AK_PkWest', '维和到', t, template=PK, area=WEST, player=s1)
         w = m.facts['wake at']
@@ -2931,6 +2932,7 @@ def engine_aiskirm():
               'aiskmrd': {'fm': fm},
               'aiskts': {'fm': fm},
               'aiskgf': {'fm': fm},
+              'aiskga': {'fm': fm},
               'aiskn1': {'fm': fm},
               'aiskn10': {'fm': fm}}
     return dict(CHECKS=CHECKS, shared=SimpleNamespace(a=a, fm=fm, y=y, yc=yc))
