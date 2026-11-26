@@ -35,6 +35,17 @@ BOOTH = {'HV_TollBooth01': (9.6, 0.0)}
 WALL, GAP, START, MIDDLE, RUN = 150.0, 2.0, 250.0, 3, 45.0
 RUNS = {'a': ((ZERO, CONSCRIPT, IFV, GUARDIAN, APOC), CARS), 'b': ((ZERO, CONSCRIPT, IFV, GUARDIAN, APOC), None),
         'c': ((ZERO, GUARDIAN, APOC), BOOTH), 'd': ((ZERO, GUARDIAN, CONSCRIPT, IFV, HAMMER), CARS)}
+# E256 blockers a player might shoot, one a lane: SM_Auto04 without CRUSHABLE_OBSTACLE, s1's SM_Auto04, three walls
+NOCRUSH = 'CNVA1TollCar'
+CAND = ({NOCRUSH: (15.13, 0.0)}, {'SM_Auto04': (15.13, 0.0)}, {'MJ_PalaceWall01': (30.0, 0.0)},
+        {'KR_Wall01': (23.3, math.pi / 2)}, {'OD_Wall01': (63.9, math.pi / 2)})
+SIDE = {2: 's1'}
+RUNS |= {'e': ((ZERO,) * 5, CAND), 'f': ((GUARDIAN,) * 5, CAND), 'g': ((GUARDIAN,) * 5, CAND)}
+LONE = {'d': (2, 3, 4, 5), 'g': (1, 2, 3, 4, 5)}
+
+
+def _kinds(kinds, k):
+    return kinds[k - 1] if isinstance(kinds, tuple) else kinds
 
 
 def _dy(k):
@@ -68,12 +79,22 @@ def mission(run):
     truck.xml, n = re.subn(r'\s*<GameObject\s+id="SovietMiner_Naval".*?</GameObject>', '', truck.xml, flags=re.S)
     assert n == 1
     m.units.append(truck)
+    if kinds is CAND:
+        car = clone('Civilian/Santa_Monica_SA/Props/SM_Auto04.xml', 'SM_Auto04', NOCRUSH)
+        car.xml = car.xml.replace('inheritFrom="BaseParkedCar"', 'inheritFrom="BaseParkedCar" KindOf="IMMOBILE '
+                                  'NOT_AUTOACQUIRABLE STRUCTURE CAN_SEE_THROUGH_STRUCTURE RESIST_EMP SIMPLE_OBJECT_PROP '
+                                  'CLEARED_BY_BUILD"', 1)
+        assert 'KindOf="IMMOBILE' in car.xml
+        m.units.append(car)
     for k, mover in enumerate(movers, 1):
-        lone = run == 'd' and k > 1
+        lone, lane = k in LONE.get(run, ()), _kinds(kinds, k)
         m.put(mover, 'order gun', -150.0 if lone else -START, _dy(k), angle=0.0, role=f'mover {k}', name=f'A1T Mover {k}')
-        wall = [('SM_Auto04', 0.0, 0.0)] if lone else _wall(kinds) if kinds else []
+        first = next(iter(lane or {}), None)
+        wall = [(first, 0.0, lane[first][1])] if lone else _wall(lane) if kinds else []
+        side = SIDE.get(k, 'neutral') if kinds is CAND else 'neutral'
         for i, (t, y, ang) in enumerate(wall):
-            m.put(t, 'order gun', 0.0, _dy(k) + y, angle=ang, side='neutral', role=f'car {k} {i}', name=f'A1T Car {k} {i}')
+            m.put(t, 'order gun', 0.0, _dy(k) + (0.0 if lone else y), angle=ang, side=side, role=f'car {k} {i}',
+                  name=f'A1T Car {k} {i}')
     return m
 
 
@@ -82,13 +103,13 @@ def check(m, run, view=False):
     t = Test()
     x, y = m.site('order gun')
     lanes = range(1, len(movers) + 1)
-    hold = [('UNIT_SET_STANCE', m.role(f'mover {k}').name, 3) for k in lanes if not (run == 'd' and k > 1)]
+    hold = [('UNIT_SET_STANCE', m.role(f'mover {k}').name, 3) for k in lanes if k not in LONE.get(run, ())]
     t.scripts.append(Script('Test - A1T start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))] + hold))
     go, going = [('SET_FLAG', 'A1T Going', 1)], ('FLAG', 'A1T Going', 1)
     for k in lanes:
         name = m.role(f'mover {k}').name
         t.areas[f'A1T Mid {k}'] = square(x, y + _dy(k), 50.0)
-        if run == 'd' and k > 1:
+        if k in LONE.get(run, ()):
             go.append(('NAMED_ATTACK_NAMED', name, m.role(f'car {k} 0').name))
             t.scripts.append(Script(f'Test - A1T at {k}', [('NAMED_DESTROYED', m.role(f'car {k} 0').name)],
                                     [('SET_FLAG', f'A1T At {k}', 1)]))
@@ -118,7 +139,7 @@ def check(m, run, view=False):
     if kinds:
         parts = []
         for k in lanes:
-            idx = [0] if run == 'd' and k > 1 else _middle(_wall(kinds))
+            idx = [0] if k in LONE.get(run, ()) else _middle(_wall(_kinds(kinds, k)))
             parts += [(10 ** (k - 1), ('NAMED_NOT_DESTROYED', m.role(f'car {k} {i}').name)) for i in idx]
         s8.total(t, 'A1TCars', '车存', parts)
     s8.watch(t, RUN, .5)
