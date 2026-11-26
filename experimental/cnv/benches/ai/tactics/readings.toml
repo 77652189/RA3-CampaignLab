@@ -1004,6 +1004,28 @@ item = "AI 阵营/ArmyDefinition.NavalRepairFacility"
 
 [[reading]]
 bench_id = "engine_aipullback"
+id = "a_flyer_hurt_before_its_first_shot_goes_home_to_its_airfield"
+scene = {build = "aipullavp", check = "a", until = 40.0}
+bench = """\
+aipullavp (Vindicators of an Allied AI at 30 % from the start, its own airfield the AlliedArmy AircraftRepairFacility, \
+the no-income emergency off; bench 11-26): 回家 3 @ s4, 4 s5-s34 (healed to 100 by s18), 到远厂 0 until s38"""
+proves = "simai pullback: a hurt flyer leaves for its AircraftRepairFacility before it fights"
+expect = "max(r['回家'] for r in rows[:6]) >= 3 and all(r['到远厂'] == 0 for r in rows[:30])"
+item = "AI 阵营/ArmyDefinition.AircraftRepairFacility"
+
+[[reading]]
+bench_id = "engine_aipullback"
+id = "a_hurt_flyer_with_no_air_repair_facility_fights_first"
+scene = {build = "aipullaxp", check = "a", until = 40.0}
+bench = """\
+aipullaxp (aipullavp with the AlliedArmy AircraftRepairFacility the barracks; bench 11-26): 到远厂 3 @ s5, 4 s6-s9, \
+回家 0 s2-s12, 1 @ s1 (the start square) (home s13-15 only to reload, its pods RETURN_TO_BASE)"""
+proves = "simai pullback: with no air repair facility of its army a hurt flyer stays in the fight"
+expect = "max(r['到远厂'] for r in rows[:10]) >= 3 and all(r['回家'] == 0 for r in rows[2:12])"
+item = "AI 阵营/ArmyDefinition.AircraftRepairFacility"
+
+[[reading]]
+bench_id = "engine_aipullback"
 id = "reverse_move_probe_starts_with_four_live_tanks"
 scene = {build = "airev1", check = "a", until = 11.0}
 each = [{build = "airev1"}, {build = "airev0"}]

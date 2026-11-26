@@ -1939,16 +1939,20 @@ def aipullback_bench():
     VINDICATOR = 'AlliedAntiGroundAircraft'   # its pods AutoReloadsClip RETURN_TO_BASE: the pull-back's flyer branch
 
 
-    def flyers(m, keep=False):
+    def flyers(m, keep=False, sell=False):
         """The AI's Hammers swapped for Vindicators, the team templates' AllowedLocomotorTypes AIR (LAND AMPHIBIOUS
-        let no flyer in: the first aipullav run, 11-26, never formed a team). keep: CleanupRefineries false on the
-        personality (aipullavt: the AI sold its airfield at f6, gone f82 -- is it that sweep?)."""
+        let no flyer in: the first aipullav run, 11-26, never formed a team). The personality's no-income emergency
+        off (aipullavt sold its airfield at f6, gone f82: that emergency sells a building when the AI has under 100
+        and no gatherer economy -- work/re/b1126_armydef.md); sell: left on. keep: CleanupRefineries false too (avc)."""
         m = guardians(m, tank=VINDICATOR)
         (fname, xml, asset), = m.assets
         assert 'AllowedLocomotorTypes="LAND AMPHIBIOUS"' in xml
         xml = xml.replace('AllowedLocomotorTypes="LAND AMPHIBIOUS"', 'AllowedLocomotorTypes="AIR"')
+        assert xml.count('<AIPersonalityDefinition ') == 1
+        if not sell:
+            xml = xml.replace('<AIPersonalityDefinition ',
+                              '<AIPersonalityDefinition EmergencyManagerHandleNoIncomeAtDifficulty="" ')
         if keep:
-            assert xml.count('<AIPersonalityDefinition ') == 1
             xml = xml.replace('<AIPersonalityDefinition ', '<AIPersonalityDefinition CleanupRefineries="false" ')
         m.assets = [(fname, xml, asset)]
         return m
@@ -2029,8 +2033,17 @@ def aipullback_bench():
         # av / ax: hurt Vindicators of an Allied AI, its own airfield (the AlliedArmy AircraftRepairFacility) -- av home
         # before the far plant; ax (the facility the barracks) on to the plant, home only to reload (RETURN_TO_BASE)
         'aipullav': lambda: flyers(mission('CampAIPullAv', factory='AlliedAirfield')),
-        'aipullavt': lambda: flyers(mission('CampAIPullAvT', factory='AlliedAirfield', observe=True)),
-        'aipullavc': lambda: flyers(mission('CampAIPullAvC', factory='AlliedAirfield', observe=True), keep=True),
+        'aipullavt': lambda: flyers(mission('CampAIPullAvT', factory='AlliedAirfield', observe=True), sell=True),
+        'aipullavc': lambda: flyers(mission('CampAIPullAvC', factory='AlliedAirfield', observe=True), keep=True,
+                                    sell=True),
+        'aipullavn': lambda: flyers(mission('CampAIPullAvN', factory='AlliedAirfield', observe=True)),
+        # av / ax alike to s31: the Vindicators fire on the far plant before the hurt (s9) and fly home to reload either
+        # way -- avp / axp: hurt from the start (engine_aipullback IDLE_HURT -9), before their first shot
+        'aipullavp': lambda: flyers(mission('CampAIPullAvP', factory='AlliedAirfield')),
+        'aipullaxp': lambda: repair_moved(flyers(mission('CampAIPullAxP', factory='AlliedAirfield')), army='AlliedArmy',
+                                          AircraftRepairFacility='AlliedBarracks'),
+        # aipull1 observed: is its AlliedWarFactory sold at the start too (the old "an Allied tank never finds it")?
+        'aipullwt': lambda: mission('CampAIPullWT', factory=True, observe=True),
         'aipullax': lambda: repair_moved(flyers(mission('CampAIPullAx', factory='AlliedAirfield')), army='AlliedArmy',
                                          AircraftRepairFacility='AlliedBarracks'),
         'airev1': lambda: mission('CampAIRev1'),

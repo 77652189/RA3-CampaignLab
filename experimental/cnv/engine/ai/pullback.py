@@ -5,7 +5,7 @@ owns the threshold and nearest-place decision. This adapter supplies live
 health, faction repair places and the return order: the ArmyDefinition's
 VehicleRepairFacility for a ground mover, NavalRepairFacility for a water one,
 both for an amphibian (the game's pull-back, bench aipullsnx / sny; a mission's
-AIDataPack over the SDK's). Recycling, repair and air entry are not implemented. Arrival geometry is INFERRED from the
+AIDataPack over the SDK's), AircraftRepairFacility for a flyer (aipullavp / axp). Recycling, repair and landing are not implemented. Arrival geometry is INFERRED from the
 existing garrison approach; exact return seconds are not claimed.
 
 L8 (the skirmish AI's tactics adapter: it orders units, it is not an object module). It is given the world
@@ -17,12 +17,13 @@ import xml.etree.ElementTree as ET
 
 import engine.objects.garrison as simgarrison
 import engine.data.units as simunits
+from engine.kernel import interfaces
 from engine.ports.command import Command
 
 PEERS = frozenset({'commands'})
 # the ArmyDefinition repair facilities a mover of this surface looks for (work/re b1126_armydef, the game's pull-back)
 FACILITIES = {'ground': ('VehicleRepairFacility',), 'water': ('NavalRepairFacility',),
-              'both': ('VehicleRepairFacility', 'NavalRepairFacility')}
+              'both': ('VehicleRepairFacility', 'NavalRepairFacility'), 'air': ('AircraftRepairFacility',)}
 
 
 class Peers:
@@ -77,6 +78,8 @@ class Pullbacks:
         if (not u.alive or not g.alive or u.surface not in FACILITIES
                 or 'STRUCTURE' not in g.kinds or world.relation(u.owner, g.owner) != 'ALLIES'):
             return False
+        if u.surface == 'air':          # INFERRED: the game's "can it land there" is a parking place (aipullavp)
+            return bool(g.find(interfaces.Parking))
         flt = self._filter(g.template)
         if flt is None:
             return False
@@ -114,8 +117,8 @@ class Pullbacks:
         for g in world.living():
             if g.template not in templates or not self.accepts(u, g):
                 continue
-            route = ground.within(ground.walks(u), (u.x, u.y), (g.x, g.y), self.reach(g))
-            if route is not None:
+            # a flyer's facility is not path-checked (the game's flyer branch: work/re b1126_armydef)
+            if u.surface == 'air' or ground.within(ground.walks(u), (u.x, u.y), (g.x, g.y), self.reach(g)) is not None:
                 places.append((brain.tid(g), (g.x, g.y), True))
         return u.hp / u.max_hp, places
 
