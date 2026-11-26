@@ -720,6 +720,19 @@ expect = ["max(r['新维和'] for r in rows) == 0", "rows[166]['新标枪'] >= 1
 
 [[reading]]
 bench_id = "engine_aiskirm"
+id = "no_team_is_polled_with_no_teams_to_recruit"
+item = "AI 全局常量/AIData.Optimization_NumTeamsToRecruit"
+scene = {build = "aiskad", check = "a", until = 356}
+bench = """\
+B 11-25 aiskad (CampAISkADA_mcp_1125_233101; the global AIData spliced into the global stream with \
+Optimization_NumTeamsToRecruit 0): 13 Riptides made, none leaves (出门帧 never stops, to 5254), the player's 3 \
+buildings stand to s355 (retail 10: first out at 1992, the buildings gone s209-s231)"""
+proves = "model TeamMaker: at <= 0 teams to recruit the team maker's poll does not run -- nobody recruited, no team goes"
+expect = ["rows[-1]['激流总数'] >= 1", "all(r['激流在家'] == min(r['激流总数'], 8) for r in rows)",
+          "rows[-1]['出门帧'] > rows[-30]['出门帧']", "rows[-1]['我方建筑'] == 3"]   # 激流在家 counts to 8 (counted most)
+
+[[reading]]
+bench_id = "engine_aiskirm"
 id = "a_new_barracks_first_unit_is_the_unit_builders"
 scene = {build = "aiskvveh", check = "t", until = 100}
 bench = """\

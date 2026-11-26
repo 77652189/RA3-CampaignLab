@@ -101,7 +101,7 @@ SIM_SURFACE = {
                     'attachments banned base_construction_disabled blocks*2 bodies*6 body*2 books*2 border box_at '
                     'can_build can_hit change*2 countdowns counters death_blasts emp_disabled ending*2 ending_line enemy engineer_entry '
                     'events*4 expected_damage factories firing flags foe frame_now*9 garrison*8 ground*2 happen*2 '
-                    'human*5 income input label*3 late_captions leap_press living log*2 looks m*8 markers mm*3 money '
+                    'human*5 income input label*3 late_captions leap_press living log*2 looks m*7 markers mm*3 money '
                     'movement_power_press note*4 objectives offers*2 order_build*3 own panel_at pending pick*4 '
                     'player_ups players point*6 power*2 production*5 proto reblock relations sample*2 seen sees '
                     'self_power_press series short_of_power side_sees spellbook_ready step*2 t*2 take_personality team_targets text '

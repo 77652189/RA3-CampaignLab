@@ -2390,6 +2390,9 @@ class SimAI:
         if getattr(self, '_own_done', False):
             return
         self._own_done = True
+        for p in self.settings.statics:     # a probe's global AIData (missions/aiskirm_bench.AIDataPack, bench aiskad)
+            if hasattr(p, 'xml') and getattr(p, 'changes', None) is not None:
+                self.data.add_text(p.xml())
         for a in self.settings.assets:
             if len(a) >= 3 and str(a[2]).startswith('AIPersonalityDefinition:'):
                 self.data.add_text(a[1])

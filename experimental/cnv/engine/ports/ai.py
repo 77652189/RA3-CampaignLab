@@ -68,17 +68,25 @@ class Settings:
     @property
     def sides(self):
         """The mission's sides: side -> its setup (playerFaction, aiPersonality, ...); {} for a mission without."""
-        return view(getattr(self._w.m, 'sides', None) or {})
+        return self._mission('sides', {})
 
     @property
     def facts(self):
         """The mission's facts ('dual bases', 'expansion', ...)."""
         return view(self._w.m.facts)
 
+    def _mission(self, key, empty):
+        return view(getattr(self._w.m, key, None) or empty)
+
     @property
     def assets(self):
         """The mission's own files ((path, text, kind), ...): a probe's AI personality among them."""
-        return view(getattr(self._w.m, 'assets', None) or [])
+        return self._mission('assets', [])
+
+    @property
+    def statics(self):
+        """The mission's packs compiled into the static / global streams: a probe's AIData among them."""
+        return self._mission('statics', [])
 
     def take_personality(self, player, personality):
         self._w.take_personality(player, personality)
