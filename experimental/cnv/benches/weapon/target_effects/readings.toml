@@ -17,7 +17,7 @@ expect = "list(rows[-1].values()) == [79, 1, 79, 1]"
 bench_id = "engine_inform_ai"
 id = "inform_ai_advance_response_matches_engine_inform_ai_observation[a]"
 scene = {build = "engine_inform_ai", check = "a", until = 37, shot_clock = true}
-bench = "second automatic run: 1187051068/87135068/101003068/87135089 in the frozen automatic window"
+bench = "second automatic run: 1187051068/87135068/101003068/87135089 in the frozen automatic window; the same 11-25 with the s1 sides written (CampInfoAIA_mcp_1125_181712)"
 proves = "InformTargetNugget / miner self-defense AI: base shields before its first hit, instant shields after its first hit, player and low controls do not auto-shield"
 let = {expected = "[1187051068, 87135068, 101003068, 87135089]"}
 expect = [
@@ -53,7 +53,7 @@ expect = [
 bench_id = "engine_inform_ai"
 id = "inform_ai_advance_response_matches_engine_inform_ai_observation[off]"
 scene = {build = "engine_inform_ai", check = "off", until = 37, shot_clock = true}
-bench = "third run, base InformTargetNugget removed: 87135068/87135068/101003068/87135089 in the frozen automatic window"
+bench = "third run, base InformTargetNugget removed: 87135068/87135068/101003068/87135089 in the frozen automatic window; the same 11-25 with the s1 sides written (CampInfoAIOff_mcp_1125_181545)"
 proves = "InformTargetNugget / miner self-defense AI: base loses the automatic shield without its launch notification in this recipe"
 let = {expected = "[87135068, 87135068, 101003068, 87135089]"}
 expect = [
