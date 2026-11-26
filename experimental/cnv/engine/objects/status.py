@@ -7,6 +7,7 @@ ACTED_STATUS = frozenset({'SOLD', 'GENERIC_TOGGLE_STATE', 'IMMOBILE', 'NO_ATTACK
                           'NO_COLLISIONS', 'UNDER_IRON_CURTAIN',   # MetaImpact: XML collision exclusion / magnetic status gate (line C)
                           'POINT_DEFENSE_DRONE_ATTACHED',   # a script's drones protocol (act_ability._book_cast)
                           'MAGNETIZED',   # one black hole pulls it at a time (engine/modules/magnet.py, E225)
+                          'BOOBY_TRAPPED', 'NOT_IN_WORLD',   # a repair drone's parent choice (engine/modules/attach.py, E235)
                           'CLONED'})   # left out of a player's object counts (cond_object, act_world; bench A351 agx)
 # bits only a woken skirmish AI's own target choice reads (d115 10: its micro-manager), no gap here: the unit's own
 # take, a script's order, the player's are untouched (bench 11-13 engine_acts flow 旗&2: an idle enemy fires on it)

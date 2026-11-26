@@ -90,11 +90,9 @@ def frame_heal(m):
                         [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', target, 'E235A')]),
                  Script('Test - at 390', [('COUNTER', 'E235F', 2, 390)],
                         [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', target, 'E235B')])]
-    actions = [('UNIT_SET_HEALTH', target, 20.0)]
-    if m.role('bay').template == 'CNVAssignOn':
-        actions.append(('NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED', m.role('bay').name, m.ability('bay', 'repair'),
-                        target))
-    t.scripts.append(Script('Test - damage', [('COUNTER', 'E235F', 2, 120)], actions))
+    t.scripts.append(Script('Test - damage', [('COUNTER', 'E235F', 2, 120)], [   # both arms press (the control's
+        ('UNIT_SET_HEALTH', target, 20.0),                                     # button is still there, check a)
+        ('NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED', m.role('bay').name, m.ability('bay', 'repair'), target)]))
     t.expect = [('脚本帧', 0, 'ever==', 400)]
     t.bench = [('bench_watch', dict(seconds=32, every=1, sheet=False, lines=4))]
     return t

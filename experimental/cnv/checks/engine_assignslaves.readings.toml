@@ -67,7 +67,7 @@ expect = ["counter('E235A') == 47", "counter('E235B') == 92"]
 id = "frames_from_the_damage_to_the_drone"
 scene = {build = "engine_assignon", check = "c", until = 30}
 each = [{build = "engine_assignon", wait = 16}, {build = "engine_assignoff", wait = 18}]
-bench = "E235 (same runs): 等待帧 on 16 / off 18"
+bench = "E235 (same runs): 等待帧 on 16 / off 18; E245 off pressing too (CampAssignOffC_mcp_1125_182008): 18, 47, 92 as before"
 proves = "AttachUpdate (BaseRepairDrone): frames from the damage (and press) until the target reads UNDERGOING_REPAIR"
 expect = "counter('E235Wait') == wait"
 mismatch = "sim on 23 / off 23: the drone attaches 5-7 frames late (hypothesis 3 in handoff-e: InitialAttachDelay or the flight speed)"
@@ -75,7 +75,7 @@ mismatch = "sim on 23 / off 23: the drone attaches 5-7 frames late (hypothesis 3
 [[reading]]
 id = "the_drone_mends_once_a_survey"
 scene = {build = "engine_assignoff", check = "d", until = 42}
-bench = "E235 d (CampAssignOffD_mcp_1125_052303): 血量 by script frame 20 -> 25 31 36 42 47 53 58 64 70 75 81 86 92 97 100, one step of 480/18 every 20 frames from f142 (attached f138), full by f423"
+bench = "E235 d (CampAssignOffD_mcp_1125_052303): 血量 by script frame 20 -> 25 31 36 42 47 53 58 64 70 75 81 86 92 97 100, one step of 480/18 every 20 frames from f142 (attached f138), full by f423; E245 pressing too (CampAssignOffD_mcp_1125_182306): the same 16 values"
 proves = "AttachUpdate (BaseRepairDrone) + PassiveAreaEffectBehavior: the drone's 20 HP/s lands once a SurveyDelayFrames (schema default 20), 26.7 HP a pulse; the pulses' phase (f142 in both arms whatever the attach frame) is INFERRED as the world clock"
 expect = "sorted(set(r['血量'] for r in rows)) == [20, 25, 31, 36, 42, 47, 53, 58, 64, 70, 75, 81, 86, 92, 97, 100]"
 
