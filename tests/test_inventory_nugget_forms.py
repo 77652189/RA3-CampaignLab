@@ -19,7 +19,10 @@ def test_nugget_form_split_rejects_unmeasured_fields_children_and_mixed_inherita
     assert inventory.nugget_form_slice('MetaImpactNugget', [ordinary]) == ':普通无延迟显式Z'
     omitted = ET.fromstring('<MetaImpactNugget ShockWaveAmount="50" ShockWaveRadius="50"/>')
     assert inventory.nugget_form_slice('MetaImpactNugget', [omitted]) == ':省略Z默认值'
-    for field in ('ShockwaveDelaySeconds', 'ShockWaveSpeed', 'CyclonicFactor', 'ShockWaveArc', 'FutureField'):
+    delayed = ET.fromstring('<MetaImpactNugget ShockWaveAmount="89" ShockWaveRadius="100" ShockwaveDelaySeconds="1.9s"/>')
+    assert inventory.nugget_form_slice('MetaImpactNugget', [delayed]) == ':普通延迟'
+    assert inventory.nugget_form_slice('MetaImpactNugget', [delayed], at_self=True) == ''     # Omega: not measured
+    for field in ('ShockWaveSpeed', 'CyclonicFactor', 'ShockWaveArc', 'FutureField'):
         other = ET.fromstring(ET.tostring(ordinary))
         other.set(field, '1')
         assert inventory.nugget_form_slice('MetaImpactNugget', [other]) == ''
@@ -56,12 +59,13 @@ def test_retail_nugget_partitions_conserve_uses_and_only_register_measured_forms
         for i in rows:
             for w in i['weapon_ids']:
                 forms = [n for n in rm.effective_weapon_forms(w) if rm._tag(n) == kind]
-                assert kind + inventory.nugget_form_slice(kind, forms) == i['name']
+                assert kind + inventory.nugget_form_slice(kind, forms, rm.weapon_at_self(w)) == i['name']
             if i['state'] == inventory.BENCHED:
                 assert ((inventory.NUGGET, i['name']) in inventory.BENCHED_TESTS
                         or (inventory.NUGGET, i['name']) in inventory.declared_items())     # readings' item key
                 assert '仅' in i['why'] and 'engine_' in i['why']
-                field = 'inform' if kind == 'InformTargetNugget' else 'meta_impacts'
+                field = 'inform' if kind == 'InformTargetNugget' else (
+                    'delayed_meta_impacts' if i['name'].endswith(':普通延迟') else 'meta_impacts')
                 assert all(weapons[w].get(field) for w in i['weapon_ids'])
                 if kind == 'InformTargetNugget':
                     maximum = 1.6 if i['name'].endswith(':Max1.6目标通知') else 1.15

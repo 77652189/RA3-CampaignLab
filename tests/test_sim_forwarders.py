@@ -80,7 +80,7 @@ SIM_SURFACE = {
     'engine.ai': 'blocks*11 bodies*4 commands*3 enemy*2 flags frame_now*3 ground*8 human*2 level living*24 '
                  'note*4 own*15 players*6 relation relations*3 t*4 waypoints*2 who*4 world xml_of*2',
     'engine.combat': 'attachment_tick attachments*4 can_hit change*2 cold_of*3 death_blasts*2 emp_disabled*2 firing '
-                     'first_death*4 frame_now*17 gap*5 garrison*2 ground*6 guessed has_model_condition hostile infiltrators '
+                     'first_death*4 frame_now*15 gap*5 garrison*2 ground*6 guessed has_model_condition hostile infiltrators '
                      'label*5 lift_timers*2 living*6 mark_first_death note own*7 player_ups projectile_detonate*2 '
                      'queue_projectile_hit relation*2 set_model_condition shots_due suppression_fields*3 sweeps t*4 used*7 '
                      'world*7 xml_of*2',

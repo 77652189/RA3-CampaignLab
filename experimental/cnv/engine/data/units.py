@@ -926,8 +926,8 @@ class MetaImpactDelayQueue:
     Filters, Speed, time scaling, victim lifetime and Physics remain gaps.
     """
 
-    def __init__(self):
-        self.pending = []
+    def __init__(self, pending=None):
+        self.pending = [] if pending is None else pending      # a host's own list (Damage.impact_delays)
 
     def enqueue(self, collision_frame, effect, payload):
         when = collision_frame + meta_impact_delay_frames(effect['delay_seconds']) + 1

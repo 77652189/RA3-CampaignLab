@@ -10,8 +10,9 @@ TAG = 'MetaImpactNugget'
 
 
 def detonate(host, weapon, target, centre, attacker):
-    """Dispatch the non-damage payload of a projectile arrival: no centre -> a living target's half height."""
-    if not weapon.get('meta_impacts'):
+    """Dispatch the non-damage payload of a projectile arrival: no centre -> a living target's half height. A delayed
+    shock (ShockwaveDelaySeconds) waits in Damage's queue at the collision's centre (tick)."""
+    if not weapon.get('meta_impacts') and not weapon.get('delayed_meta_impacts'):
         return
     if centre is None and target.alive:
         height = host.body_of(target.template)[0]
@@ -31,7 +32,7 @@ def fire_at_self(host, weapon, attacker, target):
     launch(host, weapon, centre, attacker, axis=(target.x - attacker.x, target.y - attacker.y))
 
 
-def launch(host, weapon, centre, attacker, axis=None):
+def launch(host, weapon, centre, attacker, axis=None, delayed=False):
     """Dispatch ordinary immediate warhead shocks, separately from damage radius.
 
     First slice: default Physics, grounded bodies, landings on level, lower or higher ground (Physics P3: a landing
@@ -44,7 +45,9 @@ def launch(host, weapon, centre, attacker, axis=None):
     The whole nugget therefore retains its unmodeled registration.
     """
     world, peers, gap = host.world, host.peers, host.gap
-    flights = peers.impact_flights
+    flights, now = peers.impact_flights, world.frame_now()
+    for effect in weapon.get('delayed_meta_impacts', []):        # waits in Damage's queue (tick)
+        host.impact_delays.enqueue(now, effect, (centre, attacker))
     for effect in weapon.get('meta_impacts', []):
         if effect['radius'] <= 0:
             gap(TAG, '非正冲击半径的选人范围未建模')
@@ -94,7 +97,7 @@ def launch(host, weapon, centre, attacker, axis=None):
                     continue
                 # INFERRED: Physics flights / landing hold represent the three
                 # forbidden knock states; their native bit timing is still a gap.
-                if b.serial in flights or peers.knock_hold.get(b.serial, -1) > world.frame_now():
+                if b.serial in flights or peers.knock_hold.get(b.serial, -1) > now:
                     continue
             position = (b.x, b.y, host.ground_z(b.x, b.y) if b.z is None else b.z)
             if math.dist(position, centre) > effect['radius']:
@@ -144,20 +147,26 @@ def launch(host, weapon, centre, attacker, axis=None):
                         any(z < host.smooth_z(x, y) - 1e-5 for x, y, z in points)):
                     gap(TAG, '坡地轨迹和地形查询未建模')
                     continue
-            flights[b.serial] = (b, world.frame_now(), points)
+            # delayed (engine_knock_delay a raw): the first sample shows the expiry frame, holds one frame, then
+            # the rest -- landing at expiry + 14, one later than an instant shock's (why it holds: INFERRED)
+            flights[b.serial] = (b, now - 1, points[:2] + points[1:]) if delayed else (b, now, points)
             b.z = position[2]
             world.used.add('meta impact')
 
 
 def tick(host):
-    """Advance each active trajectory by one sample per simulation frame."""
+    """Advance each active trajectory by one sample per simulation frame, after this frame's delayed shocks went off
+    (D39: collision c, ceil(float32 seconds * 15) = D, out at c + D + 1, before the Physics updates)."""
     world, peers = host.world, host.peers
+    now = world.frame_now()
+    for _, effect, (centre, attacker) in host.impact_delays.due(now):
+        launch(host, dict(meta_impacts=[effect]), centre, attacker, delayed=True)
     flights = peers.impact_flights
     for key, (b, start, points) in list(flights.items()):
         if not b.alive:
             flights.pop(key)
             continue
-        k = min(len(points)-1, max(0, world.frame_now()-start))
+        k = min(len(points)-1, max(0, now-start))
         b.x, b.y, b.z = points[k]
         if k == len(points)-1:
             flights.pop(key)
@@ -169,5 +178,5 @@ def tick(host):
                 continue
             # on the ground: lies, then gets up (Physics ShockStunnedTime + ShockStandingTime); a kept move
             # order resumes after it (bench 11-11 engine_knock_probe stand)
-            peers.knock_hold[key] = world.frame_now() + host.landing_hold()
+            peers.knock_hold[key] = now + host.landing_hold()
         world.change()

@@ -13,7 +13,7 @@ conditions, attachment_tick), the same-layer can_hit / shots_due, the host's own
 queue_projectile_hit (a test may intercept an arrival) and the fight state it shares (firing, volleys, the
 garrison, infiltrators, sweeps, attachments, player_ups, lift_timers, suppression_fields, death_blasts, chilling, the
 knock flights and holds, the EMP deadlines). This module never imports them.
-Fields it owns: incoming, projectile_hits, projectile_speeds, impact_body, knock_drowns, dots, cold_on, lift_modules,
+Fields it owns: incoming, projectile_hits, projectile_speeds, impact_body, knock_drowns, impact_delays, dots, cold_on, lift_modules,
 nugget_powers, hit_reaction_of, tracked, track_of.
 """
 import math
@@ -85,6 +85,11 @@ class EffectHost:
     def knock_drowns(self):
         """Damage's book of knocked vehicles that drown where they land (add / discard only)."""
         return self.damage.knock_drowns
+
+    @property
+    def impact_delays(self):
+        """Damage's delayed MetaImpact shocks to come (simunits.MetaImpactDelayQueue over its list)."""
+        return simunits.MetaImpactDelayQueue(self.damage.impact_delays)
 
     def ground_z(self, x, y):
         return impact_ground_z(self.world, x, y)
@@ -320,6 +325,7 @@ class Damage:
         self.projectile_speeds = {}      # projectile template -> its straight-line muzzle speed (0: not one)
         self.impact_body = {}            # template -> (MetaImpact body height, ShockwaveResistance)
         self.knock_drowns = set()        # body.serial of knocked vehicles that drown where they land
+        self.impact_delays = []          # (expiry frame, delayed MetaImpact effect, (centre, attacker)) to come
         self.dots = []                   # running DOTNugget ticks
         self.cold_on = {}                # body.serial -> (body, last freezer): bodies with cold to melt
         self.lift_modules = {}           # caster template -> simunits.lift_module
@@ -501,6 +507,9 @@ class Damage:
                     registry.run('effect', ctx)           # the lift, the attachment, the power, the modifier (registry.ORDER)
                     if w.get('at_self') and w.get('meta_impacts') and not projectile:
                         meta_impact.fire_at_self(host, w, by, t)      # the shotgun's shocks from its feet (A363)
+                    elif w.get('delayed_meta_impacts') and not w.get('at_self') and not projectile:
+                        # an instant hit's delayed shocks (Katana): centred on the target's half height (INFERRED)
+                        meta_impact.detonate(host, dict(w, meta_impacts=[]), t, None, by)
         self.dots[:] = dot.tick(self.dots, world.frame_now(), hurt, armor_scalar, gap)    # the frame-end DOT ledger
         now = world.frame_now()
         for t, dmg, by in hurt.values():

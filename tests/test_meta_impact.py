@@ -574,9 +574,6 @@ def test_meta_impact_delay_queue_replays_engine_knock_delay_due_frames(lane, col
 @pytest.mark.parametrize('lane,collision,shock,y', [
     ('rocket', 174, 204, 3750), ('strong', 173, 192, 850),
 ])
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'Delayed collision dispatch does not consume the expiry queue or advance Physics; '
-    'see work/re/handoff-c.md and work/re/c_meta_dispatch_gap_report.md'))
 def test_meta_impact_delayed_collision_replays_observed_shock_frame(lane, collision, shock, y):
     """Recorded arrival -> actual dispatch -> observed first delayed sample.
 

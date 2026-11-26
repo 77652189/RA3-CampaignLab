@@ -1,0 +1,12 @@
+# Bench readings of checks/engine_knock_delay.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Counters (b): rocket hit, strong hit (full-health script frames, +1000 at the 1% loss), rocket home, strong home
+# (script frames each neighbour still on its spot). a's raw trajectory is in work/re/c_meta_delay/ (private).
+
+[[reading]]
+id = "a_delayed_shock_goes_off_its_delay_plus_one_frames_after_the_collision"
+scene = {build = "engine_knock_delay", check = "b", until = 20, shot_clock = true}
+bench = "CampKDB_mcp_1125_184149 (A380): 1174 / 1173 / 204 / 192 from s14 to the end (the shocks 204 / 192 as a's raw ra3ext.log); sim 1169 / 1169 / 199 / 188 -- its rocket lands 5 / 4 frames early (the curve's arrival, not this slice)"
+proves = "MetaImpactNugget ShockwaveDelaySeconds (engine/combat/meta_impact: detonate queues, tick sends; simunits.meta_impact_delay_frames): the shock waits ceil(float32 seconds * 15) + 1 frames from the collision -- 1.9 s 30, 1.2 s 19 -- at the collision's centre; damage stays immediate"
+item = "武器效果 MetaImpactNugget:普通延迟"
+let = {v = "vals(rows)[-1]"}
+expect = ["v[0] > 1000 and v[1] > 1000", "v[2] - (v[0] - 1000) == 30", "v[3] - (v[1] - 1000) == 19"]

@@ -126,6 +126,7 @@ def _load():
     objs = {}      # lower id -> (id, own modules {group: [(type, id)]}, parent lower or None)
     weapons = {}   # lower id -> (id, nugget types, parent lower or None)
     weapon_forms = {}  # same source/override precedence as the census, retain fields for scope splits
+    at_self = {}       # lower id -> its own DamageDealtAtSelfPosition (None: not set, inherited)
     for root_dir, _, files in sorted(os.walk(SAGEXML)):
         for f in sorted(files):
             if not f.endswith('.xml'):
@@ -158,7 +159,8 @@ def _load():
                     nug = [_tag(n) for n in e.iter() if _tag(n).endswith('Nugget')]
                     weapons[k] = (e.get('id'), nug, (e.get('inheritFrom') or '').lower() or None)
                     weapon_forms[k] = [n for n in e.iter() if _tag(n).endswith('Nugget')]
-    _state = {'objs': objs, 'weapons': weapons, 'weapon_forms': weapon_forms, 'eff': {}}
+                    at_self[k] = e.get('DamageDealtAtSelfPosition')
+    _state = {'objs': objs, 'weapons': weapons, 'weapon_forms': weapon_forms, 'at_self': at_self, 'eff': {}}
     return _state
 
 
@@ -292,6 +294,18 @@ def effective_weapon_forms(k, st=None, seen=()):
     parent = st['weapons'][k][2]
     inherited = effective_weapon_forms(parent, st, seen + (k,)) if parent else []
     return inherited + st['weapon_forms'][k]
+
+
+def weapon_at_self(k, st=None):
+    """The weapon's DamageDealtAtSelfPosition, its own or the nearest parent's (default false)."""
+    st = _load() if st is None else st
+    k, seen = k.lower(), set()
+    while k in st['weapons'] and k not in seen:
+        seen.add(k)
+        if st['at_self'].get(k) is not None:
+            return st['at_self'][k] == 'true'
+        k = st['weapons'][k][2]
+    return False
 
 
 def weapon_census():

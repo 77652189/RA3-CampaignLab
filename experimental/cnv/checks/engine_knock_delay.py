@@ -6,11 +6,12 @@ Prediction before bench: 15fps gives 28.5 / 18 delay frames (integer rounding
 of 28.5 must be read, not assumed). Collision damage remains immediate99%,
 neighbours100%; no push before delay, then the same14-frame trajectory as Z.
 Observed corrected bench: health-frame counters174/173, shocks204/192.
-An isolated expiry queue now reproduces these frames with recorded collision
-inputs; this remains a diagnostic, not a complete inventory replay. Delayed sample1 occurs in the shock frame, is held
+A380: the simulator sends the shock off Damage's queue (engine/combat/meta_impact);
+b's reading (engine_knock_delay.readings.toml) counts both frames. Delayed sample1 occurs in the shock frame, is held
 next frame, then samples2..14 follow. See the private C handoff for evidence.
 """
 import copy
+from model import square
 from parts import Script
 from checks import engine_knock_z as base
 from checks import engine_knock_probe as probe
@@ -75,6 +76,24 @@ def check(m):
     return t
 
 
+def home(m):
+    """b (A380): a, each neighbour's health counter swapped for its script frames still on its spot (a 3 box), so
+    one run gives the collision (hit - 1000) and the shock (home) of each lane. Prediction from a's raw ra3ext.log
+    (shocks 204 / 192) and counters: hit 1174 / 1173, home 204 / 192 -- home - (hit - 1000) = D + 1 = 30 / 19."""
+    t = check(m)
+    t.scripts = [s for s in t.scripts if not s.name.startswith('Test - neighbour')]
+    t.counters, t.expect = [c for c in t.counters if not c[1].endswith('near')], []
+    for lane in ('rocket', 'strong'):
+        near = next(o for o in m.objects if o.name == probe.name(lane, 'near'))
+        c, area = 'CNV_Delay_' + lane + 'Home', probe.name(lane, 'near home')
+        t.areas[area] = square(near.x, near.y, 3)
+        t.counters.append((c, lane + ' home'))
+        t.scripts.append(Script('Test - home ' + lane, [('NAMED_INSIDE_AREA', near.name, area)],
+                                [('INCREMENT_COUNTER', 1, c)], once=False))
+        t.expect.extend([(lane + ' hit', 18, 'ever>=', 1000, 20), (lane + ' home', 18, '>=', 150, 20)])
+    return t
+
+
 MISSION = {'engine_knock_delay': mission}
-CHECKS = {'engine_knock_delay': {'a': check}}
+CHECKS = {'engine_knock_delay': {'a': check, 'b': home}}
 

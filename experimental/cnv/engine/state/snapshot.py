@@ -80,7 +80,7 @@ SIM = {
     'commands': {'_w': WIRE, '_r': WIRE, '_issued': STATE, '_libs': WIRE},
     'specials': {'wfires': STATE, 'leaps_due': STATE, 'leap_ground_hits': STATE, 'movement_due': STATE,
                  'self_bits_due': STATE},
-    'harm': {'incoming': STATE, 'projectile_hits': STATE, 'knock_drowns': STATE, 'dots': STATE, 'cold_on': STATE,
+    'harm': {'incoming': STATE, 'projectile_hits': STATE, 'knock_drowns': STATE, 'impact_delays': STATE, 'dots': STATE, 'cold_on': STATE,
              'projectile_speeds': CACHE, 'impact_body': CACHE, 'lift_modules': CACHE, 'nugget_powers': CACHE,
              'hit_reaction_of': CACHE, 'tracked': STATE, 'track_of': CACHE},
 }
