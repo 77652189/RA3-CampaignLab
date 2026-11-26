@@ -2674,7 +2674,10 @@ def engine_aiskirm():
         pack (CampAISkFOnFm_mcp_1125_233236); aiskfof not run yet. aiskna (the nine unread fields at extremes, all
         nine seen changed in the built global.bin) reads second for second as aiskfon run beside it, both PASS
         (CampAISkNAFm_mcp_1126_015445 / CampAISkFOnFm_mcp_1126_015604). aiskmrd (MaxRecruitDistance 1) and aiskts
-        (TeamSeconds 600) read the same too (11-26): neither reaches the skirmish team maker."""
+        (TeamSeconds 600) read the same too (11-26): neither reaches the skirmish team maker. aiskn1 / aiskn10
+        (NumTeamsToRecruit 1 / 10, both with the teams host; CampAISkN1Fm_mcp_1126_042022 / CampAISkN10Fm_mcp_1126_041859,
+        up to 12 teams logged a sample): the first LandDefense team active at f417 / f389, HarvesterController's at f857 / f821
+        -- the cap of 1 slows each team's turn; the counters differ by the draws (one run each), no reading yet."""
         t = Test()
         m.spawns.add(RIPTIDE)
         m.spawns.add(PK)
@@ -2925,7 +2928,9 @@ def engine_aiskirm():
               'aiskfof': {'fm': fm},
               'aiskna': {'fm': fm},
               'aiskmrd': {'fm': fm},
-              'aiskts': {'fm': fm}}
+              'aiskts': {'fm': fm},
+              'aiskn1': {'fm': fm},
+              'aiskn10': {'fm': fm}}
     return dict(CHECKS=CHECKS, shared=SimpleNamespace(a=a, fm=fm, y=y, yc=yc))
 
 

@@ -1871,6 +1871,18 @@ def aiskirm_bench():
         'aiskmrd': lambda: mission('CampAISkMRD', aidata=AIDATA_RUNS['aiskmrd']),   # check fm: MaxRecruitDistance 1
         'aiskts': lambda: mission('CampAISkTS', aidata=AIDATA_RUNS['aiskts']),      # check fm: TeamSeconds 600
     }
+
+    def teams_logged(name, run):
+        from benches.ai.tactics.scenes import aiteams_bench
+        shared = aiteams_bench()['shared']
+        m = mission(name, aidata=AIDATA_RUNS[run])
+        m.ext = True
+        m.units.append(shared.host_unit())
+        m.put(shared.HOST, 'east base', 250.0, 400.0, side='s1', role='teams host')
+        return m
+
+    MISSION['aiskn1'] = lambda: teams_logged('CampAISkN1', 'aiskn1')      # check fm: NumTeamsToRecruit 1
+    MISSION['aiskn10'] = lambda: teams_logged('CampAISkN10', 'aiskn10')   # check fm: 10, the same host
     return dict(MISSION=MISSION)
 
 

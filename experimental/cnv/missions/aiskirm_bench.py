@@ -425,7 +425,10 @@ AIDATA_RUNS = {'aiskad': {'Optimization_NumTeamsToRecruit': '0'},
                           'FormationColumnWidth': '600.0', 'FormationSquadSpacing': '600.0', 'MaxSquadWidth': '1',
                           'ChaseFromBehindLimit': '5000.0'},
                'aiskmrd': {'MaxRecruitDistance': '1.0'},   # read fields, one at a time against aiskfon
-               'aiskts': {'TeamSeconds': '600'}}
+               'aiskts': {'TeamSeconds': '600'},
+               # aiskn1 / aiskn10: the poll's per-pass cap at 1 against 10 (stock), both with the teams host
+               'aiskn1': {'Optimization_NumTeamsToRecruit': '1'},
+               'aiskn10': {'Optimization_NumTeamsToRecruit': '10'}}
 
 
 class AIDataPack:
