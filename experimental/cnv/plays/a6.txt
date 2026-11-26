@@ -23,9 +23,12 @@
 # 2. 内圈: the base vehicle is given at the camp: deploy it (the made yard stands for it), a guardian from it every 20 s,
 #    the squad back along the lane to wait for them. The camp holds the north road's first tanks (+1:30), then, at +3:10,
 #    the whole force goes round the lane and up the north ramp, one tower after the other (the three stand 300 from
-#    the middle, 600 apart: only the one the force is at reaches it). Tanya stays behind the tanks and goes down to the
-#    pit (the bonus) once the west tower is down.
-CNV_A6_Phase_2+5 派 tanya 去 ring northwest
+#    the middle, 600 apart: only the one the force is at reaches it). Tanya waits at the camp, out of the tanks' lane
+#    (idle, she goes for a tank she sees with her C4), walked the outer way: the lane below the north tower is in its
+#    reach (E264: 130 of her 300). She joins the force behind the tanks.
+CNV_A6_Phase_2+5 走 tanya 去 ring north
+CNV_A6_Phase_2+18 走 tanya 去 outer ramp
+CNV_A6_Phase_2+36 走 tanya 去 south camp
 CNV_A6_Phase_2+5 派 peace 去 ring northwest
 CNV_A6_Phase_2+5 派 guardian 去 ring northwest
 CNV_A6_Phase_2+5 删除 名字含 AlliedMCV
@@ -58,13 +61,14 @@ CNV_A6_Phase_2+400 派 tanya 去 tower north
 CNV_A6_Phase_2+410 派 名字含 SIM Made 去 tower west
 CNV_A6_Phase_2+410 派 peace 去 tower west
 CNV_A6_Phase_2+410 派 guardian 去 tower west
-CNV_A6_Phase_2+440 派 tanya 去 pit
 CNV_A6_Phase_2+455 派 名字含 SIM Made 去 tower east
 CNV_A6_Phase_2+455 派 peace 去 tower east
 CNV_A6_Phase_2+455 派 guardian 去 tower east
 # 3. 撤出: the last tower is down, the east grove's tanks come for the camp at +0:20 (the north road's second tanks are
 #    there already): the force gathers at the ramp's foot and goes down to the camp together, a guardian from the yard
-#    every 20 s once it is there. Tanya waits in the pit until the camp is clear, then comes down the way she went up.
+#    every 20 s once it is there. Tanya goes down to the pit (the bonus) now: the pit is 316 from the east tower, in its
+#    reach till it falls (E264). She waits there until the camp is clear, then comes down the way she went up.
+CNV_A6_Phase_3+1 走 tanya 去 pit
 CNV_A6_Phase_3+1 派 名字含 SIM Made 去 ring north
 CNV_A6_Phase_3+1 派 peace 去 ring north
 CNV_A6_Phase_3+1 派 guardian 去 ring north
