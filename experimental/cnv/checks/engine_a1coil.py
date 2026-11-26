@@ -170,6 +170,33 @@ def garrison_check(m):
     return t
 
 
+# j where a passenger sits (11-26, review 135 ①): e's run (255 east missed, 310 hit; same house, same entry in every
+# lane) is no one shape from the house. e again, plus 位甲 (base removed high) / 位乙 (switch order low): two digits a
+# lane, con 0's then con 1's (lane k of the three at 10 ** 2k), every frame; digit = 3 x (1 east / 2 west of the
+# house's centre by > 3) + (1 north / 2 south). A conscript kept at the centre reads 0 (the simulator's); one at a
+# garrison bone its side. Same digits in every lane: the bone is the entry order's; different ones that match e's
+# hits: a bone each house rolls, the reach (262.5) from it.
+J_SIDES = (('east', 3, (3, 90, -70, 70)), ('west', 6, (-90, -3, -70, 70)), ('north', 1, (-90, 90, 3, 70)),
+           ('south', 2, (-90, 90, -70, -3)))
+
+
+def seat_check(m):
+    t = garrison_check(m)
+    for (_, label, lanes), counter in zip(G_FLAGS, ('Seat A', 'Seat B')):
+        t.counters.append((counter, label.replace('驻', '位')))
+        t.scripts.append(Script(f'Test - {counter} zero', [], [('SET_COUNTER', counter, 0)], once=False))
+        for i, lane in enumerate(lanes):
+            x, y = m.site(lane + ' gun', 0, 0)
+            for side, v, (x0, x1, y0, y1) in J_SIDES:
+                area = f'Seat {lane} {side}'
+                t.areas[area] = [(x + x0, y + y0), (x + x1, y + y0), (x + x1, y + y1), (x + x0, y + y1)]
+                t.scripts += [Script(f'Test - {area} {k}', [('NAMED_INSIDE_AREA', f'Con {lane} {k}', area)],
+                                     [('INCREMENT_COUNTER', v * 10 ** (2 * i + k), counter)], once=False)
+                              for k in (0, 1)]
+    t.bench = [('bench_watch', dict(seconds=RUN['e'], every=1, sheet=False, lines=4))]
+    return t
+
+
 # f javelin (item 4 of 3): the player's javelin 'south' of s1's plant in each lane, ordered to attack it at 4 s;
 # lock lanes toggle SpecialPower_RadarLock at 1 s. 锁远 = base plant's health % (lock, 240 off: past the plain 175),
 # 锁近 = high (lock, 150 off), 平射 = order (no toggle, 150 off). Lock: 3.5 s on, then 40 a shot every 0.2-0.3 s
@@ -348,6 +375,6 @@ def land_check(m):
 
 MISSION = {'engine_a1land': land_mission, 'engine_a1gate': gate_mission, 'engine_a1cd': countdown_mission, 'engine_a1gar': garrison_mission, 'engine_a1jav': javelin_mission,
            'engine_a1coil': mission, 'engine_a1near': lambda: mission(NEAR, 'CampA1Near'), 'engine_a1cap': captured_mission, 'engine_a1pow': power_mission}
-CHECKS = {'engine_a1land': {'i': land_check}, 'engine_a1gate': {'h': gate_check}, 'engine_a1cd': {'g': countdown_check}, 'engine_a1gar': {'e': garrison_check}, 'engine_a1jav': {'f': javelin_check},
+CHECKS = {'engine_a1land': {'i': land_check}, 'engine_a1gate': {'h': gate_check}, 'engine_a1cd': {'g': countdown_check}, 'engine_a1gar': {'e': garrison_check, 'j': seat_check}, 'engine_a1jav': {'f': javelin_check},
           'engine_a1coil': {'a': range_check}, 'engine_a1near': {'d': lambda m: range_check(m, FORCED)}, 'engine_a1cap': {'b': captured_check},
           'engine_a1pow': {'c': power_check}}
