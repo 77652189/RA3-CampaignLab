@@ -559,7 +559,17 @@ def ailastexp_bench():
         return m
 
 
-    MISSION = {'ailastexp': mission, 'ailastx200': lambda: after(200), 'ailastx50': lambda: after(50)}
+    def expander():
+        """ailastx200 with AlliedArmy's ExpanderTemplate the MCV: the miner still unpacks its outpost, no Expander.
+        Predicted from the clock writer read no reset; the bench (11-26) reset as ailastx200."""
+        from missions.aiskirm_bench import AIDataPack
+        m = after(200)
+        m.name, m.statics = 'CampAILastXE', [AIDataPack({}, {'AlliedArmy': {'ExpanderTemplate': 'AlliedMCV'}})]
+        return m
+
+
+    MISSION = {'ailastexp': mission, 'ailastx200': lambda: after(200), 'ailastx50': lambda: after(50),
+               'ailastxe': expander}
     return dict(MISSION=MISSION)
 
 
@@ -1778,7 +1788,7 @@ def aiskirm_bench():
     """Skirmish AI build registrations. The scene factory also serves the script and economy benches."""
 
     from missions.aiskirm_bench import (
-        AIDATA_RUNS, ARMY_INF, GATHERER_RUN, ARMY_VEH, MT_CONST, MT_TECH, MT_TIMES, UC_CAPS, UMOD_ZERO, mission,
+        AIDATA_RUNS, ARMY_INF, ENERGY_WALL_RUN, GATHERER_RUN, ARMY_VEH, MT_CONST, MT_TECH, MT_TIMES, UC_CAPS, UMOD_ZERO, mission,
     )
 
 
@@ -1872,6 +1882,7 @@ def aiskirm_bench():
         'aiskts': lambda: mission('CampAISkTS', aidata=AIDATA_RUNS['aiskts']),      # check fm: TeamSeconds 600
         'aiskgf': lambda: mission('CampAISkGF', aidata=AIDATA_RUNS['aiskgf']),      # check fm: GroupFudge 200
         'aiskga': lambda: mission('CampAISkGA', armydef=GATHERER_RUN),              # check fm: Gatherer canary
+        'aiskew': lambda: mission('CampAISkEW', armydef=ENERGY_WALL_RUN),           # check fm: EnergyProducer + WallPiece
     }
 
     def teams_logged(name, run):

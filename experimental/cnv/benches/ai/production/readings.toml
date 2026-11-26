@@ -262,6 +262,20 @@ item = "AI 启发条件/TimeSinceLastExpansionHeuristic"
 each = [{build = "ailastx200", stay = 220, gone = 226}, {build = "ailastx50", stay = 150, gone = 156}]
 expect = ["set(win(130, stay, '炮在家')) == {2}", "win(gone, gone, '炮在家') == [0]"]
 
+[[reading]]
+bench_id = "engine_ailastexp"
+id = "a_miner_outpost_restarts_the_clock_with_another_expander_template"
+item = "AI 阵营/ArmyDefinition.ExpanderTemplate"
+scene = {build = "ailastxe", check = "x", until = 230}
+bench = """\
+B 11-26 ailastxe (ailastxe__x beside ailastx200__x; AlliedArmy's ExpanderTemplate made the MCV, spliced into the \
+global stream -- the override takes: aipullsvx, SovietArmy's VehicleRepairFacility the barracks, its hurt tanks never \
+home, aipullsov's all four home s19-s23): outpost s102.1, the cannons on their spots to s222.5, gone s224.5 -- as \
+ailastx200 (s102.3 / s222.9 / s224.9). Predicted from the one clock writer read (work/re b1126_armydef.md): no reset, \
+out ~s154; refuted -- another write, or the compare is not the unit's template (not read)"""
+proves = "simai Brain.last_expansion: the AI's own outpost restarts the clock whatever ExpanderTemplate names (ExpanderTemplate not read)"
+expect = ["max(r['前哨'] for r in rows) >= 1", "set(win(130, 220, '炮在家')) == {2}", "win(226, 226, '炮在家') == [0]"]
+
 # Bench readings of benches/ai/production/checks.py#engine_ainodesfull (format: experimental/cnv/readings.py; runner: tests/conformance).
 # OpenNodeHeuristic (CampaignLab work/re l4_states.md 10, B 11-24: every known node not full, no enemy object but a
 # wall within MinDistanceFromEnemy of it).
@@ -809,6 +823,20 @@ only that asset differs from aiskfon's in the built .big) reads as aiskfon run b
 s53, 2 from s73 on, the first Riptide in the player's base at s157, 6 Riptides at s216-s230, home again by s238. No \
 reader of the field was found in the program (work/re b1126_armydef.md)"""
 proves = "simai: no GathererTemplate is read -- the miners and the first attack team come as stock"
+expect = ["max(r['激流到'] for r in rows) >= 3", "rows[-1]['矿车'] == 2"]
+
+[[reading]]
+bench_id = "engine_aiskirm"
+id = "an_energy_producer_and_wall_piece_swap_leaves_the_skirmish_ai_as_stock"
+item = ["AI 阵营/ArmyDefinition.EnergyProducer", "AI 阵营/ArmyDefinition.WallPiece"]
+scene = {build = "aiskew", check = "fm", until = 250}
+bench = """\
+B 11-26 aiskew (aiskew__fm 10:23; AlliedArmy's EnergyProducer made the wall piece and its WallPiece the barracks, \
+spliced into the global stream) reads as aiskfon run beside it within a second: 矿车 1 at s53, 2 from s73 on, the \
+first Riptide in the player's base at s157, 6 Riptides at s217-s230, home again by s239. EnergyProducer's one reader \
+resolves the template and drops it (work/re b1126_armydef.md); WallPiece's use is not read (INFERRED: none here). \
+The override takes: aipullsvx (SovietArmy's VehicleRepairFacility the barracks) sends no hurt tank home"""
+proves = "simai: neither EnergyProducer nor WallPiece is read -- the build and the first attack team come as stock"
 expect = ["max(r['激流到'] for r in rows) >= 3", "rows[-1]['矿车'] == 2"]
 
 [[reading]]

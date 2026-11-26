@@ -1912,8 +1912,8 @@ def engine_aipullback():
     AFTER = 70.0
     LATE = 25.0
     HURT_AT = 12.0                           # aipullh*: the tanks are on the road (at the far plant s15)
-    IDLE = ('aipulli1', 'aipullr1', 'aipullp1', 'aipullbig', 'aipullsov', 'aipulljp')   # hurt at the wake, ~1000 from any enemy (p1: before it)
-    IDLE_HURT = {'aipulli1': 0.5, 'aipullr1': 0.5, 'aipullp1': -9.0, 'aipullbig': -9.0, 'aipullsov': 0.5, 'aipulljp': 0.5}   # s after the wake
+    IDLE = ('aipulli1', 'aipullr1', 'aipullp1', 'aipullbig', 'aipullsov', 'aipullsvx', 'aipulljp')   # hurt at the wake, ~1000 from any enemy (p1: before it)
+    IDLE_HURT = {'aipulli1': 0.5, 'aipullr1': 0.5, 'aipullp1': -9.0, 'aipullbig': -9.0, 'aipullsov': 0.5, 'aipullsvx': 0.5, 'aipulljp': 0.5}   # s after the wake
     HURT = 30.0                              # % -- under PullbackInjuredHealthPct 0.35
     LATE_AT = 16.7                           # airevk2*: s after the start (f250: the team formed f213, state 2 f242 in airevk1)
     LATE_NAME = 'UNIT - CNV AI Rev Late'     # + ' k': the Guardian spawned on Hammer k
@@ -2046,7 +2046,7 @@ def engine_aipullback():
         return t
 
 
-    CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aipull1', 'aipull0', 'aipullh1', 'aipullh0', 'aipullga', 'aipulli1', 'aipullr1', 'aipullp1', 'aipullbig', 'aipullsov', 'aipulljp',
+    CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aipull1', 'aipull0', 'aipullh1', 'aipullh0', 'aipullga', 'aipulli1', 'aipullr1', 'aipullp1', 'aipullbig', 'aipullsov', 'aipullsvx', 'aipulljp',
                                                                'airev1', 'airev0', 'airev1t', 'airev0t', 'airevidx', 'airevgt', 'airevat', 'airevit', 'airevp1', 'airevp0', 'airevp1t', 'airevt1', 'airevt0',
                                                                'airevk1', 'airevk0', 'airevkg1', 'airevk2', 'airevk2o', 'airevkp1', 'airevkp0', 'airevkh',
                                                                'airevb1', 'airevb0')}

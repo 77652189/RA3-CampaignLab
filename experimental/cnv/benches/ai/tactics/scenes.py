@@ -1877,6 +1877,15 @@ def aipullback_bench():
     BEAR_AT = ((-200.0, 320.0), (-320.0, 320.0))   # north of the column (-260, -90..90), 230+ off its nearest tank
 
 
+    def repair_moved(m):
+        """aipullsvx: aipullsov with SovietArmy's VehicleRepairFacility the barracks (the ArmyDefinition spliced into the
+        global stream, missions/aiskirm_bench.AIDataPack) -- the positive control of that override: read, the hurt
+        tanks no longer go for the crane."""
+        from missions.aiskirm_bench import AIDataPack
+        m.statics = [AIDataPack({}, {'SovietArmy': {'VehicleRepairFacility': 'SovietBarracks'}})]
+        return m
+
+
     def mission(mod, factory=False, faction=None, close=False, observe=False, **fields):
         """faction 'Soviet' / 'Japan': s1 that faction's player, its repair place that faction's VehicleRepairFacility
         (REPAIR) -- the pull-back looks the ArmyDefinition up by the player's faction (its Side; work/re handoff-b 71).
@@ -1989,6 +1998,7 @@ def aipullback_bench():
         # aipulli1 with a Soviet AI and a SovietCrane: the lookup is by faction (s1 Allied -> AlliedArmy, AlliedWarFactory,
         # as the probe has it) -- does another faction / facility draw them home?
         'aipullsov': lambda: mission('CampAIPullSov', factory=True, faction='Soviet'),
+        'aipullsvx': lambda: repair_moved(mission('CampAIPullSvX', factory=True, faction='Soviet')),
         'aipulljp': lambda: mission('CampAIPullJp', factory=True, faction='Japan'),
         'airev1': lambda: mission('CampAIRev1'),
         'airev0': lambda: mission('CampAIRev0', ReverseMove='false'),

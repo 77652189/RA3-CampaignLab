@@ -529,7 +529,7 @@ def engine_ailastexp():
         return t
 
 
-    CHECKS = {'ailastexp': {'a': a}, 'ailastx200': {'x': x}, 'ailastx50': {'x': x}}
+    CHECKS = {'ailastexp': {'a': a}, 'ailastx200': {'x': x}, 'ailastx50': {'x': x}, 'ailastxe': {'x': x}}
     return dict(CHECKS=CHECKS)
 
 
@@ -2933,6 +2933,7 @@ def engine_aiskirm():
               'aiskts': {'fm': fm},
               'aiskgf': {'fm': fm},
               'aiskga': {'fm': fm},
+              'aiskew': {'fm': fm},
               'aiskn1': {'fm': fm},
               'aiskn10': {'fm': fm}}
     return dict(CHECKS=CHECKS, shared=SimpleNamespace(a=a, fm=fm, y=y, yc=yc))

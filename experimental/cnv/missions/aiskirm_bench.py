@@ -433,6 +433,9 @@ AIDATA_RUNS = {'aiskad': {'Optimization_NumTeamsToRecruit': '0'},
 # aiskga (check fm): GathererTemplate, the ArmyDefinition field no reader was found for (work/re b1126_armydef), made
 # the Peacekeeper; stock AIData beside it. Read anywhere, the miners or the Peacekeepers would read off aiskfon's
 GATHERER_RUN = {'AlliedArmy': {'GathererTemplate': 'AlliedAntiInfantryInfantry'}}
+# aiskew (check fm): EnergyProducer (its one reader resolves it and drops it) made the wall piece, WallPiece (every AI
+# brain gathers them, the use not read) made the barracks the AI builds; must read as aiskfon
+ENERGY_WALL_RUN = {'AlliedArmy': {'EnergyProducer': 'AlliedWallPiece', 'WallPiece': 'AlliedBarracks'}}
 
 
 class AIDataPack:
