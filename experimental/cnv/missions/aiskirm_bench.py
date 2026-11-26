@@ -426,6 +426,7 @@ AIDATA_RUNS = {'aiskad': {'Optimization_NumTeamsToRecruit': '0'},
                           'ChaseFromBehindLimit': '5000.0'},
                'aiskmrd': {'MaxRecruitDistance': '1.0'},   # read fields, one at a time against aiskfon
                'aiskts': {'TeamSeconds': '600'},
+               'aiskgf': {'SkirmishGroupFudgeValue': '200.0'},   # stock 4: x5 units = a 1000 waypoint radius
                # aiskn1 / aiskn10: the poll's per-pass cap at 1 against 10 (stock), both with the teams host
                'aiskn1': {'Optimization_NumTeamsToRecruit': '1'},
                'aiskn10': {'Optimization_NumTeamsToRecruit': '10'}}

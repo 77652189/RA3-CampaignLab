@@ -1870,6 +1870,7 @@ def aiskirm_bench():
         'aiskna': lambda: mission('CampAISkNA', aidata=AIDATA_RUNS['aiskna']),      # check fm: nine unread fields
         'aiskmrd': lambda: mission('CampAISkMRD', aidata=AIDATA_RUNS['aiskmrd']),   # check fm: MaxRecruitDistance 1
         'aiskts': lambda: mission('CampAISkTS', aidata=AIDATA_RUNS['aiskts']),      # check fm: TeamSeconds 600
+        'aiskgf': lambda: mission('CampAISkGF', aidata=AIDATA_RUNS['aiskgf']),      # check fm: GroupFudge 200
     }
 
     def teams_logged(name, run):

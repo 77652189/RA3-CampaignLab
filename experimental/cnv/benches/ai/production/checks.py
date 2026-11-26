@@ -2671,7 +2671,8 @@ def engine_aiskirm():
         spliced into the global stream (missions/aiskirm_bench.AIDataPack) it does -- Optimization_NumTeamsToRecruit 0
         (11-25, CampAISkADA_mcp_1125_233101): 13 Riptides made, none leaves (出门帧 never stops, to 5254), the
         player's 3 buildings stand to s355 (stock: first out at 1992, gone s209-s231). aiskfon PASS through the same
-        pack (CampAISkFOnFm_mcp_1125_233236); aiskfof not run yet. aiskna (the nine unread fields at extremes, all
+        pack (CampAISkFOnFm_mcp_1125_233236). aiskfof (UseFormations false) and aiskgf (SkirmishGroupFudgeValue 200)
+        read as aiskfon shifted by a start jitter of up to 10 s (11-26). aiskna (the nine unread fields at extremes, all
         nine seen changed in the built global.bin) reads second for second as aiskfon run beside it, both PASS
         (CampAISkNAFm_mcp_1126_015445 / CampAISkFOnFm_mcp_1126_015604). aiskmrd (MaxRecruitDistance 1) and aiskts
         (TeamSeconds 600) read the same too (11-26): neither reaches the skirmish team maker. aiskn1 / aiskn10
@@ -2929,6 +2930,7 @@ def engine_aiskirm():
               'aiskna': {'fm': fm},
               'aiskmrd': {'fm': fm},
               'aiskts': {'fm': fm},
+              'aiskgf': {'fm': fm},
               'aiskn1': {'fm': fm},
               'aiskn10': {'fm': fm}}
     return dict(CHECKS=CHECKS, shared=SimpleNamespace(a=a, fm=fm, y=y, yc=yc))

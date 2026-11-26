@@ -757,6 +757,46 @@ expect = ["max(r['激流到'] for r in rows) >= 3"]
 
 [[reading]]
 bench_id = "engine_aiskirm"
+id = "use_formations_false_leaves_the_skirmish_team_as_stock"
+item = "AI 全局常量/AIData.UseFormations"
+scene = {build = "aiskfof", check = "fm", until = 250}
+bench = """\
+B 11-26 aiskfof (aiskfof__fm 05:08; UseFormations false spliced into the global stream) reads as aiskfon run beside it, \
+the whole run some 8 s earlier from the first Peacekeeper on (s44 / s48; a start jitter, aiskfon's own earlier run \
+was as early): the first Riptide in the player's base at s158 / s166, the first Peacekeeper at s173 / s183, 6 Riptides \
+at s217 / s228 -- with formations on or off the team does not march as one"""
+proves = "simai team maker: UseFormations does not reach the skirmish attack team"
+expect = ["max(r['激流到'] for r in rows) >= 3"]
+
+[[reading]]
+bench_id = "engine_aiskirm"
+id = "the_attack_teams_peacekeepers_walk_behind_its_riptides"
+scene = {build = "aiskfof", check = "fm", until = 250}
+bench = """\
+B 11-26 aiskfof / aiskfon / aiskgf (05:08-05:14) and aiskmrd (02:09): both kinds leave home in the same second, the \
+first Peacekeeper reaches the player's base 15-17 s after the first Riptide (s173 / s158, s183 / s166, s179 / s163, \
+s172 / s156) -- ~1900 at 50 against 90"""
+proves = "simai attack team: each member walks at its own speed"
+mismatch = """\
+sim Peacekeepers (speed 50) go at the Riptides' 90 beside them, 1 Peacekeeper and 2 Riptides in the base at s158 (B \
+11-26 probe; not looked into: a ride in the Riptide or a shared team speed)"""
+let = {riptide = "next(i for i, r in enumerate(rows) if r['激流到'] >= 1)", pk = "next(i for i, r in enumerate(rows) if r['维和到'] >= 1)"}
+expect = "pk - riptide >= 10"
+
+[[reading]]
+bench_id = "engine_aiskirm"
+id = "group_fudge_200_leaves_the_skirmish_team_as_stock"
+item = "AI 全局常量/AIData.SkirmishGroupFudgeValue"
+scene = {build = "aiskgf", check = "fm", until = 250}
+bench = """\
+B 11-26 aiskgf (aiskgf__fm 05:14; SkirmishGroupFudgeValue 200, stock 4, spliced into the global stream) reads as \
+aiskfon / aiskfof, shifted by the start jitter: the first Riptide in the player's base at s163, the first Peacekeeper \
+at s179, 6 Riptides at s224, home again by s247"""
+proves = "simai team maker: the skirmish attack team's arrival takes no group fudge radius"
+expect = ["max(r['激流到'] for r in rows) >= 3"]
+
+[[reading]]
+bench_id = "engine_aiskirm"
 id = "a_new_barracks_first_unit_is_the_unit_builders"
 scene = {build = "aiskvveh", check = "t", until = 100}
 bench = """\
