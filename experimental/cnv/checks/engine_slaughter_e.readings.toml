@@ -46,13 +46,13 @@ expect = ["counter('E170Frame') == 1500", "all(r['前置位'] == 0 and r['删后
 
 [[reading]]
 id = "no_carrier_lane_sends_a_drone_and_the_athena_control_is_dark_too"
-mismatch = "sim: a lane lights (the Athena at least fires at its plant); bench all dark -- the bench, not the sim, is the unexplained one (E251 hypothesis table), so the sim is not bent to it"
+mismatch = "sim: a lane lights (the Athena at least fires at its plant) and 预装 ends 8; bench all dark, 预装 1 -- the bench, not the sim, is the unexplained one (E251 hypothesis table), so the sim is not bent to it"
 scene = {build = "engine_slaughter_s", check = "s", until = 86}
 bench = "CampSlaughterSS_mcp_1126_001514: f600, 出机位 0, 命中位 0, 预装 1 from s18 (retail carrier, the clone on a WeaponSlotHardpoint, the retail one with a drone garrisoned in at f30, an Athena; all told NAMED_ATTACK_NAMED at a SovietPowerPlant at f300)"
 proves = """a negative baseline (the sixth): not the turret slot (D191 H2), not an empty container (H1: the drone left the \
 lane's area by f290) -- and the Athena, the positive control for an OCL-only weapon, read dark as well, so the bench, \
 not the carrier, is what stops the sortie (inventory TODO stays)"""
-expect = ["counter('E170Frame') == 600", "all(r['出机位'] == 0 and r['命中位'] == 0 for r in rows)"]
+expect = ["counter('E170Frame') == 600", "all(r['出机位'] == 0 and r['命中位'] == 0 for r in rows)", "rows[-1]['预装'] == 1"]
 
 [[reading]]
 id = "the_athena_does_not_turn_to_the_ordered_plant"

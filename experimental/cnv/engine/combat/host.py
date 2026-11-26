@@ -365,10 +365,10 @@ class Damage:
     def incoming_sweep(self, now):
         """The table's upkeep on 8-frame rounds, apart from any query (review 133). The bench drops an unshielded
         miner's row on the first round past its expiry (engine_inform_expiry a/b: 302/304/317 -> 304/312/320), a
-        shielding one's at 336 (c_inform_expiry_report.md). INFERRED: one round's grace -- the bench's micro reads the
-        stale row at 302-303 and shields at 305, our micro's rounds (300, 308) read it at 308; a coarse step drops
-        what its rounds would."""
-        edge = now - now % 8 - 8
+        shielding one's at 336 (c_inform_expiry_report.md, not modelled). No grace (review 135): the bench's micro
+        reads the stale row at 302-303, ours polls on its own rounds (300, 308) -- the micro's phase, apart from this
+        upkeep (engine_inform_expiry stale mismatch); a coarse step drops what its rounds would."""
+        edge = now - now % 8
         for rows in self.incoming.values():
             rows[:] = [r for r in rows if edge <= r[4]]
 

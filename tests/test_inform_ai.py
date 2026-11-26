@@ -412,11 +412,11 @@ def test_inform_launch_formula_and_matching_hit_lifecycle(monkeypatch):
     e.deal(1/15)
     assert target.hp == 350
     assert e.expected_damage(target, 0, 2) == 10
-    clock[0] = 451      # past expiry: asking reads the row and keeps it; the table's clock drops it a round later
+    clock[0] = 451      # past expiry: asking reads the row and keeps it; the table's clock drops it on the next round
     assert [e.expected_damage(target, 0, 2) for _ in range(2)] == [10, 10]
-    e._harm().incoming_sweep(456)
+    e._harm().incoming_sweep(448)
     assert e.expected_damage(target, 0, 2) == 10
-    e._harm().incoming_sweep(464)
+    e._harm().incoming_sweep(456)
     assert e.expected_damage(target, 0, 2) == 0
     # Retail cache was rebuilt with the new launch fields, preserving whole gap.
     retail = simunits._fight_data()['weapons']['SovietAntiVehicleVehicleTech1CannonWeapon']

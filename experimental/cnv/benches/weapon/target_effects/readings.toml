@@ -69,6 +69,7 @@ scenes = {stale = {build = "engine_inform_expiry", check = "stale", until = 37, 
 bench = "11-25 CampIExpStale_mcp_1125_125805: base 1187003068 (row hit 328 / expiry 303 at launch 302, shield 3 frames after the order, row kept to 336); off (no notice) base 87135068"
 proves = "TrackIncomingWeaponFire: the miner's micro reads the launch notice its table holds -- past the row's expiry too -- and shields before the shell; without the notice it never does"
 item = "物体模块 Behaviors/TrackIncomingWeaponFireBehavior"
+mismatch = "Simulator stale 0: the table drops the row (expiry 303) on the 304 round as the bench does for a/b (302/304/317 -> 304/312/320); the bench's micro reads it at 302-303 and shields at 305, ours polls at 300/308 (the micro's round, as engine_inform_ai [a] order: B's)."
 expect = [
     "vals(stale)[-1][0] // 100000000 == 11",
     "vals(off)[-1][0] // 100000000 == 0",
