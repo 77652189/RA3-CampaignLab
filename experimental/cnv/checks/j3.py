@@ -1,8 +1,10 @@
 """J3 tests (the plan: docs/story/plans/j3.md). Counted: Yuriko's health; in run, which leg of the way she is on.
 
 run: Yuriko kept at full health, sent by test script round the castle hill's north side and up the back way to the
-  archive (leg by leg, once a second, to the next point she has not reached), then back to the extraction once the escape starts -- the mission is over
-  (won).
+  archive (leg by leg, once a second, to the next point she has not reached), then once the escape starts back the
+  way she came to the extraction -- the mission is over (won). (11-26: sent straight home she went by the main gate,
+  where the dogs come out; three bites landing in one frame, 600, outrun the keep-up -- won before only because the
+  simulator's dogs did not bite, A386.)
 lose: Yuriko starts at 1 % and is sent straight up the main gate -- shot down, the mission is over (lost).
 """
 from parts import Script, Test, counted, square
@@ -38,8 +40,14 @@ def run(m):
                                                        ('NAMED_INSIDE_AREA', yuriko, f'Test {point}')],
                                 [('SET_COUNTER', stage, k + 1)]))
     m.waypoint('test extraction', 'Test extraction', 'extraction')
-    t.scripts.append(Script('Test - home', [('FLAG', 'CNV_J3_Phase_2', 1), ('TIMER_EXPIRED', 'Test - leg')],
-                            [('MOVE_NAMED_UNIT_TO', yuriko, m.mark('test extraction'))], once=False))
+    t.areas['Test extraction'] = square(*m.point('test extraction'), m.where('extraction').r or 150.0)
+    for k, point in enumerate([p for p, *_ in WAY[-2::-1]] + ['extraction'], len(WAY)):   # home the way she came
+        t.scripts.append(Script(f'Test - home {k + 1}', [('FLAG', 'CNV_J3_Phase_2', 1), ('TIMER_EXPIRED', 'Test - leg'),
+                                                         ('COUNTER', stage, 2, k)],
+                                [('MOVE_NAMED_UNIT_TO', yuriko, m.mark(f'test {point}'))], once=False))
+        t.scripts.append(Script(f'Test - back {k + 1}', [('COUNTER', stage, 2, k),
+                                                         ('NAMED_INSIDE_AREA', yuriko, f'Test {point}')],
+                                [('SET_COUNTER', stage, k + 1)]))
     t.scripts.append(Script('Test - leg again', [('TIMER_EXPIRED', 'Test - leg')],
                             [('SET_MILLISECOND_TIMER', 'Test - leg', 1.0)], once=False))
     t.expect += [('第几段', GO_AT, 'ever==', len(WAY)), ('ENDED', 30, '', None)]
