@@ -173,3 +173,9 @@ def test_objectcreationupgrade_makes_one_slave_and_slavewatcher_takes_the_upgrad
     hammer.upgrades.add(up)
     hammer.upgrades_moved(hammer.upgrades)
     assert len(made) == 2
+    # the Hammer's end, death or deletion (both tell its Destroy modules), kills the drone that lives (E247; review 133)
+    killed = []
+    w.kill = lambda thing, why: killed.append(thing.name)
+    for m in hammer.find(interfaces.Destroy):
+        m.on_destroy()
+    assert killed == ['child1']
