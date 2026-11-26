@@ -12,6 +12,10 @@ COMPOUND = ('suppression', 'hit_modifiers', 'line', 'emp_seconds', 'strip_max_he
 # first hit at 108; INFERRED: the flight's 70 of them); a shell with no flight module never lands (bench E168).
 BEZIER, NO_FLIGHT = -1.0, -2.0
 BEZIER_FRAMES = 70
+# A straight shell hits when it is this far outside the target's bounding circle: every retail straight shell's
+# MinTargetDistance (INFERRED as that; bench E250 engine_projupd with engine_shot's shells -- 2 + 5 / 7 / 9 / 11 frames
+# at 250-550 for MuzzleVelocity 50, 2 + 17 at 450 for 25, on a Hammer of radius 24.4 -- puts it between 0.6 and 25.6)
+REACH = 5.0
 
 
 def queue(pending, when, target, damage, attacker, weapon, centre=None):
@@ -50,9 +54,9 @@ def arrive(hit, hurt, detonate, clear):
 @nugget('Projectile', 'launch')
 class Projectile:
     """A straight shell (the host's `speed` > 0) and no compound effect takes the volley over: damage through armor
-    and flank at launch, landing int(flat distance / speed) frames later (GUESSED collision boundary, rechecked for
-    the two probe distances: full distance steps before impact; no fitted per-distance delays), or this frame on zero
-    steps. Any other shell is a gap and the volley lands as a direct hit."""
+    and flank at launch, landing after the steps of `speed` it takes to come within the target's radius + REACH (the
+    flat distance; INFERRED collision boundary), or this frame on zero steps. Any other shell is a gap and the volley
+    lands as a direct hit."""
 
     def payload(self, weapon):
         return weapon.get('projectile') or None
@@ -64,7 +68,8 @@ class Projectile:
             return True
         if (speed == BEZIER or speed > 0) and not any(w.get(k) for k in COMPOUND):
             t, by = context.target, context.by
-            frames = BEZIER_FRAMES if speed == BEZIER else int(math.hypot(t.x - by.x, t.y - by.y) / speed)
+            gap = math.hypot(t.x - by.x, t.y - by.y) - (t.radius or 0.0) - REACH
+            frames = BEZIER_FRAMES if speed == BEZIER else max(0, math.ceil(gap / speed))
             # GUESSED until dynamic-armor bench: snapshot scalars at launch (the flank too: bench engine_inform_ai,
             # the side-facing miners' 68 %, from the launch)
             damage = context.n * w['dmg'] * by.dealt * context.hit(t, w['type'])

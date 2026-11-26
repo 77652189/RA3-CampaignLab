@@ -2360,6 +2360,66 @@ def engine_projectile():
     return dict(MISSION=MISSION, CHECKS=CHECKS)
 
 
+def engine_projupd():
+    """E250: ProjectileUpdate (StraightLineProjectile) owns the shell's flight. engine_projectile's V4, one shell each
+    at a Hammer 450 north: On the retail Hammer shell (copied), Off the copy without its ProjectileUpdate, Slow the copy
+    at MuzzleVelocity 25. Counters: frames from the order while each target is untouched (hit), Slow's target health %.
+    PREDICT: first hit 2 + floor(450 / v) frames after the order -- On 11, Slow 20 (95 %) -- and Off never lands
+    (engine_bezier_e's rocket without BezierProjectile never did; host.straight_speed's NO_FLIGHT): still counting.
+    Bench 11-25: 11 / never / 19 / 95 -- the shell hits at the target's edge (engine/combat/projectile.py REACH)."""
+    import re
+    from maps import probe_range
+    from parts import Mission, Script, Test
+    from benches.weapon.target_effects.checks import engine_shot
+    shell_v4 = engine_shot()["shared"].shell_v4
+    missile = engine_missile()["shared"]
+    LANES = (('On', 'base'), ('Off', 'high'), ('Slow', 'order'))
+
+    def gun(tag):
+        u = shell_v4('CNVPU1' + tag, reload=1.0)
+        f = u.names['projectile'] + '.xml'
+        cut = {'Off': (r'\s*<ProjectileUpdate\b.*?</ProjectileUpdate>', ''), 'Slow': ('"50.0"', '"25.0"')}
+        if tag in cut:
+            u.files[f], k = re.subn(*cut[tag], u.files[f], flags=re.S)
+            assert k == 1, (tag, k)
+        return u
+
+    def mission():
+        m = Mission(name='CampProjUpd', map=probe_range, units=[gun(t) for t, _ in LANES] + [missile.target()])
+        for tag, lane in LANES:
+            m.put('CNVPU1' + tag, lane + ' gun', side='p1', angle=1.5708, name='PU1 ' + tag + ' gun')
+            m.put(missile.TARGET_ID, lane + ' gun', 0, 450, side='s1', angle=4.7124, name='PU1 ' + tag + ' target')
+        return m
+
+    def check(m):
+        t = Test()
+        start = [('MAP_REVEAL_ALL_PERM', m.player('p1')), ('SET_MILLISECOND_TIMER', 'PU1 Fire', 6.0),
+                 ('SET_MILLISECOND_TIMER', 'PU1 Stop', 6.0 + 4 / 15)]
+        fire, stop = [], []
+        for tag, _ in LANES:
+            g, v = 'PU1 ' + tag + ' gun', 'PU1 ' + tag + ' target'
+            start += [('UNIT_CHANGE_OBJECT_STATUS', n, 'NO_ATTACK', 1) for n in (g, v)]
+            fire += [('UNIT_CHANGE_OBJECT_STATUS', g, 'NO_ATTACK', 0), ('NAMED_ATTACK_NAMED', g, v)]
+            stop += [('UNIT_CHANGE_OBJECT_STATUS', g, 'NO_ATTACK', 1)]
+            t.counters.append(('PU1' + tag, tag + ' hit'))
+            t.scripts.append(Script('Test - frame ' + tag, [('FLAG', 'PU1 Ordered', 1), ('UNIT_HEALTH', v, 2, 100)],
+                                    [('INCREMENT_COUNTER', 1, 'PU1' + tag)], once=False))
+        t.counters.append(('PU1SlowHP', 'Slow HP'))
+        t.scripts = [Script('Test - start', [], start),
+                     Script('Test - fire', [('TIMER_EXPIRED', 'PU1 Fire')], fire + [('SET_FLAG', 'PU1 Ordered', 1)]),
+                     *t.scripts, Script('Test - stop', [('TIMER_EXPIRED', 'PU1 Stop')], stop),
+                     Script('Test - hp', [], [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', 'PU1 Slow target', 'PU1SlowHP')],
+                            once=False)]
+        t.expect = [('On hit', 14, '==', 11, 16), ('Off hit', 14, '>', 100, 16), ('Slow hit', 14, '==', 19, 16),
+                    ('Slow HP', 14, '==', 95, 16)]
+        t.bench = [('bench_watch', dict(seconds=16.0, every=.5, sheet=False, lines=4))]
+        return t
+    MISSION = {'engine_projupd': mission}
+    CHECKS = {'engine_projupd': {'a': check}}
+    CONTROL_ARMS = {'engine_projupd': ('On', 'Off')}
+    return dict(MISSION=MISSION, CHECKS=CHECKS, CONTROL_ARMS=CONTROL_ARMS)
+
+
 @cache
 def engine_range():
     """Engine unit tests: what an upgrade's RANGE attribute modifier does to a turret (docs/engine/upgrades.md; A8's swell,
@@ -2843,6 +2903,6 @@ BENCHES = (
     engine_emp, engine_empfire, engine_fire, engine_fireobjects,
     engine_fwcollide, engine_fwupdate, engine_grapple, engine_laser,
     engine_leechhealth, engine_leechpct, engine_missile, engine_ocl,
-    engine_oclone, engine_prism, engine_prismx, engine_projectile,
+    engine_oclone, engine_prism, engine_prismx, engine_projectile, engine_projupd,
     engine_range, engine_reorder, engine_wfire,
 )

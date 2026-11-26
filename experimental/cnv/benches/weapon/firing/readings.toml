@@ -80,6 +80,19 @@ proves = "物体模块 BezierProjectile: retail V4 rocket flies to its victim an
 item = "物体模块 Behaviors/BezierProjectile"
 expect = ["counter('E168Frame') == 240", "counter('E168Base') == 3", "counter('E168On') == 95", "counter('E168Off') == 100"]
 
+# E250 benches/weapon/firing/checks.py#engine_projupd: the Hammer shell, retail / without ProjectileUpdate / MuzzleVelocity
+# 25, at Hammers 450 north. Not benched: the BombProjectile machine (the bombers', the balloon's), LAUNCH_AT_TARGET_POS,
+# an accelerating shell (the super torpedo) -- the simulator lands those as a direct hit.
+
+[[reading]]
+bench_id = "engine_projupd"
+id = "projectile_update_sets_the_straight_shells_flight_and_without_it_none_lands"
+scene = {build = "engine_projupd", check = "a", until = 16, shot_clock = true}
+bench = "E250 (bench 11-25, CampProjUpdA_mcp_1125_232515): On hit 11, Off hit 143+ and counting, Slow hit 19, Slow HP 95 (predicted Slow 20 by floor(d / v): the shell hits at the target's edge, not its centre)"
+proves = "物体模块 ProjectileUpdate: a StraightLineProjectile shell lands 2 + ceil((d - radius - 5) / MuzzleVelocity) frames after the order (450: 11 at 50, 19 at 25); the shell without the module never lands"
+item = "物体模块 Behaviors/ProjectileUpdate"
+expect = ["counter('PU1On') == 11", "counter('PU1Off') > 100", "counter('PU1Slow') == 19", "counter('PU1SlowHP') == 95"]
+
 # Bench readings of benches/weapon/firing/checks.py#engine_charge_e (format: experimental/cnv/readings.py; runner: tests/conformance).
 # E213: ChargeWeaponUpdate, the Wave-Force tower as retail against the module taken out, both held GO (a 16 s, b 4 s,
 # c 6 s) then told to attack. On / Off = the target's health % x 1000 at its first loss + frames from GO to it;
