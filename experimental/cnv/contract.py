@@ -41,7 +41,8 @@ RETAIL_COMMANDS = {'Command_UnPackJapanEgg',          # serialized retail a04/j0
                    'Command_SovietAntiGroundAircraftEvacuate',  # the Twinblade lands its passengers (EVACUATE)
                    'Command_Evacuate',                  # a06's Marine One (AlliedMarine1, engine_marine)
                    'Command_ToggleShieldSphere',        # the Athena's shield (engine_avail)
-                   'Command_ToggleMirageField',         # the Mirage tank's field on / off (AlliedAntiVehicleVehicleTech3CommandSet)
+                   'Command_ToggleRadarLockSpecialPower',   # the Javelin's laser lock (engine_a1jav f)
+                   'Command_ToggleMirageField',        # the Mirage tank's field on / off (AlliedAntiVehicleVehicleTech3CommandSet)
                    'Command_JapanAntiInfantryInfantryBonzai',   # the Imperial Warrior's Bonzai charge (engine_aimicro)
                    'Command_ToggleMolotovCocktailSpecialPower', 'Command_ToggleLeechBeam',     # engine_toggle b / c
                    'Command_ToggleAlliedEngineerHeal', 'Command_ToggleBinaryWeapon',          # engine_toggle d / e
