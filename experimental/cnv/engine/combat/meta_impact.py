@@ -27,7 +27,8 @@ def detonate(host, weapon, target, centre, attacker):
 def fire_at_self(host, weapon, attacker, target):
     """An instant DamageDealtAtSelfPosition shot's shocks (A363, the retail shotgun; bench engine_knock_self): the
     centre is the shooter's feet, the arc about its line to the target. INFERRED: the shooter itself never takes its
-    own shock (bench: the shooter stood at the centre unshocked; self or relation not told apart)."""
+    own shock (bench: the shooter stood at the centre unshocked; self or relation not told apart). Delayed shocks (Omega,
+    A381 engine_knock_selfd: a shooter teleported 150 away the frame after still shocks from here) keep this centre."""
     centre = (attacker.x, attacker.y, host.ground_z(attacker.x, attacker.y) if attacker.z is None else attacker.z)
     launch(host, weapon, centre, attacker, axis=(target.x - attacker.x, target.y - attacker.y))
 
@@ -47,7 +48,7 @@ def launch(host, weapon, centre, attacker, axis=None, delayed=False):
     world, peers, gap = host.world, host.peers, host.gap
     flights, now = peers.impact_flights, world.frame_now()
     for effect in weapon.get('delayed_meta_impacts', []):        # waits in Damage's queue (tick)
-        host.impact_delays.enqueue(now, effect, (centre, attacker))
+        host.impact_delays.enqueue(now, effect, (centre, attacker, axis))   # at-self: the shot's feet (A381)
     for effect in weapon.get('meta_impacts', []):
         if effect['radius'] <= 0:
             gap(TAG, '非正冲击半径的选人范围未建模')
@@ -159,8 +160,8 @@ def tick(host):
     (D39: collision c, ceil(float32 seconds * 15) = D, out at c + D + 1, before the Physics updates)."""
     world, peers = host.world, host.peers
     now = world.frame_now()
-    for _, effect, (centre, attacker) in host.impact_delays.due(now):
-        launch(host, dict(meta_impacts=[effect]), centre, attacker, delayed=True)
+    for _, effect, (centre, attacker, axis) in host.impact_delays.due(now):
+        launch(host, dict(meta_impacts=[effect]), centre, attacker, axis=axis, delayed=True)
     flights = peers.impact_flights
     for key, (b, start, points) in list(flights.items()):
         if not b.alive:

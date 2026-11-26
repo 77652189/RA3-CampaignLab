@@ -16,3 +16,24 @@ bench = "CampKSelfB_mcp_1124_231636: retail man / side, plain man / side still o
 proves = "MetaImpactNugget of the shotgun (engine/combat/meta_impact.fire_at_self): centred on the shooter's feet, the 5d arc about its line -- the man 25 ahead is knocked off his spot, the side man 39 deg out stays; with only ShockWaveArc removed the side man is knocked too"
 expect = "vals(rows)[-1] == [0, 1, 0, 0]"
 item = "武器效果 MetaImpactNugget:散弹自身弧"
+
+# engine_knock_selfd (A381, Omega's spelling): counters stay hit, stay home, moved hit, moved home -- hit = the man's
+# full-health script frames (+1000 at the loss), home = the side man's frames still on his spot (a 3 box).
+
+[[reading]]
+id = "a_delayed_shock_from_the_shooters_feet_stays_where_it_fired"
+scene = {build = "engine_knock_selfd", check = "a", until = 12, shot_clock = true}
+bench = "CampKSelfDA_mcp_1125_221002: 1092 111 1092 111 from s7.53 to the end; ra3ext: every shock at frame 111 (= 92 + 19), moved's centred (2300, 3300) where it fired, not (2300, 3150) where it was teleported; the shooters not shocked"
+proves = "MetaImpactNugget of a DamageDealtAtSelfPosition weapon with ShockwaveDelaySeconds (engine/combat/host -> meta_impact.fire_at_self, Damage's queue): the delayed shock goes off at the shooter's feet at the shot, wherever it is when the delay runs out"
+item = "武器效果 MetaImpactNugget:自身延迟"
+let = {v = "vals(rows)[-1]"}
+expect = ["v[0] > 1000 and v[2] > 1000", "v[1] == v[3] < 150"]
+
+[[reading]]
+id = "a_delayed_shock_from_the_shooters_feet_goes_off_its_delay_plus_one_frames_after_the_shot"
+scene = {build = "engine_knock_selfd", check = "a", until = 12, shot_clock = true}
+bench = "CampKSelfDA_mcp_1125_221002: home - (hit - 1000) = 111 - 92 = 19 both lanes (1.2 s: D 18 + 1)"
+proves = "the at-self shock's queue (as the Katana's, checks/engine_knock_delay.readings.toml) and the side man off his spot on the shock frame"
+let = {v = "vals(rows)[-1]"}
+expect = ["v[1] - (v[0] - 1000) == 19"]
+mismatch = "sim 1092 113: its shock goes off at frame 111 too, but the at-self trajectory's first samples (A363's landing on the 20 grid, INFERRED: the side man falls back to (+20, 3320) while ra3ext's v is +y) keep him in his 3 box two frames longer"

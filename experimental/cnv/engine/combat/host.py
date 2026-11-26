@@ -505,9 +505,11 @@ class Damage:
                         if not projectile:
                             instant[victim.serial] = instant.get(victim.serial, 0.0) + h[1] - before
                     registry.run('effect', ctx)           # the lift, the attachment, the power, the modifier (registry.ORDER)
-                    if w.get('at_self') and w.get('meta_impacts') and not projectile:
-                        meta_impact.fire_at_self(host, w, by, t)      # the shotgun's shocks from its feet (A363)
-                    elif w.get('delayed_meta_impacts') and not w.get('at_self') and not projectile:
+                    shocks = not projectile and (w.get('meta_impacts') or w.get('delayed_meta_impacts'))
+                    if shocks and w.get('at_self'):
+                        # the shotgun's shocks (A363) and Omega's delayed ones (A381) from its feet at the shot
+                        meta_impact.fire_at_self(host, w, by, t)
+                    elif shocks and w.get('delayed_meta_impacts'):
                         # an instant hit's delayed shocks (Katana): centred on the target's half height (INFERRED)
                         meta_impact.detonate(host, dict(w, meta_impacts=[]), t, None, by)
         self.dots[:] = dot.tick(self.dots, world.frame_now(), hurt, armor_scalar, gap)    # the frame-end DOT ledger

@@ -21,7 +21,7 @@ def test_nugget_form_split_rejects_unmeasured_fields_children_and_mixed_inherita
     assert inventory.nugget_form_slice('MetaImpactNugget', [omitted]) == ':省略Z默认值'
     delayed = ET.fromstring('<MetaImpactNugget ShockWaveAmount="89" ShockWaveRadius="100" ShockwaveDelaySeconds="1.9s"/>')
     assert inventory.nugget_form_slice('MetaImpactNugget', [delayed]) == ':普通延迟'
-    assert inventory.nugget_form_slice('MetaImpactNugget', [delayed], at_self=True) == ''     # Omega: not measured
+    assert inventory.nugget_form_slice('MetaImpactNugget', [delayed], at_self=True) == ':自身延迟'     # Omega
     for field in ('ShockWaveSpeed', 'CyclonicFactor', 'ShockWaveArc', 'FutureField'):
         other = ET.fromstring(ET.tostring(ordinary))
         other.set(field, '1')
@@ -65,7 +65,7 @@ def test_retail_nugget_partitions_conserve_uses_and_only_register_measured_forms
                         or (inventory.NUGGET, i['name']) in inventory.declared_items())     # readings' item key
                 assert '仅' in i['why'] and 'engine_' in i['why']
                 field = 'inform' if kind == 'InformTargetNugget' else (
-                    'delayed_meta_impacts' if i['name'].endswith(':普通延迟') else 'meta_impacts')
+                    'delayed_meta_impacts' if i['name'].endswith('延迟') else 'meta_impacts')
                 assert all(weapons[w].get(field) for w in i['weapon_ids'])
                 if kind == 'InformTargetNugget':
                     maximum = 1.6 if i['name'].endswith(':Max1.6目标通知') else 1.15

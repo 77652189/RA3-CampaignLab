@@ -44,21 +44,25 @@ def name(lane, part):
     return f'UNIT - CNV KSelf {lane} {part}'
 
 
-def plain_shooter():
-    """The probe Peacekeeper with its shotgun copied without ShockWaveArc (nothing else changed)."""
+def plain_shooter(unit=PLAIN, wid=PLAIN_WEAPON, delay=None):
+    """The probe Peacekeeper with its shotgun copied without ShockWaveArc (and with ShockwaveDelaySeconds=delay)."""
     man = probe_man()
     with open(os.path.join(labpaths.SDK3, 'SageXML', 'GlobalData', 'Weapon.xml'), encoding='utf-8') as f:
         text = f.read()
     weapon = re.search(rf'<WeaponTemplate\s+id="{RETAIL}".*?</WeaponTemplate>', text, re.S).group(0)
-    weapon, n = re.subn(r'\s+ShockWaveArc="5d"', '', weapon.replace(f'id="{RETAIL}"', f'id="{PLAIN_WEAPON}"'))
+    weapon, n = re.subn(r'\s+ShockWaveArc="5d"', f' ShockwaveDelaySeconds="{delay}"' if delay else '',
+                        weapon.replace(f'id="{RETAIL}"', f'id="{wid}"'))
     assert n == 1
-    x = man.xml.replace(f'id="{PROBE}"', f'id="{PLAIN}"', 1).replace(f'EditorName="{PROBE}"', f'EditorName="{PLAIN}"')
+    if delay:       # Omega's spelling: no forbidden model condition either
+        weapon, n = re.subn(r'\s+ForbiddenTargetModelCondition="STUNNED_FLAILING"', '', weapon)
+        assert n == 1
+    x = man.xml.replace(f'id="{PROBE}"', f'id="{unit}"', 1).replace(f'EditorName="{PROBE}"', f'EditorName="{unit}"')
     assert x.count(f'Template="{RETAIL}"') == 1
-    x = x.replace(f'Template="{RETAIL}"', f'Template="{PLAIN_WEAPON}"')
+    x = x.replace(f'Template="{RETAIL}"', f'Template="{wid}"')
     x = x.replace('</AssetDeclaration>', f'\t{weapon}\n</AssetDeclaration>', 1)
-    u = Unit(PLAIN, x, names=dict(unit=PLAIN), what='维和探针的复制：散弹只删 ShockWaveArc（对照）',
-             params=dict(man.params))
-    u.link = list(u.link) + [f'WeaponTemplate:{PLAIN_WEAPON}']
+    u = Unit(unit, x, names=dict(unit=unit), params=dict(man.params),
+             what='维和探针的复制：散弹只删 ShockWaveArc' + (f'、加延迟 {delay}' if delay else '（对照）'))
+    u.link = list(u.link) + [f'WeaponTemplate:{wid}']
     return u
 
 
@@ -110,5 +114,56 @@ def check(m, home=False):
     return t
 
 
-MISSION = {'engine_knock_self': mission}
-CHECKS = {'engine_knock_self': {'a': check, 'b': lambda m: check(m, home=True)}}
+DELAYED = 'CNV_KnockShotD'
+DLANES = {'stay': 'removed gun', 'moved': 'switch gun'}
+
+
+def delayed_mission():
+    """engine_knock_selfd (A381, Omega's spelling: DamageDealtAtSelfPosition + ShockwaveDelaySeconds, no Arc): both lanes
+    a shooter whose shotgun has ShockWaveArc swapped for a 1.2 s delay; 'moved''s shooter is teleported 150 back the
+    frame after its hit, 'stay''s stands. Counters a lane: hit (full-health script frames of the man, +1000 at the
+    loss) and home (the side man's frames still on his spot). Prediction (the shock queued at the shooter's feet at
+    the shot, as a delayed rocket's at its collision): both lanes home - (hit - 1000) == D + 1 = 19; if the centre
+    followed the shooter at expiry, 'moved''s side man would never leave (home = the run)."""
+    m = Mission(name='CampKSelfD', map=probe_range, units=[plain_shooter(DELAYED, DELAYED + 'Weapon', '1.2s')],
+                facts={})
+    m.ext = True
+    for lane, site in DLANES.items():
+        m.put(DELAYED, site, 0, 0, side='p1', angle=1.5708, name=name(lane, 'gun'))
+        for part, (dx, dy) in SPOTS.items():
+            m.put(DELAYED, site, dx, dy, side='s1', angle=-1.5708, name=name(lane, part))
+    return m
+
+
+def delayed_check(m):
+    m.units = [plain_shooter(DELAYED, DELAYED + 'Weapon', '1.2s')]
+    t = Test()
+    start = [('MAP_REVEAL_ALL_PERM', m.player('p1'))]
+    start += [('UNIT_CHANGE_OBJECT_STATUS', name(k, p), 'NO_ATTACK', 1) for k in DLANES for p in ('gun',) + tuple(SPOTS)]
+    t.scripts.append(Script('Test - start', [], start + [('SET_MILLISECOND_TIMER', 'KSelf Fire', float(ORDER))]))
+    t.scripts.append(Script('Test - fire', [('TIMER_EXPIRED', 'KSelf Fire')], [
+        a for k in DLANES for a in (('UNIT_CHANGE_OBJECT_STATUS', name(k, 'gun'), 'NO_ATTACK', 0),
+                                    ('NAMED_ATTACK_NAMED', name(k, 'gun'), name(k, 'man')))]))
+    for k, site in DLANES.items():
+        x, y = m.site(site)[:2]
+        c, area = f'CNV_KSelfD_{k}', name(k, 'side home')
+        t.areas[area] = square(x + SPOTS['side'][0], y + SPOTS['side'][1], 3)
+        t.counters += [(c, f'{k} hit'), (c + 'Home', f'{k} home')]
+        after = [('UNIT_CHANGE_OBJECT_STATUS', name(k, 'gun'), 'NO_ATTACK', 1)]    # one shot, no walking back
+        if k == 'moved':
+            t.waypoints['Test KSelfD Back'] = (x, y - 150.0)
+            after.append(('UNIT_TELEPORT_TO_WAYPOINT', name(k, 'gun'), 'Test KSelfD Back'))
+        t.scripts += [Script(f'Test - frames {k}', [('UNIT_HEALTH', name(k, 'man'), 2, 100)],
+                             [('INCREMENT_COUNTER', 1, c)], once=False),
+                      Script(f'Test - lost {k}', [('UNIT_HEALTH', name(k, 'man'), 0, 100)],
+                             [('INCREMENT_COUNTER', 1000, c)] + after),
+                      Script(f'Test - home {k}', [('NAMED_INSIDE_AREA', name(k, 'side'), area)],
+                             [('INCREMENT_COUNTER', 1, c + 'Home')], once=False)]
+        t.expect += [(f'{k} hit', RUN - 2, 'ever>=', 1000, RUN), (f'{k} home', RUN - 2, '>=', 50, RUN)]
+    t.bench = [('bench_watch', dict(seconds=RUN, every=.5, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+MISSION = {'engine_knock_self': mission, 'engine_knock_selfd': delayed_mission}
+CHECKS = {'engine_knock_self': {'a': check, 'b': lambda m: check(m, home=True)},
+          'engine_knock_selfd': {'a': delayed_check}}
