@@ -12,7 +12,8 @@ in through the same object). The rules are the XML's (GarrisonContain's fields) 
                is pushed out and the newcomer stays out (garrison.md 5: one of the player's two came out, the contesting
                conscript never in; a plain enemy put in stays beside them)
   inside       the passenger stands at the building's spot carrying ObjectStatusOfContained (UNSELECTABLE ENCLOSED
-               CAN_ATTACK for a house: ENCLOSED is what the checks count) + INSIDE_STATUS; the building's owner is the
+               CAN_ATTACK for a house: ENCLOSED is what the checks count) + INSIDE_STATUS -- in a house with a seat
+               table (seat()), at its seat, from which it shoots (A1 bench engine_a1gar e / j / k); the building's owner is the
                first passenger's, empty again the owner it had before (garrison.md 1 / 2: 16 / 15 / 0)
   out          NAMED_EXIT_BUILDING (the unit); a sale, all out in the sale's frame (bench 11-17 engine_sell g, a
                SovietBunker; a house without StructureSellUpdate is not sold at all, engine_garrison del);
@@ -36,12 +37,15 @@ Transports (TransportContain: the Bullfrog, the Riptide, the bomber; bench 11-10
                in first -- INFERRED), each landing on the spot EJECT_FLIGHT later (out of ENCLOSED at once)
   the end      KillPassengersOnDeath (every retail transport): a killed transport kills them (NAMED_KILL too)
   not          the REALLYDAMAGED walk-out (a house's only), the passengers' fire, the parachute (untargeted) eject
-Not modelled: fire from inside (the passengers keep their own weapons; a turret's weapon set by its passenger), the
-garrison aura, clearing weapons, the exit point (they come out where the building stands), EjectSpeed.
+Not modelled: a turret's weapon set by its passenger, clearing weapons, the exit point (they come out where the
+building stands), EjectSpeed, a passenger's change of seat (j: one with a target in reach moved to the free bone
+nearest it), the seat a house gives first (bench: each house its own, the same game to game; here the first free).
 L2 (ADR 0029, docs/engine/sim-layers.md): the world is reached only through simworld.WORLD_API (`world`); a body's end is
 the kernel World's (kill / remove), its walk simlocomotion.go_to, the enter order's walk L5's order_move handed in as
 `move`. This module never imports sim."""
+import json
 import math
+import os
 import re
 
 import engine.data.units as simunits
@@ -61,9 +65,20 @@ ARRIVE = 10.0                   # INFERRED: StartAbilityRange 0's "there" (a fra
 INSIDE_STATUS = frozenset({'IMMOBILE', 'UNATTACKABLE'})     # INFERRED: a passenger neither walks nor is shot at
                                                             # by itself (the building takes the hits)
 CIV = 'PlyrCivilian'
+BONES = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data', 'garrison_bones.json')
 
 
 _memo = {}
+with open(BONES, encoding='utf-8') as _f:
+    _BONES = {k: [tuple(p) for p in v] for k, v in json.load(_f).items()}
+
+
+def seats(template):
+    """A house's garrison seats: its model's PassengerData BonePrefix bones (BONEGARRISON01..) as (x, y) off its centre
+    at angle 0 (x east, y north), in their names' hash order -- the order the game takes them in, INFERRED from k's
+    base house (04, 07, the first two). GE_TownHouse01 and the houses
+    our 9 levels place (data/garrison_bones.json, from the static stream: work/re/scripts/garrison_bones.py); () else."""
+    return _BONES.get(template.lower(), ())
 
 
 def really(template, own=None):
@@ -109,6 +124,7 @@ class Garrisons:
                                     # into (the cell's order); by the thing, not its name: a thing made under a taken
                                     # name has none of the old one's passengers (step B4c-3, INFERRED)
         self.where = {}             # passenger serial -> building body
+        self.seat = {}              # passenger serial -> its seat (x, y) off the house's centre at angle 0 (seats())
         self.going = {}             # serial -> (the body, the building body it was sent into) (the AI's walk); both
                                     # by the thing picked, not its name (11-19 same-name sweep: a thing made under the
                                     # name since is neither inside nor on its way, INFERRED)
@@ -282,11 +298,13 @@ class Garrisons:
         if not held and house:
             box.keep_home(g.owner)
         bits = (sp['status'] | INSIDE_STATUS) - u.script_status
+        taken = [self.seat.get(p.serial) for p in held]
+        self.seat[u.serial] = next((s for s in seats(g.template) if s not in taken), (0.0, 0.0)) if house else (0, 0)
         box.let_in(u, bits)
         self.where[u.serial] = g
         self.going.pop(u.serial, None)
         self.log.append((world.t, u.name, g.name, script))
-        self._set_down(u, g.x, g.y)
+        self._set_down(u, *self.spot(u, g))
         u.script_status |= bits
         if house:
             g.owner = held[0].owner
@@ -299,6 +317,12 @@ class Garrisons:
         world.note('驻军', f'{world.label(u)} 进 {world.label(g)}')
         world.change()
         return True
+
+    def spot(self, u, g):
+        """Where the passenger u of g stands: its seat turned with g (a transport's riders, g's spot)."""
+        dx, dy = self.seat.get(u.serial, (0.0, 0.0))
+        c, s = math.cos(g.angle), math.sin(g.angle)
+        return g.x + dx * c - dy * s, g.y + dx * s + dy * c
 
     def _set_down(self, u, x, y):
         """u put at (x, y) with no way left (its Locomotor's) and no goal (its AIUpdate's: dropped alone)."""
@@ -313,6 +337,7 @@ class Garrisons:
         g = self.where.pop(u.serial, None) if u is not None else None
         if g is None:
             return False
+        self.seat.pop(u.serial, None)
         box = self.boxes.get(g.serial)
         u.script_status -= box.let_out(u) if box is not None else frozenset()
         held = box.passengers() if box is not None else []
@@ -459,8 +484,8 @@ class Garrisons:
             if not g.alive:
                 self.died(g, g.deleted)
                 continue
-            for u in held:                              # riding: where the transport is
-                u.x, u.y = g.x, g.y
+            for u in held:                              # riding: where the transport is (a house: at the seat)
+                u.x, u.y = self.spot(u, g)
             self.hurt(g)
         self._throw()
 
