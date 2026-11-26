@@ -8,7 +8,8 @@ from engine.kernel import interfaces
 
 def charge_due(world, frame, unpowered):
     """The first charge of a SpecialPower module with AvailableAtStart false, kept on the module (first_charge): over
-    ReloadTime after the frame its thing was made, a frame later for each frame the thing is unpowered before then
+    ReloadTime after the frame its thing was made (made_frame; review 141 A388: a script's at frame 19 is ready at
+    19 + ReloadTime, not the tick's 1.2 s x 15), a frame later for each frame the thing is unpowered before then
     (A382 bench 11-25 engine_a1cd g: a Chronosphere's 180 s, its owner short of power 30 s, ready 30 s late, paused
     not reset). INFERRED: the other disabled kinds (EMP ...) and a reload a cast started are not paused."""
     for b in world.bodies.values():
@@ -18,7 +19,7 @@ def charge_due(world, frame, unpowered):
             at = m.first_charge()
             if at is None:
                 rules = simunits.power_rules(b.template, m.power(), world.own)
-                m.set_first_charge(round(b.made_at * 15) + (rules['reload'] if rules else 0))
+                m.set_first_charge(m.made_frame() + (rules['reload'] if rules else 0))
             elif frame < at and 'POWERED' in b.kinds and unpowered(b):
                 m.set_first_charge(at + 1)
 

@@ -56,13 +56,23 @@ class SpecialPowerData(module.ModuleData):
 
 
 @factory.module(*(t for t in TAGS if t not in (ASSIGN, RECALL, RETURN, DOMINATE, STORE, OCL)))
-class SpecialPower(module.Module, interfaces.SpecialPower):
+class SpecialPower(module.Module, interfaces.SpecialPower, interfaces.Create):
     """Data and a reload frame; no update of its own (a reload is over once the frame passes it)."""
     DATA = SpecialPowerData
-    STATE = ('ready', 'first')
+    STATE = ('ready', 'first', 'made')
     RECORDED = ()
     ready = None        # the frame its reload ends; None: no cast started one
     first = None        # AvailableAtStart false: the frame its first charge is over (simpower.charge_due keeps it)
+    made = 0            # the frame its thing was made (World.build; review 141 A388: not the tick's seconds label)
+
+    def on_create(self, frame):
+        self.made = frame
+
+    def on_build_complete(self):
+        pass
+
+    def made_frame(self):
+        return self.made
 
     def power(self):
         return self.data.power
@@ -191,7 +201,7 @@ class StoreObjects(SpecialPower, interfaces.Store):
     engine/modules/teleport.py). A filter other than CHRONO takes no one (a gap; INFERRED as the private model's
     unfiltered store). Not modelled: the OCL's markers."""
     DATA = StoreData
-    STATE = ('ready', 'first', 'stored_at', 'carried')
+    STATE = ('ready', 'first', 'made', 'stored_at', 'carried')
     stored_at = None    # the stored point; None: never stored, or cleared
     carried = ()        # the stored things
 
@@ -264,7 +274,7 @@ class AssignSlaves(SpecialPower, interfaces.Assign, interfaces.Update):
     is changed by anything else (a conservative stop, INFERRED). Asleep without a target. Its state was a store's, never in the frame record: RECORDED names none."""
     DATA = AssignData
     PHASE = 'assignments'
-    STATE = ('ready', 'first', 'tgt', 'rate', 'last', 'spots')
+    STATE = ('ready', 'first', 'made', 'tgt', 'rate', 'last', 'spots')
     RECORDED = ()
     ALIGN = {'assigned repair': '部分对齐：无人机全忙时显式派发从按下起按无人机脉冲治疗（E181 第四台）；'
                                 '"第四架、不飞"与中断即停为 INFERRED'}
@@ -342,7 +352,7 @@ class OCLRun(SpecialPower, interfaces.OCLRun, interfaces.Update):
     once (INFERRED); one shot down before it is over drops nothing (review 133; the retail cut-off not measured,
     INFERRED). Not modelled: the bomb's other nuggets."""
     PHASE = 'seq'
-    STATE = ('ready', 'first', 'runs', 'firing', 'aim')
+    STATE = ('ready', 'first', 'made', 'runs', 'firing', 'aim')
     runs = ()           # (target, its spot at the call, made, hit, gone frame, the curve, the bomber made or None)
     firing = 0          # the last frame the master counts as attacking
     aim = None          # the target of its last call

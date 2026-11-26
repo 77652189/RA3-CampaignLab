@@ -510,6 +510,9 @@ class SpecialPower(Interface):
     def set_first_charge(self, frame):
         raise NotImplementedError
 
+    def made_frame(self):
+        raise NotImplementedError
+
     def ready_by(self, frame):
         raise NotImplementedError
 

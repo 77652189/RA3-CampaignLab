@@ -61,6 +61,20 @@ def test_the_cannon_module_refuses_the_click_until_its_reload_ends():
     assert simability.order_power(e, simorder.Peers(e), b, CANNON, (b.x + 500, b.y))[1] != 'reloading'
 
 
+def test_the_first_charge_runs_from_the_frame_it_was_made():
+    # review 141 A388: a thing made later (a script's at frame 19) charges from that frame, not from its seconds label
+    import sim
+    import engine.testing.small as simsmall
+    e = simsmall.small_world().advance(19)
+    made = e.frame_now()
+    e.add('collider', COLLIDER, 'Player_1', 300.0, 300.0, at=1.2)
+    e.unpowered = lambda b: False       # no plant here; the pause: reading g_a_chronosphere_charges...
+    e.advance(1)
+    (m,) = e.bodies['collider'].find(sim.kernel_interfaces.SpecialPower)
+    reload = sim.simunits.power_rules(COLLIDER, CANNON, e.own)['reload']
+    assert made > 18 and m.first_charge() == made + reload
+
+
 def test_the_monitor_shows_its_condition_only_while_the_power_is_ready():
     # MonitorSpecialPowerTimerUpdate (the collider's ReadyCondition SPECIALPOWER1_READY); bench: engine_modulebatch
     import engine.objects.power as simpower
