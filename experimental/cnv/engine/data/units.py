@@ -278,7 +278,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v50.json')    # v50: the dog's pounce (A386); v49: the SPN's StatusBitFlagsExclude (A374); v48: the shotgun's self-centred arc shock (A363); v47: the grapple nugget (E226); v46: the lift's retail filter; v45: the link guns' ally filter; v44: + taper (DamageDealtAtSelfPosition); v43: weapons from the data port (W1), the cache keeps `sets`; v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v51.json')    # v51: inherited armour (A387 h); v50: the dog's pounce (A386); v49: the SPN's StatusBitFlagsExclude (A374); v48: the shotgun's self-centred arc shock (A363); v47: the grapple nugget (E226); v46: the lift's retail filter; v45: the link guns' ally filter; v44: + taper (DamageDealtAtSelfPosition); v43: weapons from the data port (W1), the cache keeps `sets`; v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
 ARMOR_DEFAULT = 100.0           # a damage type an armour does not name: taken in full (a guess)
@@ -1264,14 +1264,20 @@ def _armors():
     return out
 
 
-def read_fight(text, armors):
+def read_fight(text, armors, template=None, own=None):
     """One unit's max health and armour from its XML, and `sets`: whether that text writes a WeaponSetUpdate of its
     own (comments left out). fight() reads the weapons from the template data port (step W1, ADR 0029) only then,
     as read_fight read them before: from the unit's own file, never inherited -- 25 retail templates inherit theirs
     (the tutorial tanks, A08's dogs, the Emperor mecha, the Rushmore heads ...) and hold no weapon (Sim.add notes the
-    gap); reading the inherited ones is a change of behaviour of its own."""
+    gap); reading the inherited ones is a change of behaviour of its own. The armour where the text writes none: the
+    first unconditioned ArmorSet up the template's inheritFrom chain (A387 h: a1mc's MJ_PalaceWall01 inherits
+    StructureArmor, SNIPER 0 %, so Tanya walks up with her C4 instead of shooting it down with her pistols)."""
+    def default(xml):
+        return next((m.group(1) for m in re.finditer(r'<ArmorSet\b[^>]*\bArmor="([^"]+)"[^>]*>', xml or '')
+                     if 'Conditions=' not in m.group(0)), None)
     arm = re.search(r'<ArmorSet\b[^>]*\bArmor="([^"]+)"', text) or re.search(r'\bArmor="([^"]+)"', text)
-    return dict(hp=number(text, 'MaxHealth'), armor=armors.get(arm.group(1), {}) if arm else {},
+    name = arm.group(1) if arm else template and _inherited(template, own, default, None)
+    return dict(hp=number(text, 'MaxHealth'), armor=armors.get(name, {}) if name else {},
                 sets=bool(re.search(r'<WeaponSetUpdate\b', re.sub(r'<!--.*?-->', '', text, flags=re.S))))
 
 
@@ -1700,7 +1706,7 @@ def _fight_data():
         def build():
             require_data()
             weapons, armors = _weapons(_weapon_files()), _armors()
-            got = {t: read_fight(open(path, encoding='utf-8', errors='replace').read(), armors)
+            got = {t: read_fight(open(path, encoding='utf-8', errors='replace').read(), armors, t)
                    for t, _, path in units()}
             return dict(units=got, weapons=weapons, armors=armors)
         _fight = _cached(COMBAT_CACHE, build, lambda d: not (d.get('units') and d.get('weapons') and d.get('armors')))
@@ -1822,7 +1828,7 @@ def fight(template, own=None):
         return [w for x in datas for n in x.picks() if n in table for w in (_resolve(table[n], table),)
                 if weaponset.armed(w)]
     if own and template in own:
-        f = read_fight(own[template], d['armors'])
+        f = read_fight(own[template], d['armors'], template, own)
         return dict(hp=f['hp'], armor=f['armor'], weapons=guns(weapon_table(own), own) if f['sets'] else [])
     name = template.lower()
     u = d['units'].get(name)
@@ -1831,7 +1837,7 @@ def fight(template, own=None):
             text = _xml(template)                               # its own file (A309)
         except (OSError, ValueError):
             text = ''
-        _reads['fight outside', name] = read_fight(text, d['armors']) if text else None
+        _reads['fight outside', name] = read_fight(text, d['armors'], template) if text else None
     u = u or _reads.get(('fight outside', name))
     if u is None:
         return dict(hp=None, armor={}, weapons=[])

@@ -10,8 +10,8 @@ class Attach:
     """Each attach effect ({module, forbidden, include, exclude}) whose filter the target passes (none of the
     forbidden status, the kinds): the shooter's AttachUpdate rule of that module ({range, flags}) chains it to the
     target (Context.host.attach: the host's chain, updated at once so the effects after see the new place). Only
-    the bench-read case: a direct single shot, a published module, a ground vehicle in range, neither end already
-    chained, the shooter not the target; else a gap. ONE_ATTACH_PER_PARENT: a parent already holding a child takes
+    the bench-read case: a direct single shot, a published module, a ground vehicle or structure (A387 h) in range,
+    neither end already chained, the shooter not the target; else a gap. ONE_ATTACH_PER_PARENT: a parent already holding a child takes
     no other (no gap: the engine's own rule)."""
 
     def payload(self, weapon):
@@ -31,8 +31,8 @@ class Attach:
             if not rule or context.weapon.get('projectile') or context.n != 1:
                 context.gap('AttachNugget', '仅匹配已发布模块的直接单发附着已对拍；复杂模块/弹体未建模')
                 continue
-            if 'VEHICLE' not in t.kinds or t.surface != 'ground':
-                context.gap('AttachNugget', '目前仅地面车辆父对象已对拍')
+            if not {'VEHICLE', 'STRUCTURE'} & t.kinds or t.surface != 'ground':
+                context.gap('AttachNugget', '目前仅地面车辆、建筑父对象已对拍')
                 continue
             chains = host.attachments
             if by is t or t.serial in chains or by.serial in chains:

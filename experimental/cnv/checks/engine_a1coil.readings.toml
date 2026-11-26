@@ -41,6 +41,21 @@ proves = "engine/orders/order.order_attack: a target of a neutral side is turned
 expect = "win(1, 30, '甲') == [111] * 30"
 
 [[reading]]
+id = "h_b_tanya_walks_up_to_an_enemy_wall_and_plant_and_blows_them"
+scene = {build = "engine_a1gate", check = "h", until = 31, shot_clock = true}
+bench = "CampA1GateH (11-25, A382, run_queue head 756e44ab): 乙 s1 711, s2 655, s3 677, s4 477, s5-s31 066 -- the s1 wall (removed) and plant (switch) each blown ~1 s after she is on it, and she stays by them"
+proves = "engine/data/units.read_fight: a template writing no ArmorSet takes the first unconditioned one it inherits (MJ_PalaceWall01: StructureArmor, SNIPER 0 %, so her pistols cannot take it and her C4 line does); engine/combat/attach: a ground STRUCTURE is a parent of the C4 as a ground vehicle is (A387 h)"
+expect = "[v % 100 for v in win(9, 30, '乙')] == [66] * 22"
+
+[[reading]]
+id = "h_c_tanya_goes_for_enemies_by_herself_before_the_order"
+scene = {build = "engine_a1gate", check = "h", until = 31, shot_clock = true}
+bench = "CampA1GateH (as h_b): low's tank dead by s2, before the 3 s order; she is back home from s5 (low 0)"
+proves = "an idle Tanya takes an enemy past her C4's reach (1) by herself and walks to it; the order on the dead tank finds nothing and she goes back to where she stood (INFERRED)"
+mismatch = "sim 乙 555 at s4, 777 at s5, 666 from s8: idle she takes nothing past her weapons' reach, so all three go at the 3 s order and stay (low 6)"
+expect = "win(5, 30, '乙') == [66] * 26"
+
+[[reading]]
 id = "g_a_chronosphere_charges_180_s_and_waits_while_its_owner_is_dark"
 scene = {build = "engine_a1cd", check = "g", until = 290}
 bench = "CampA1CdG (11-25, A382, head 3f93950d, every 2 s): 就绪 0 to s175, 1 at s177-s205, 11 from s207; 电 10 at s59-s87 (s2's plant the player's 60-90 s). The bench's labels run 1-3 s behind the mission clock (the 20 / 60 / 90 s timers seen by s19 / s59 / s89, not by s17 / s57 / s87): s1 ready in (177, 180], s2 in (207, 210]"
