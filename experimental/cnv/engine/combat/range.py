@@ -16,10 +16,14 @@ def reach_of(w):
 def in_range(a, t, w, d=None):
     """R8: a weapon reaches when the 2D gap between the two bounding circles is within its range (Generals
     Weapon::isWithinAttackRange, FROM_BOUNDINGSPHERE_2D: the centre distance less both radii); `d` the centre
-    distance when known. Bench 2026-11-07 engine_acquire: a Guardian (150, radius 23.3) fires at one 180 off."""
+    distance when known. Bench 2026-11-07 engine_acquire: a Guardian (150, radius 23.3) fires at one 180 off.
+    An immobile shooter reaches a structure at its centre (A382 checks/engine_a1coil a / d: the tesla coil, 350,
+    circle 14.1, fires at a power plant 355 off, not 370 -- the plant's circle 42.4 counts for 11 at most; INFERRED
+    for other immobile shooters and structures, mobile ones keep both circles)."""
     if d is None:
         d = math.hypot(t.x - a.x, t.y - a.y)
-    return d - a.radius - t.radius <= reach_of(w)
+    near = 0.0 if 'STRUCTURE' in t.kinds and 'IMMOBILE' in a.kinds else t.radius
+    return d - a.radius - near <= reach_of(w)
 
 
 def takes(w, t):

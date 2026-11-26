@@ -11,7 +11,9 @@ def takes_by_itself(a, t, q):
     AIUpdateInterface::getNextMoodTarget -> AI::findClosestEnemy): never an unshot template (`q.unshot`: the a4 ice
     nobody shoots, 2026-10-28), a NOT_AUTOACQUIRABLE one (INFERRED by its name; a script's NON_AUTOACQUIRABLE status
     each caller asks where it did: side_sees, asked before it in the chases, keeps its answer for the tick);
-    a structure (PartitionFilterRejectBuildings) only when `a` is ATTACK_BUILDINGS, `t` a base defence (FS_BASE_DEFENSE;
+    a structure (PartitionFilterRejectBuildings) only when `a` is ATTACK_BUILDINGS or a computer's IMMOBILE one (A382
+    engine_a1coil d: s1's idle tesla coil takes the player's plants, NOT_ + AUTO_ACQUIRABLE_BY_AI too; engine_invuln: the
+    player's sentry gun leaves the enemy's bunker alone; other immobile shooters INFERRED), `t` a base defence (FS_BASE_DEFENSE;
     a garrisoned building that can fire is the other exception, not modelled) or `a`'s side is run by the skirmish AI
     (`q.ai`, woken: it keeps Generals' computer exception, INFERRED -- the bench's s1 had no AI; tests/test_simai).
     Bench 2026-11-08 engine_seal: the player's idle peacekeeper leaves the enemy's bunkers alone (erow), the enemy's
@@ -23,10 +25,11 @@ def takes_by_itself(a, t, q):
         seen = d.seen_as()                                                           # (modules/disguise.py)
         if seen is not None and q.relation(a.owner, seen) != 'ENEMIES':
             return False
-    if 'NOT_AUTOACQUIRABLE' in t.kinds and not ('AUTO_ACQUIRABLE_BY_AI' in t.kinds and a.ai_acquire):
+    post = 'IMMOBILE' in a.kinds and a.owner != getattr(q, 'human', None)     # a computer's coil (A382)
+    if 'NOT_AUTOACQUIRABLE' in t.kinds and not ('AUTO_ACQUIRABLE_BY_AI' in t.kinds and (a.ai_acquire or post)):
         return False
     if 'STRUCTURE' in t.kinds and not a.ai_acquire:
-        return ('ATTACK_BUILDINGS' in a.acquire or 'FS_BASE_DEFENSE' in t.kinds
+        return ('ATTACK_BUILDINGS' in a.acquire or 'FS_BASE_DEFENSE' in t.kinds or post
                 or a.owner in getattr(q, 'ai', ()))
     return True
 

@@ -1,0 +1,34 @@
+# Bench readings of checks/engine_a1coil.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# The retail tesla coil (SovietBaseDefenseAdvanced, gun AttackRange 350; BOX 10 x 10, circle 14.1) against the
+# player's retail SovietPowerPlant (BOX 30 x 30, circle 42.4), the plant at a centre distance east of the coil.
+# Counters a / d: 射程甲 = base 1, removed 10, high 100, switch 1000 (lanes picked by the coil); 射程乙 = order 1,
+# low 10 (d: ordered by NAMED_ATTACK_NAMED at 10 s). A flag once the lane's plant is hurt.
+
+[[reading]]
+id = "a_the_coil_leaves_plants_370_to_410_off_alone"
+scene = {build = "engine_a1coil", check = "a", until = 46}
+bench = "CampA1CoilA (11-25, A382, head f8eff838): 射程甲 0, 射程乙 0 at s1-s46 (centres 370 / 385 / 393 / 400 / 410 and the P4 offset 404)"
+proves = "engine/combat/range.in_range: a structure target is reached at its centre -- the coil's circle edge to the plant's centre <= 345 (centre 359.1); the plant's circle 42.4 counts for 11 at most (INFERRED for other structures)"
+expect = "win(2, 45, '射程甲') == [0] * 44"
+
+[[reading]]
+id = "d_the_idle_coil_takes_the_plants_300_to_355_off"
+scene = {build = "engine_a1near", check = "d", until = 46}
+bench = "CampA1NearD (11-25, A382, head f8eff838): 射程甲 1111 at s2-s46 (centres 300 / 320 / 340 / 355, no order)"
+proves = "engine/orders/target.takes_by_itself: an IMMOBILE shooter (the coil) takes an enemy building by itself, a NOT_AUTOACQUIRABLE + AUTO_ACQUIRABLE_BY_AI one too (the plant; mobile shooters do not, engine_seal); other immobile shooters INFERRED"
+expect = "win(2, 45, '射程甲') == [1111] * 44"
+
+[[reading]]
+id = "d_an_order_does_not_stretch_the_coil_to_370"
+scene = {build = "engine_a1near", check = "d", until = 46}
+bench = "CampA1NearD: 射程乙 0 at s1-s46 (370 east and the P4 offset, both ordered at 10 s)"
+proves = "engine/combat/range.in_range: a named target is held to the same reach (the coil's circle edge to the plant's centre <= 345)"
+expect = "win(2, 45, '射程乙') == [0] * 44"
+
+[[reading]]
+id = "b_the_coil_shoots_its_side_plant_once_the_player_takes_it"
+scene = {build = "engine_a1cap", check = "b", until = 46}
+bench = "CampA1CapB (11-25, A382): 归属 1000 from s11; 占打 0 to s11, 1 at s12-s15, then one more every 4 s (9 at s44-s46)"
+proves = "takes_by_itself: the coil's idle pick of a building is by its owner now (the plant the engineer took is an enemy's)"
+mismatch = "sim 归属 0, 占打 0 throughout: the engineer dies on its way in (bench: in at s11, the coil's first shot at s12)"
+expect = ["win(1, 10, '占打') == [0] * 10", "win(11, 11, '归属') == [1000]", "1 <= win(13, 13, '占打')[0] <= 2", "win(45, 45, '占打')[0] >= 7"]
