@@ -1911,7 +1911,8 @@ def aipullback_bench():
         if faction:
             m.sides['s1'] = dict(m.sides['s1'], playerFaction=f'PlayerTemplate:{faction}')
         if factory:
-            m.put(REPAIR.get(faction, FACTORY), 'east base', *FACTORY_AT, side='s1', name=FACTORY_NAME, role='ai factory')
+            place = factory if isinstance(factory, str) else REPAIR.get(faction, FACTORY)
+            m.put(place, 'east base', *FACTORY_AT, side='s1', name=FACTORY_NAME, role='ai factory')
         return m
 
 
@@ -1932,6 +1933,24 @@ def aipullback_bench():
         m.cast = {k: (r.__class__(tank, r.name, r.side) if r.template == ac.TANK else r) for k, r in m.cast.items()}
         m.cnv_units = (m.cnv_units[0], tank)
         m.spawns |= {tank}
+        return m
+
+
+    VINDICATOR = 'AlliedAntiGroundAircraft'   # its pods AutoReloadsClip RETURN_TO_BASE: the pull-back's flyer branch
+
+
+    def flyers(m, keep=False):
+        """The AI's Hammers swapped for Vindicators, the team templates' AllowedLocomotorTypes AIR (LAND AMPHIBIOUS
+        let no flyer in: the first aipullav run, 11-26, never formed a team). keep: CleanupRefineries false on the
+        personality (aipullavt: the AI sold its airfield at f6, gone f82 -- is it that sweep?)."""
+        m = guardians(m, tank=VINDICATOR)
+        (fname, xml, asset), = m.assets
+        assert 'AllowedLocomotorTypes="LAND AMPHIBIOUS"' in xml
+        xml = xml.replace('AllowedLocomotorTypes="LAND AMPHIBIOUS"', 'AllowedLocomotorTypes="AIR"')
+        if keep:
+            assert xml.count('<AIPersonalityDefinition ') == 1
+            xml = xml.replace('<AIPersonalityDefinition ', '<AIPersonalityDefinition CleanupRefineries="false" ')
+        m.assets = [(fname, xml, asset)]
         return m
 
 
@@ -2007,6 +2026,13 @@ def aipullback_bench():
         'aipullsnx': lambda: repair_moved(guardians(mission('CampAIPullSnX', factory=True, faction='Soviet'), tank=STINGRAY)),
         'aipullsny': lambda: repair_moved(guardians(mission('CampAIPullSnY', factory=True, faction='Soviet'), tank=STINGRAY),
                                           VehicleRepairFacility='SovietBarracks', NavalRepairFacility='SovietBarracks'),
+        # av / ax: hurt Vindicators of an Allied AI, its own airfield (the AlliedArmy AircraftRepairFacility) -- av home
+        # before the far plant; ax (the facility the barracks) on to the plant, home only to reload (RETURN_TO_BASE)
+        'aipullav': lambda: flyers(mission('CampAIPullAv', factory='AlliedAirfield')),
+        'aipullavt': lambda: flyers(mission('CampAIPullAvT', factory='AlliedAirfield', observe=True)),
+        'aipullavc': lambda: flyers(mission('CampAIPullAvC', factory='AlliedAirfield', observe=True), keep=True),
+        'aipullax': lambda: repair_moved(flyers(mission('CampAIPullAx', factory='AlliedAirfield')), army='AlliedArmy',
+                                         AircraftRepairFacility='AlliedBarracks'),
         'airev1': lambda: mission('CampAIRev1'),
         'airev0': lambda: mission('CampAIRev0', ReverseMove='false'),
         # Identical passive carriers on both sides; body heading and goal object are
