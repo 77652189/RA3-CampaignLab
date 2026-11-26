@@ -777,6 +777,12 @@ NOTES = {
                                          '满员不招、不预放时第一辆自己组队（模拟器每次晚 3～4 s）；模拟器多造'
                                          '第 3、4 辆是造兵的缺口（strict xfail），不是这个开关'),
 }
+# AIData fields the game parses but never reads (three searches of the program, layout from a compiled pack; the
+# evidence is in the private notes work/re/l4_aidata_readers.md; coordinator 11-26: these are 不涉及)
+NOTES.update({f'全局常量/AIData.{f}': (NA, '程序不读：解析进 AIData、全程序找不到读处（work/re/l4_aidata_readers.md）')
+              for f in ('WallHeight', 'MinDistanceForGroup', 'FormationEnemyDistance', 'FormationColumnWidth',
+                        'FormationSquadSpacing', 'MaxSquadWidth', 'ChaseFromBehindLimit', 'RotateSkirmishBases',
+                        'AICrushesInfantry')})
 
 
 def need(path, what):
