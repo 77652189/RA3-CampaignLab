@@ -477,7 +477,7 @@ class Damage:
                 h[2] = by
         for t, w, by in peers.volleys:           # engine line C round 2: a shot lands when its clock says (shots_due)
             if t.alive and fires(by) and world.t >= weaponset.gate(by, t) - 1e-9:
-                n = peers.shots_due(by, w, dt)
+                n = peers.shots_due(by, w, dt, t)
                 if n:
                     self.inform_launch(world, t, by, w, n)
                     # the volley's nugget handlers (engine/combat, registry.ORDER): a launch may take it over

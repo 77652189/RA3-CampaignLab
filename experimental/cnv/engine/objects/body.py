@@ -23,6 +23,20 @@ SELL_PERCENT = 0.5              # SellPercentage (SDK default); SellTime: engine
 HOVER_DRIFT = 0.2               # a frame: a hovering plane's velocity (air_crash)
 
 
+def top(ground_z, own, b):
+    """b's height: its z, else the ground's under it + its PreferredHeight (simunits.fly_height; 0 on the ground)."""
+    return b.z if b.z is not None else ground_z(b.x, b.y) + simunits.fly_height(b.template, own)
+
+
+def aim_pitch(ground_z, own, b, target):
+    """The height part of the unit direction from b to `target` for b's AimWeapon (interfaces.Aim; Sim.shots_due), 0.0
+    without one or a target."""
+    if target is None or b.find(interfaces.Aim) is None:
+        return 0.0
+    dz = top(ground_z, own, target) - top(ground_z, own, b)
+    return dz / (math.hypot(target.x - b.x, target.y - b.y, dz) or 1.0)
+
+
 class Life:
     def __init__(self):
         self.lose_of = {}              # template -> simunits.lose_health rule
@@ -198,8 +212,7 @@ class Life:
             hits = hits[:1]
         if not hits:
             return
-        ground = ground_z(b.x, b.y)
-        z = b.z if b.z is not None else ground + simunits.fly_height(b.template, world.own)
+        ground, z = ground_z(b.x, b.y), top(ground_z, world.own, b)
         # still (hovering): HOVER_DRIFT along its facing (bench 11-12 engine_crash_hit: both hovering Apollos' wrecks
         # logged v (0.1, 0, 0) = 0.5 x 0.2 facing east; INFERRED for other planes and facings)
         vx, vy = HOVER_DRIFT * math.cos(b.angle), HOVER_DRIFT * math.sin(b.angle)

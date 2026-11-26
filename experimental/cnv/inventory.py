@@ -352,9 +352,6 @@ NOTES = {
                                                    'LaserId 0）没填；FX_SOV_ElectroRay 只有声音和粒子。麻痹由同一武器的 '
                                                    'ParalyzeNugget + AttributeModifierNugget 给出。同族 LaserState、'
                                                    'ConvergingLaserState 上台都无附加伤害或延迟（engine_laser、E211），未单独上台'),
-    (MODULE, 'Behaviors/AimWeapon'): (TODO, 'E211 不是纯表现：标枪兵打直升机，原版比删模块首伤晚 1 个脚本帧（换位、'
-                                            '换放置顺序都一样），f120 血量相同；设 AIM_HIGH（只有绘制模块读）。'
-                                            '晚的这一帧等什么没读到，不拟合；读数 mismatch 见 benches/weapon/firing/readings.toml#engine_cosmetic_e'),
     (MODULE, 'Behaviors/LUAEventList'): (NA, '纯表现：EventListName连接原版ScriptEvents.xml与Scripts.lua；RA3声明可达的事件处理函数只调用模型部件显隐（及tostring），含继承；未定义的AlliedInfantryFightingFunctions无可达处理函数；C&C3升级/状态函数不可达。tests/test_inventory_lua.py静态核对游戏包与SDK声明，非上台对拍'),
     # batch 1 (work/re/l2_scripts1.md, benches/script/control/checks.py#engine_scripts1, bench 11-08)
     (ACTION, 'TEAM_HUNT'): (GUESSED, '主人 aiTactical 255（人类除外）：攻击移动到最近敌对物体（单位也算），目标死后'

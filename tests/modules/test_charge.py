@@ -26,6 +26,12 @@ def test_an_idle_tower_cuts_its_pre_attack_by_its_charge_and_hits_harder_overcha
     assert weaponset.boost(b, w) == 1.0             # spent by the first volley
 
 
+def test_aimweapon_holds_a_first_shot_a_frame_only_aimed_over_its_high_threshold():
+    from engine.modules.charge import AimWeapon, AimWeaponData       # AimWeapon: readings engine_cosmetic_e
+    aim = AimWeapon(None, AimWeaponData())
+    assert [aim.hold(p) for p in (0.0, 0.4, 0.41, 0.9)] == [0, 0, 1, 1]
+
+
 def test_an_attack_before_the_charge_starts_cuts_nothing():
     s, b, w = _tower(0.0)       # 13 frames before the first charge: no cut, not a longer wait (review 109 #3)
     assert b.find(interfaces.Charge).spend(0.0, None) == (0.0, 1.0)

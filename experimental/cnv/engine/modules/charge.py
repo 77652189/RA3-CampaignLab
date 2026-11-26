@@ -7,7 +7,8 @@ engine_charge_e, 16 s reads 10: the turret turned away, not modelled).
 The host asks it when a weapon's clip clock starts anew (WeaponSet.start_clip): idle = from the old cycle's end (none:
 LATE after the thing's making) to the attack. INFERRED: the cut in proportion and LATE (two points fit it), LATE for
 the over-charge too, the forbidden status is the clip clock's busy span (the simulator sets neither bit), a charge the
-thing's only weapon's, power and other statuses not read."""
+thing's only weapon's, power and other statuses not read.
+AimWeapon (E211 / E249, the same bench file's engine_cosmetic_e) is here too: it holds a fresh clip's first shot."""
 from engine.kernel import factory, interfaces, module
 from engine.ports import templates
 
@@ -44,3 +45,24 @@ class ChargeWeapon(module.Module, interfaces.Create, interfaces.Charge):
         d = self.data
         cut = min(1.0, max(0.0, idle / d.charge)) if d.charge > 0 else 1.0     # before LATE: none (review 109 #3)
         return cut, 1.0 + d.percent if idle >= d.charge + d.over - 1e-6 else 1.0
+
+
+class AimWeaponData(module.ModuleData):
+    def __init__(self, high=0.4):
+        self.high = high            # AimHighThreshold (the schema's default 0.4)
+
+    @classmethod
+    def parse(cls, head, inner):
+        h = templates.attr(head, 'AimHighThreshold')
+        return cls(templates.num(h) if h else 0.4)
+
+
+@factory.module('AimWeapon')
+class AimWeapon(module.Module, interfaces.Aim):
+    """The Javelin's first hit on a hovering Twinblade a frame later with the module than without, on an Apocalypse
+    on the ground the same frame (each three ways). INFERRED: one frame when the aim's pitch (the unit direction's
+    height part, the host's: Sim.shots_due) is over AimHighThreshold; AimLow / Near / Far not read."""
+    DATA = AimWeaponData
+
+    def hold(self, pitch):
+        return 1 if pitch > self.data.high else 0

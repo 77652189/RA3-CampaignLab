@@ -160,12 +160,14 @@ class WeaponSet(module.Module, interfaces.WeaponSet):
             self.clocks = {}
         self.clocks[key] = clock
 
-    def start_clip(self, key, weapon, t, old, cycle):
+    def start_clip(self, key, weapon, t, old, cycle, pitch=0.0):
         """Weapon `key`'s clip clock starting anew at second `t` (Sim.shots_due: its first, or after an idle gap;
-        `old`: the clock it had): its first shot one frame after the order. A ChargeWeaponUpdate on the thing
+        `old`: the clock it had): its first shot one frame after the order, an AimWeapon's (interfaces.Aim) more at a
+        high `pitch`. A ChargeWeaponUpdate on the thing
         (interfaces.Charge), idle since the old cycle's end, moves the start back by the part charged of the first
         shot's pre-attack (whole frames) and holds its damage boost for that shot (boost)."""
-        c = [t + 1 / 15, t]
+        aim = self.thing.find(interfaces.Aim)
+        c = [t + (1 + (aim.hold(pitch) if aim is not None else 0)) / 15, t]
         charge = self.thing.find(interfaces.Charge)
         if charge is not None:
             cut, factor = charge.spend(t, old[0] + cycle if old else None)

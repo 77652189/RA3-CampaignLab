@@ -194,6 +194,7 @@ expect = ["counter('E211Frame') == 230", "counter('E211On') % 1000 == counter('E
 bench_id = "engine_cosmetic_e"
 id = "aimweapon_holds_the_javelins_first_hit_a_frame"
 scene = {build = "engine_aimweapon_e", check = "a", until = 20, shot_clock = true}
+item = "物体模块 Behaviors/AimWeapon"
 bench = """\
 CampAimWpnEA_mcp_1124_022305 and a rerun: 120 62012 62011 13; CampAimWpnSA (arms swapped) and CampAimWpnOA (the \
 control made first): 62012 62011 13 each -- with the module the Twinblade's first loss is one frame later, wherever \
@@ -201,9 +202,21 @@ and whenever the arm is made; at f120 both 62 %. Gate 13: AIM_HIGH on the module
 proves = "AimWeapon is not presentation only: it holds a Javelin's first shot at a high target one script frame"
 expect = ["counter('E211Frame') == 120", "counter('E211On') // 1000 == counter('E211Off') // 1000",
           "counter('E211On') % 1000 == counter('E211Off') % 1000 + 1", "counter('E211Gate') & 12 == 12"]
-mismatch = """sim 45003 45003: no AimWeapon, and the Javelin on a Twinblade is off as a whole (first loss 3 frames for \
-the bench's 11, 45 % left at f120 for 62 %: C's launcher / missile flight). What the frame waits for (aim pitch, \
-AimHighThreshold 0.4) is not read: not fitted"""
+
+[[reading]]
+bench_id = "engine_cosmetic_e"
+id = "aimweapon_holds_no_frame_on_a_ground_target"
+scene = {build = "engine_aimgnd_e", check = "a", until = 20, shot_clock = true}
+item = "物体模块 Behaviors/AimWeapon"
+bench = """\
+E249 at 1c98df3d, PASS each: CampAimGndEA 120 91007 92007 12; CampAimGndSA (arms swapped) and CampAimGndOA (the \
+control made first) the same -- on an Apocalypse 100 east both arms' first loss 7 frames after the order; never \
+AIM_HIGH (gate 12). The 1 % (On 91, Off 92) follows the module all three ways: not read"""
+proves = """The Twinblade's one-frame hold is the high aim's: on a ground target the module holds nothing (the \
+simulator's AimWeapon: a frame when the aim's pitch is over AimHighThreshold, INFERRED). The simulator's Javelin is \
+off as a whole on both (3 frames for 7 / 11, 90 % / 45 % left: C's launcher / missile flight)"""
+expect = ["counter('E211Frame') == 120", "counter('E211On') % 1000 == counter('E211Off') % 1000",
+          "counter('E211Gate') == 12"]
 
 # Bench readings of benches/weapon/firing/checks.py#engine_discharge_e (format: experimental/cnv/readings.py; runner: tests/conformance).
 # E177: PrematureDischargeSpecialPower on / off (work/re/e177_discharge.md).

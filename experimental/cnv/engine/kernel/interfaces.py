@@ -815,7 +815,7 @@ class WeaponSet(Interface):
     def set_clip_clock(self, key, clock):
         raise NotImplementedError
 
-    def start_clip(self, key, weapon, t, old, cycle):
+    def start_clip(self, key, weapon, t, old, cycle, pitch=0.0):
         raise NotImplementedError
 
     def spend_boost(self, key):
@@ -839,6 +839,15 @@ class Charge(Interface):
     __slots__ = ()
 
     def spend(self, t, idle_since):
+        raise NotImplementedError
+
+
+class Aim(Interface):
+    """AimWeapon (engine/modules/charge.py): hold(pitch) -> the frames a fresh clip's first shot waits, aimed at that
+    pitch (the height part of the unit direction to the target)."""
+    __slots__ = ()
+
+    def hold(self, pitch):
         raise NotImplementedError
 
 
@@ -879,4 +888,4 @@ FAMILY = (Lifetime, Topple, Crush, Deposit, Toggle, Suppression, Spawn, Slaved, 
           LevelUp, Aura, Detector, Parking, Recall, Repair, Assign, Infiltrate, SlowDeath, CreateOnDeath,
           DeathWeapon, WeaponSet, Locomotor, Clocked)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
 ONE = frozenset({Body, AIUpdate, Lifetime, Topple, Crush, Deposit, Suppression, Slaved, OreMiner, Unpack, Sell, Freeze,
-                 WeaponSet, Locomotor, Charge})  # a thing has at most one of these: Thing.find gives it
+                 WeaponSet, Locomotor, Charge, Aim})  # a thing has at most one of these: Thing.find gives it

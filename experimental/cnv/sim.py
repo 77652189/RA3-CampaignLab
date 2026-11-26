@@ -2000,7 +2000,7 @@ class Sim:
         M6), the fields whose lifetime is out leave."""
         simdamage.suppression_tick(self, simdamage.Peers(self))
 
-    def shots_due(self, b, w, dt):
+    def shots_due(self, b, w, dt, target=None):
         """How many of weapon `w`'s clip-clock shots of body `b` land in [self.t, self.t + dt): the clip is a
         schedule (simunits._shot_times, then the reload), each cycle `w['cycle']` long, one shot after another as
         long as the weapon has a target every window. After an idle gap (no target in the previous window) a
@@ -2026,8 +2026,8 @@ class Sim:
             else:
                 self.gap(GAP_UPGRADE, 'LevelUpUpgrade/rate-clock', '该武器的等级射速计时未对拍')
         if c is None or (t0 - c[1] > dt * 1.5 and c[0] + cycle <= t0 + eps):
-            c = m.start_clip(key, w, t0, c, cycle)      # [this cycle's start, the last window with a target]; the first
-            #                                             object hit is1 frame after order; scripts observe it next frame (engine_emp)
+            c = m.start_clip(key, w, t0, c, cycle, simbody.aim_pitch(self.ground.z, self.own, b, target))
+            # [this cycle's start, the last window with a target]; the first object hit 1 frame after the order (engine_emp)
         else:
             c[1] = t0
             while c[0] + cycle <= t0 + eps:             # chained: the next cycle starts where this one ends

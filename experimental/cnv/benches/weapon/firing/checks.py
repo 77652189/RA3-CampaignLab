@@ -497,6 +497,8 @@ def engine_cosmetic_e():
     AimWeapon (AimLow/HighThreshold, AimNear/FarDistance; retail: the Javelin and the Flak Trooper) sets AIM_HIGH,
     and in the SDK only Draws ConditionsYes read AIM_HIGH. Build engine_aimweapon_e: a Javelin fires on a hovering
     Twinblade 100 east (its _Aircraft launcher, range 300), On with the module, Off without.
+    Build engine_aimgnd_e: the same on an Apocalypse 100 east (its ground launcher, range 175): never AIM_HIGH, so
+    the one-frame hold seen on the Twinblade should be gone if the hold is the aim pitch (gate 12).
 
     ConvergingLaserState (a LaserState: four beams closing on the target; retail: the Athena and the Hammer's leeched
     Athena gun) has SweepWeapon / SweepFXList, unset in both retail uses; the Athena's damage is its OCL's cannon
@@ -521,6 +523,8 @@ def engine_cosmetic_e():
     CASES = {   # build: (mission, SDK file, host, module tag, copies, target, target dx dy, condition, END)
         'engine_aimweapon_e': ('CampAimWpnE', 'Allied/Units/AlliedAntiVehicleInfantry.xml', 'AlliedAntiVehicleInfantry',
                                'AimWeapon', 1, 'SovietAntiGroundAircraft', (100.0, 0.0), 'AIM_HIGH', GO + 90),
+        'engine_aimgnd_e': ('CampAimGndE', 'Allied/Units/AlliedAntiVehicleInfantry.xml', 'AlliedAntiVehicleInfantry',
+                            'AimWeapon', 1, 'SovietAntiVehicleVehicleTech3', (100.0, 0.0), 'AIM_HIGH', GO + 90),
         'engine_convlaser_e': ('CampConvLsrE', 'Allied/Units/AlliedAntiStructureVehicle.xml', 'AlliedAntiStructureVehicle',
                                'ConvergingLaserState', 4, 'SovietPowerPlantAdvanced', (0.0, 300.0),
                                'FIRING_OR_PREATTACK_A', GO + 200),
@@ -576,7 +580,7 @@ def engine_cosmetic_e():
                     ('COUNTER_MATH_COUNTER', 'E211' + arm, 0, wait)]),
                 Script('Test - alive ' + arm, [('COUNTER', 'E211Frame', 2, end), ('NAMED_NOT_DESTROYED', target)],
                        [('INCREMENT_COUNTER', 4 * weight, 'E211Gate')])]
-        t.expect = [('完成帧', 0, 'ever==', end), ('前置位', 0, 'ever==', 13 if condition == 'AIM_HIGH' else 15)]
+        t.expect = [('完成帧', 0, 'ever==', end), ('前置位', 0, 'ever==', 15 if condition != 'AIM_HIGH' else 12 if 'gnd' in build else 13)]
         t.bench = [('bench_camera', dict(x=1150, y=550, look=False)),
                    ('bench_watch', dict(seconds=end // 15 + 25, every=1, sheet=False, lines=4))]
         return t
@@ -586,7 +590,7 @@ def engine_cosmetic_e():
         {b[:-1] + 'o': {'late': True} for b in CASES}   # s: the arms trade places; o: the control's objects made first
     MISSION = {v: (lambda v=v: mission(v[:-1] + 'e', **VARIANTS[v])) for v in VARIANTS}
     CHECKS = {v: {'a': lambda m, v=v: check(m, v[:-1] + 'e')} for v in VARIANTS}
-    CONTROL_ARMS = {v: ('On', 'Off') for v in VARIANTS if v.startswith('engine_aimweapon')}
+    CONTROL_ARMS = {v: ('On', 'Off') for v in VARIANTS if v.startswith('engine_aim')}
     return dict(MISSION=MISSION, CHECKS=CHECKS, CONTROL_ARMS=CONTROL_ARMS)
 
 
