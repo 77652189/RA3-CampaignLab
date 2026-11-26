@@ -36,6 +36,8 @@ GAME = DATA + r'\StaticStream.big'
 # the streams the game opens (one per LOD setting): static.12 links static.11 -> ... -> static, likewise
 # static_l.12 / static_m.12; an asset must be in the opened stream's table to exist
 TOPS = [(s, DATA + r'\Core12.big') for s in ('static.12', 'static_l.12', 'static_m.12')]
+# global: the base stream and the patches that have one (Core7 / Core10 carry none)
+GLOBALS = [('global', DATA + r'\GlobalStream.big')] + [(f'global.{n}', DATA + rf'\Core{n}.big') for n in (5, 6, 8, 9, 11, 12)]
 HEADER = '<BBHIIIIIIIIIII'
 ENTRY = '<12I'
 
@@ -129,12 +131,20 @@ def splice(stem, mod, only, archive=GAME, add_new=False):
 
 
 def spliced_files(src, only=()):
-    """[(path in the mod BIG, bytes)] of every static stream the built mod in <src> changes."""
+    """[(path in the mod BIG, bytes)] of every static / global stream the built mod in <src> changes."""
     mh, mE, mC, mB = parse(*(open(os.path.join(src, f'mod.{x}'), 'rb').read() for x in ('manifest', 'bin', 'relo', 'imp')))
     mod = {(e[0], e[1]): (e, c, refs(mB, e), cstr(mB[2], e[6])) for e, c in zip(mE, mC)}
     for key, (e, c, rl, name) in mod.items():
         print(f'  mod {key[0]:08x}:{key[1]:08x} {name.decode()}: {len(c[0])} bytes, {len(rl)} refs')
     files = []
+    # The global stream (AIData, ArmyDefinition ...): replaced in place, never added to -- and what it holds is kept
+    # out of the static streams (added to static.12 it would be a second copy). The map stream's same-id override of
+    # AIData does not take (aiskad 11-12): the game reads it from here.
+    for stem, archive in GLOBALS:
+        done, _, fs = splice(stem, mod, only, archive)
+        mod = {k: v for k, v in mod.items() if k not in done}
+        print(stem, 'replaced', [f'{t:08x}:{n:08x}' for t, n in done])
+        files += fs
     for stem, archive, add_new in [('static', GAME, False), ('static_l', GAME, False), ('static_m', GAME, False)] + \
             [(s, a, True) for s, a in TOPS]:
         done, added, fs = splice(stem, mod, only, archive, add_new)

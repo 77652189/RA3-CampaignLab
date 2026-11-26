@@ -669,18 +669,3 @@ def test_override_names_take_a_full_instance_name_or_a_gameobject_id(monkeypatch
     assert c7.override_names() == {b'GameObject:JapanAntiInfantryInfantry', b'AIData:AIData'}
 
 
-def test_the_aidata_canary_replaces_retail_aidata_instead_of_linking_a_new_id():
-    m = ab["MISSION"]['aiskad']()
-    spec = package.spec_of(m, ck.a(m))
-    assert spec.replaces == ('AIData:AIData',)
-    assert b'AIData:AIData' not in spec.extra_own
-    assert 'DATA:CNVUnits/Data/CNVAIData.xml' in spec.extra_all
-    xml = dict(spec.unit_files)['CNVAIData.xml']
-    assert re.search(r'<AIData id="AIData"', xml)
-    assert 'TeamSeconds="100000"' in xml and 'MaxRecruitDistance="1.0"' in xml
-
-
-def test_the_formation_pair_differs_only_in_use_formations():
-    on, off = (dict(package.spec_of(m, ck.fm(m)).unit_files)['CNVAIData.xml']
-               for m in (ab["MISSION"]['aiskfon'](), ab["MISSION"]['aiskfof']()))
-    assert on.replace('UseFormations="true"', 'UseFormations="false"') == off

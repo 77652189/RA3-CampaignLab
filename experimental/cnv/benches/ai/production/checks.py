@@ -2667,10 +2667,11 @@ def engine_aiskirm():
         first): the first attack team (2 Riptides + 3 Peacekeepers, check a / c) leaving home and reaching the player's
         base. 激流在家 / 维和在家 = s1's inside 600 around the east base, 激流到 / 维和到 = inside 600 around the player's
         yard; 1-s rows to 250 s after the wake: who leaves and who arrives in which second (the team's spread in time).
-        Not run: aiskad's canary (TeamSeconds 100000, MaxRecruitDistance 1; bench 2026-11-12, aiskad a PASS,
-        CampAISkADA_mcp_1112_130959) read as the stock run -- first Riptide s113, 出门帧 stops at 1992 (stock 1992), the
-        player's buildings gone s209-s231 -- although the built map stream carries our AIData:AIData: the map-stream
-        override of AIData does not take (or neither field is read), so this pair would read the same (pathing.md 5b)."""
+        aiskad's canary: the map-stream copy of AIData did not take (11-12, CampAISkADA_mcp_1112_130959 read as stock);
+        spliced into the global stream (missions/aiskirm_bench.AIDataPack) it does -- Optimization_NumTeamsToRecruit 0
+        (11-25, CampAISkADA_mcp_1125_233101): 13 Riptides made, none leaves (出门帧 never stops, to 5254), the
+        player's 3 buildings stand to s355 (stock: first out at 1992, gone s209-s231). aiskfon PASS through the same
+        pack (CampAISkFOnFm_mcp_1125_233236); aiskfof not run yet."""
         t = Test()
         m.spawns.add(RIPTIDE)
         m.spawns.add(PK)

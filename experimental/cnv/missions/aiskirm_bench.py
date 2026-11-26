@@ -415,21 +415,47 @@ def diff_xml():
 
 
 AIDATA = 'AIData:AIData'              # aiskad / aiskfon / aiskfof (check a / fm): the global AIData under its retail id
-AIDATA_RUNS = {'aiskad': {'TeamSeconds': '100000', 'MaxRecruitDistance': '1.0'},   # canary: no team should form
+# canary: the team maker's poll handles at most Optimization_NumTeamsToRecruit teams a frame, none at <= 0 (l4_recruit)
+AIDATA_RUNS = {'aiskad': {'Optimization_NumTeamsToRecruit': '0'},
                'aiskfon': {'UseFormations': 'true'},     # retail's value, through the same override (the control)
                'aiskfof': {'UseFormations': 'false'}}
 
 
-def aidata_xml(changes):
-    """The SDK's SkirmishAI/AIData.xml (id AIData, in global.xml) with the attributes of `changes` rewritten: compiled
-    into the map stream and linked over retail's (Mission.replaces -> make_campnew7.OVERRIDE)."""
-    import re
-    with open(os.path.join(labpaths.SDK3, 'SageXML', 'SkirmishAI', 'AIData.xml'), encoding='utf-8') as f:
-        xml = f.read()
-    for k, v in changes.items():
-        xml, n = re.subn(rf'(\s{k}=)"[^"]*"', rf'\1"{v}"', xml)
-        assert n == 1, (k, n)
-    return xml
+class AIDataPack:
+    """The SDK's SkirmishAI/AIData.xml (id AIData) with the attributes of `changes` rewritten, compiled as a static pack
+    (Mission.statics): splice_assets puts it over retail's in the global stream. The map stream's same-id copy
+    (Mission.replaces, aiskad 11-12) did not take."""
+    FOLDER = 'CNVAIData'
+    files = ()
+
+    def __init__(self, changes):
+        self.changes = dict(changes)
+
+    def xml(self):
+        import re
+        with open(os.path.join(labpaths.SDK3, 'SageXML', 'SkirmishAI', 'AIData.xml'), encoding='utf-8') as f:
+            xml = f.read()
+        for k, v in self.changes.items():
+            xml, n = re.subn(rf'(\s{k}=)"[^"]*"', rf'\1"{v}"', xml)
+            assert n == 1, (k, n)
+        return xml
+
+    @property
+    def include(self):          # written on first use (the build): the offline contract never writes the SDK
+        data = os.path.join(labpaths.SDK3, 'Mods', self.FOLDER, 'Data')
+        os.makedirs(data, exist_ok=True)
+        with open(os.path.join(data, 'aidata.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
+            f.write(self.xml())
+        return f'DATA:{self.FOLDER}/Data/aidata.xml'
+
+    def check(self, files):
+        """A spliced global stream carries our AIData (it replaced retail's)."""
+        from ra3voice import manifest, refpack
+        unpack = lambda b: refpack.decompress(b) if refpack.is_refpack(b) else b
+        where = [n for n, b in files if n.lower().startswith('data\\global') and n.lower().endswith('.manifest')
+                 and any(a.name == AIDATA for a in manifest.parse(unpack(b)))]
+        assert where, f'{AIDATA} is in no spliced global stream: the override never reaches the game'
+        print(f'aidata: {AIDATA} spliced into {where}')
 
 
 UC_PID = 'CNVUnitCap'                 # aiskuc (check uc): 1AlliedBalanced plus two UnitCap lines
@@ -547,10 +573,9 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
         m.facts['side case'] = 2 if side else 1
         m.sides['s1'] = {'playerFaction': SIDE_FACTION, 'aiPersonality': f'AIPersonalityDefinition:{SIDE_PID}'}
         m.assets.append((f'{SIDE_PID}.xml', side_xml(side), f'AIPersonalityDefinition:{SIDE_PID}'))
-    if aidata is not None:               # aiskad / aiskfon / aiskfof: the global AIData overridden in the map stream
+    if aidata is not None:               # aiskad / aiskfon / aiskfof: the global AIData overridden in the global stream
         m.facts['use formations'] = int(aidata.get('UseFormations', 'true') == 'true')
-        m.assets.append(('CNVAIData.xml', aidata_xml(aidata), AIDATA))
-        m.replaces.append(AIDATA)
+        m.statics = [AIDataPack(aidata)]
     if expire is not None:               # aiskexp (check q): the same AI with SecondsTillTargetsExpire = expire
         m.facts['targets expire'] = expire
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{EXPIRE_PID}'
