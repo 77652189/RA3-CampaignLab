@@ -30,3 +30,14 @@ def test_a_shell_is_not_an_instant_weapon(weapon_world):
     s.deal(1 / 15)
     assert miner.hp < miner.max_hp
     assert s.expected_damage(miner, 2, 0) == 0
+
+
+def test_the_incoming_table_drops_expired_rows_on_its_own_clock(weapon_world):
+    """Review 133 P2: asking reads, never drops (stale: a row past expiry still counts); the 8-frame rounds do."""
+    s, _ = weapon_world
+    miner = s.add('miner', 'SovietMiner', 'Soviet_1', 1350, 2500)
+    f = s.frame_now()
+    s._harm().incoming_add(s, miner, 100, 'probe', 150, f + 26, f - 1)
+    assert [s.expected_damage(miner, 0, 2, now=f) for _ in range(2)] == [150, 150]
+    s.advance(24)                                                # two rounds on (one's grace), nobody asking
+    assert s.frame_now() >= f + 16 and s.expected_damage(miner, 0, 2) == 0

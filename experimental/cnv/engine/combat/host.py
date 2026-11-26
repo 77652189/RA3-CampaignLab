@@ -353,16 +353,24 @@ class Damage:
         behind: the TrackDamage history (`track`) of the last min(behind, TimeToTrack) frames; none without one.
         INFERRED: a hit `behind` frames ago is out (age < window counts).
         ahead reads the rows still in the table, past their expiry too (engine_inform_expiry stale: a row expired
-        at 303 shields the miner at 304); the rows past expiry go after the read. INFERRED: read-then-drop per query;
-        the bench's table drops them on 8-frame rounds, a shielded miner's later (336; c_inform_expiry_report.md).
+        at 303 shields the miner at 304); asking drops nothing, the table's own clock does (`incoming_sweep`).
         """
         now = world.frame_now() if now is None else now
         rows = self.incoming.get(target.serial, [])
         window = math.ceil(behind * simunits.LIFE_FPS - 1e-6)
         taken = sum(d for f, d, end in self.tracked.get(target.serial, ()) if now - f < window and now < end)
         taken += sum(r[2] for r in rows if r[3] <= now + math.ceil(ahead * simunits.LIFE_FPS)) if ahead > 0 else 0.0
-        rows[:] = [r for r in rows if now <= r[4]]
         return taken
+
+    def incoming_sweep(self, now):
+        """The table's upkeep on 8-frame rounds, apart from any query (review 133). The bench drops an unshielded
+        miner's row on the first round past its expiry (engine_inform_expiry a/b: 302/304/317 -> 304/312/320), a
+        shielding one's at 336 (c_inform_expiry_report.md). INFERRED: one round's grace -- the bench's micro reads the
+        stale row at 302-303 and shields at 305, our micro's rounds (300, 308) read it at 308; a coarse step drops
+        what its rounds would."""
+        edge = now - now % 8 - 8
+        for rows in self.incoming.values():
+            rows[:] = [r for r in rows if edge <= r[4]]
 
     def rule_of(self, world, cache, template, read):
         """The template's rule by a simunits reader `read(template, own)`, kept in `cache` (hit_reaction_of, track_of)."""
@@ -514,6 +522,7 @@ class Damage:
                         meta_impact.detonate(host, dict(w, meta_impacts=[]), t, None, by)
         self.dots[:] = dot.tick(self.dots, world.frame_now(), hurt, armor_scalar, gap)    # the frame-end DOT ledger
         now = world.frame_now()
+        self.incoming_sweep(now)
         for t, dmg, by in hurt.values():
             if now < t.immune_until or t.shielded or t.indestructible:
                 continue

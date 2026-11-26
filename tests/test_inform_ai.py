@@ -297,8 +297,10 @@ def test_inform_incoming_table_drives_miner_armor_from_engine_inform_probe(check
         clock[0] = brain.frame = 390
         manager.round(390, brain.micro_team(None, 390, team))
         assert not base.armor_up and 'SPECIAL_ARMOR_ACTIVE' not in base.status
-    clock[0] = 405      # past expiry: the read still sees the row (engine_inform_expiry stale), then it goes
-    assert e.expected_damage(bodies['removed'], 0, 2) == 50 and not e.incoming[bodies['removed'].serial]
+    clock[0] = 405      # past expiry: the read still sees the row (engine_inform_expiry stale), the sweep drops it
+    assert e.expected_damage(bodies['removed'], 0, 2) == 50
+    e._harm().incoming_sweep(416)
+    assert not e.incoming[bodies['removed'].serial]
 
 
 def test_inform_max_changes_only_base_factor_for_engine_inform_max():
@@ -410,8 +412,11 @@ def test_inform_launch_formula_and_matching_hit_lifecycle(monkeypatch):
     e.deal(1/15)
     assert target.hp == 350
     assert e.expected_damage(target, 0, 2) == 10
-    clock[0] = 451
+    clock[0] = 451      # past expiry: asking reads the row and keeps it; the table's clock drops it a round later
+    assert [e.expected_damage(target, 0, 2) for _ in range(2)] == [10, 10]
+    e._harm().incoming_sweep(456)
     assert e.expected_damage(target, 0, 2) == 10
+    e._harm().incoming_sweep(464)
     assert e.expected_damage(target, 0, 2) == 0
     # Retail cache was rebuilt with the new launch fields, preserving whole gap.
     retail = simunits._fight_data()['weapons']['SovietAntiVehicleVehicleTech1CannonWeapon']

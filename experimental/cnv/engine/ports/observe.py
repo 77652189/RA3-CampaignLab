@@ -319,8 +319,8 @@ class Observe:
 
     def expected_damage(self, thing, behind, ahead, now=None):
         """The damage a thing expects in the next `ahead` seconds from the fire told it is coming (InformTarget:
-        simdamage.Damage's table; the AI micro's incoming-damage callback). Asking drops the rows past their expiry
-        and notes the history it lacks (`behind`) as a gap -- the table's own upkeep, not a change of the fight."""
+        simdamage.Damage's table; the AI micro's incoming-damage callback). Asking changes nothing: the table drops
+        expired rows on its own clock."""
         return self._w.expected_damage(thing, behind, ahead, now=now)
 
     # --- internal: the production menu (a command port's, once there is one: what an order to build may ask for)
