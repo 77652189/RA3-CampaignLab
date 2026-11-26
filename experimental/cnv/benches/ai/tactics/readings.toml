@@ -1640,3 +1640,17 @@ proves = "simai micro state: the temporary vision bonus is dropped once MinTimeT
 item = "AI 微操/AIMicroManagerData.MinTimeToKeepTempVisionRangeBonus"
 let = {near = "lambda r: min(((m['pos'][0] - 3150.0) ** 2 + (m['pos'][1] - 3300.0) ** 2) ** 0.5 for m in r['members'] if m['alive'])", live = "[r for r in teams() if r['updated'] and any(m['alive'] for m in r['members'])]", got = "[i for i, r in enumerate(live) if 'UNIT - CNV AM Far Conscript' in r['hostiles'] and near(r) > 600]"}
 expect = ["bool(got)", "any('UNIT - CNV AM Far Conscript' not in r['hostiles'] and near(r) > 600 for r in live[got[0]:])"]
+
+[[reading]]
+bench_id = "engine_airetreat"
+id = "retreat_bonus_keeps_the_far_plant_in_sight_on_the_way_home"
+scene = {build = "airetb3", check = "a", until = 40, teams = true}
+each = [{build = "airetb3", after = 6}, {build = "airetb1", after = 8}]
+bench = """\
+ext tstate (bench 11-25, runs CampAIRetB3A_mcp_1125_182144 / CampAIRetB1A_mcp_1125_181837; airett with \
+GatherTempVisionRangeBonus 1): both f230 6 on the far plant, f260 1 (home); bonus 3 keeps the plant as its enemy all the \
+way (search 200 x 1.5 x 3), at f440 near the yard 6 on it again; bonus 1 drops it at f350 and stands, f440 8 (out again f710)"""
+proves = "simai micro state: after a round in state 1 the search reaches vision x 1.5 x RetreatTempVisionRangeBonus"
+item = "AI 微操/AIMicroManagerData.RetreatTempVisionRangeBonus"
+let = {st = "[r['state'] for r in teams() if r['updated']]"}
+expect = "next(s for s in st[st.index(1):] if s != 1) == after"

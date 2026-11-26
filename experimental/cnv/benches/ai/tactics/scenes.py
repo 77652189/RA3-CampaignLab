@@ -2348,9 +2348,20 @@ def airetreat_bench():
         return m
 
 
+    def retreat_bonus(name, bonus):
+        """airett with RetreatTempVisionRangeBonus = bonus (GatherTempVisionRangeBonus 1: the team's state-5 round
+        before the guards raises nothing)."""
+        m = observe(mission(name, guards=GUARDS, RetreatPowerAdvantage='0.2', RetreatTempVisionRangeBonus=f'{bonus:g}',
+                            GatherTempVisionRangeBonus='1'), name)
+        m.facts['retreat bonus'] = float(bonus)
+        return m
+
+
     MISSION = {
         'airet': lambda: mission('CampAIRet', guards=GUARDS, RetreatPowerAdvantage='0.2'),
         'airett': lambda: observe(mission('CampAIRet', guards=GUARDS, RetreatPowerAdvantage='0.2'), 'CampAIRetT'),
+        'airetb3': lambda: retreat_bonus('CampAIRetB3', 3),
+        'airetb1': lambda: retreat_bonus('CampAIRetB1', 1),
         'airetd': lambda: mission('CampAIRetD', guards=GUARDS, disband=999, RetreatPowerAdvantage='0.2'),
         'airetf': lambda: mission('CampAIRetF', guards=GUARDS, flag=True, RetreatPowerAdvantage='0.2'),
         'airetfd': lambda: mission('CampAIRetFD', guards=GUARDS, flag=True, disband=999, RetreatPowerAdvantage='0.2'),

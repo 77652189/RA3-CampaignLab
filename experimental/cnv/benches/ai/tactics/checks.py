@@ -2271,7 +2271,7 @@ def engine_airetreat():
         if build.startswith('airet'):
             counted('CNV_AR_Count', '步兵数', t, template=inf, player=s1)
             t.expect += [('步兵在家', wake + 5, 'ever==', 0, end)]          # it left
-            if build in ('airet', 'airetd', 'airett'):
+            if build in ('airet', 'airetd', 'airett', 'airetb3', 'airetb1'):
                 t.expect += [('步兵在家', wake + 15, 'ever>=', 1, end)]     # and some came back
             elif build == 'airetf':                                         # back, then out again (the tactic goes on)
                 t.expect += [('步兵在家', wake + 15, 'ever==', 4, end), ('步兵在家', wake + 35, 'ever==', 0, end)]
@@ -2293,7 +2293,7 @@ def engine_airetreat():
         return t
 
 
-    CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('airet', 'airett', 'airetd', 'airetf', 'airetfd', 'airet0', 'aipas1', 'aipas0')}
+    CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('airet', 'airett', 'airetb3', 'airetb1', 'airetd', 'airetf', 'airetfd', 'airet0', 'aipas1', 'aipas0')}
     return dict(CHECKS=CHECKS, shared=SimpleNamespace(a=a))
 
 
