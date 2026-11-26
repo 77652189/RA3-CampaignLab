@@ -29,11 +29,12 @@ def go_to(world, b, target, reach=0.0, face=None):
     if p is None:
         world.note('卡住', f'{world.label(b)} 找不到要去的地方 {target}')
         return
-    surface = 'foot' if b.surface == 'ground' and 'INFANTRY' in b.kinds else b.surface    # Sim.reblock's foot
-    path = world.ground.within(surface, (b.x, b.y), p, reach) if reach else None
+    g = world.ground
+    surface = g.walks(b)
+    path = g.within(surface, (b.x, b.y), p, reach) if reach else None
     stands = False
     if path is None:
-        path = world.ground.route(surface, (b.x, b.y), p, closest=True)
+        path = g.route(surface, (b.x, b.y), p, closest=True)
         stands = path == []
     if not b.path:
         locomotor.write(world, b, set_off=world.frame_now())

@@ -90,7 +90,7 @@ SIM_SURFACE = {
                    'production*2 repairs self_power_due seq series shot_clock*2 suppression_tick sweeps t*8 tech_due test*3 '
                    'toggles_of wallet wfire_due world*2',
     'engine.modules': 'pick',     # a module's self.world.gap / living / used are the kernel World's (world_names)
-    'engine.objects': 'add*2 blocks*4 bodies*9 body change*21 cold_of enemy*2 frame_movers*2 frame_now*32 gap*60 ground*5 '
+    'engine.objects': 'add*2 blocks*4 bodies*9 body change*21 cold_of enemy*2 frame_movers*2 frame_now*32 gap*60 ground*4 '
                       'guessed*5 human*11 kills*2 label*27 living*12 looks m*2 note*20 own*42 player_ups players*3 point '
                       'reblock*2 relation*6 relations*4 shot_clock t*7 toggles_of topples used*18 weapon_upgrades world*24 '
                       'xml_of*6',   # objects.bridge (A315): the ManagerBody gap / own / blocks_of moved out of Sim.add

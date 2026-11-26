@@ -36,6 +36,18 @@ def test_ground_route_pulls_a_single_bend_around_a_blocked_strip():
     ]
 
 
+def test_script_path_test_reads_the_ground_its_unit_walks():
+    # E256: a CRUSHABLE_OBSTACLE shuts the 'foot' cells only; TEAM_CAN_PATH_TO_WAYPOINT asks the same ground the
+    # unit's move takes (review 141 P2: it asked 'ground', so infantry read yes to a car it walks round and never on)
+    from engine.script.cond_world import team_can_path_to_waypoint
+    s = simsmall.small_world(model=False)
+    s.add('walker', 'AlliedAntiInfantryInfantry', 'Player_1', 1200, 2500, team='F')
+    s.add('tank', 'AlliedAntiVehicleVehicleTech1', 'Player_1', 1200, 2600, team='V')
+    s.ground.set_blocks([], foot=[(1300, 2500, 30)])
+    assert not team_can_path_to_waypoint(s, '', ['F', '@1300,2500'])
+    assert team_can_path_to_waypoint(s, '', ['V', '@1300,2500'])
+
+
 def test_ground_attack_route_stops_at_the_first_cell_in_range():
     s = simsmall.small_world(model=False)
     b = s.add('walker', 'AlliedAntiInfantryInfantry', 'Player_1', 1200, 2500)

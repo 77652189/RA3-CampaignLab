@@ -459,7 +459,7 @@ def goal_off_nodes(world, b, want):
         return want
     cx, cy = round((want[0] - off) / GRID), round((want[1] - off) / GRID)
     spots = [((cx + i) * GRID + off, (cy + j) * GRID + off) for i in range(-8, 9) for j in range(-8, 9)]
-    spots = [s for s in spots if clear(*s) and world.ground.open(b.surface, *s)]
+    spots = [s for s in spots if clear(*s) and world.ground.open(Ground.walks(b), *s)]
     if not spots:
         return want
     return min(spots, key=lambda s: (s[0] - want[0]) ** 2 + (s[1] - want[1]) ** 2)
@@ -471,7 +471,7 @@ def free_spot(world, b, want, held, on_grid=False):
     R7) -> `want`."""
     if b.surface == 'air':
         return want
-    at = spot(want, b.radius, held, lambda x, y: world.ground.open(b.surface, x, y), GRID, on_grid)
+    at = spot(want, b.radius, held, lambda x, y: world.ground.open(Ground.walks(b), x, y), GRID, on_grid)
     return want if at is None else at
 
 
@@ -557,6 +557,11 @@ class Ground:
             self.shapes, self.foot_shapes = list(shapes), list(shapes) + list(foot)
             return True
         return False
+
+    @staticmethod
+    def walks(b):
+        """The surface b's ways are found on: infantry's ground is 'foot' (set_blocks' foot, E256 engine_a1toll)."""
+        return 'foot' if b.surface == 'ground' and 'INFANTRY' in b.kinds else b.surface
 
     def shut(self, surface):
         """The routing cells shut now for that surface."""

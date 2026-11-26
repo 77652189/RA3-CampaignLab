@@ -128,14 +128,14 @@ def team_is_attacked_and_cannot_retaliate_any(sim, name, a):
     # weapon (the possible-to-attack filter: able now, or after moving if it moves), or can but has neither in
     # range nor a way to it. j04's statues (no AI) never. INFERRED: an AI = a unit that moves or is armed; the
     # program's range and path tests as Sim.in_range / the ground's route
-    now = sim.frame_now()
+    now, g = sim.frame_now(), sim.ground
     for b in team_crew(sim, a[0]) or ():
         m, by = b.find(interfaces.Body) if b.modules else None, attacker(sim, b)
         if not (b.speed or b.weapons) or m is None or m.hit_frame is None or now > m.hit_frame + 5 * LIFE_FPS \
                 or by is None or not by.alive or not simseq.idle(sim, b):
             continue
         ws = [w for w in b.weapons if sim.can_hit(w, by)] if 'NO_ATTACK' not in b.status else []
-        way = b.speed and (b.surface == 'air' or sim.ground.route(b.surface, (b.x, b.y), (by.x, by.y)) is not None)
+        way = b.speed and (b.surface == 'air' or g.route(g.walks(b), (b.x, b.y), (by.x, by.y)) is not None)
         if not ws or not (way or any(simrange.in_range(b, by, w) for w in ws)):
             return True
     return False
@@ -156,7 +156,7 @@ def team_can_path_to_waypoint(sim, name, a):
     crew, q = sim.members(a[0]), sim.point(a[1])
     g = sim.ground
     return bool(crew) and q is not None and all(
-        b.surface == 'air' or (g.open(b.surface, *q) and g.route(b.surface, (b.x, b.y), q) is not None)
+        b.surface == 'air' or (g.open(g.walks(b), *q) and g.route(g.walks(b), (b.x, b.y), q) is not None)
         for b in crew)
 
 

@@ -95,11 +95,11 @@ class Pullbacks:
         side = next((side for side, owner in world.players.items() if owner == brain.player), '')
         faction = (brain.settings.sides.get(side) or {}).get('playerFaction')
         template = self.armies.get(faction)
-        places = []
+        places, ground = [], world.ground
         for g in world.living():
             if g.template != template or not self.accepts(u, g):
                 continue
-            route = world.ground.within(u.surface, (u.x, u.y), (g.x, g.y), self.reach(g))
+            route = ground.within(ground.walks(u), (u.x, u.y), (g.x, g.y), self.reach(g))
             if route is not None:
                 places.append((brain.tid(g), (g.x, g.y), True))
         return u.hp / u.max_hp, places
