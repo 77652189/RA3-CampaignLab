@@ -12,3 +12,15 @@ one drone for the Hammer's owner, and giving it again while held makes no second
 expect = ["on[-1]['机'] == 1 and off[-1]['机'] == 0",
           "all(r['升'] == 11 for r in on[2:] + off[2:])",
           "max(r['机'] for r in on) == 1"]
+
+[[reading]]
+id = "flak_on_nowatch_the_drone_downed_takes_the_upgrade_back_and_the_next_grant_makes_one"
+item = "物体模块 Behaviors/SlaveWatcherBehavior"
+scenes = {on = {build = "engine_leechdrone_on", check = "b", until = 14}, nw = {build = "engine_leechdrone_nowatch", check = "b", until = 14}}
+bench = "CampLeechOnB_mcp_1125_184445 / CampLeechNwB_mcp_1125_184320 at e5dc7cc7 + E246: on 机 1 0 11 s1-s3, 0 0 10 s4-s7, 1 0 11 s8-s14; nowatch 1 0 11 s1-s3, 0 0 11 s4-s14 (the simulator downs the drone at s7, the bench at s4)"
+proves = """SlaveWatcherBehavior (retail: the Hammer's, RemoveUpgrade Leech_AircraftCarrier_Upgrade): the leeched drone \
+shot down takes the upgrade off its Hammer at once, so the next grant makes another; without the module the upgrade \
+stays and the next grant makes none"""
+expect = ["min(r['升'] for r in on[2:]) == 10 and on[-1]['升'] == 11 and on[-1]['机'] == 1",
+          "all((r['机'] == 0) == (r['升'] == 10) for r in on[2:])",
+          "all(r['升'] == 11 for r in nw[2:]) and max(r['机'] for r in nw) == 1 and nw[-1]['机'] == 0"]

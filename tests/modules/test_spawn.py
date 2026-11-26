@@ -155,7 +155,7 @@ def test_a_child_without_slavedupdate_is_given_one_and_the_record_keeps_the_old_
 
 def test_objectcreationupgrade_makes_one_slave_and_slavewatcher_takes_the_upgrade_back_at_its_death():
     """ObjectCreationUpgrade, E244 (checks/engine_leechdrone.readings.toml): the Hammer's Leech_AircraftCarrier_Upgrade makes one drone, held
-    again makes none; the drone's death takes the upgrade back (SlaveWatcherBehavior, INFERRED), so the next makes one."""
+    again makes none; the drone's death takes the upgrade back (SlaveWatcherBehavior, E246), so the next makes one."""
     from engine.kernel import module as kmodule
     w, T, made = _world()
     up, modified = 'Leech_AircraftCarrier_Upgrade', []
