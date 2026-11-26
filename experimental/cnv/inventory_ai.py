@@ -779,7 +779,8 @@ NOTES = {
 }
 # AIData fields the game parses but never reads (three searches of the program, layout from a compiled pack; the
 # evidence is in the private notes work/re/l4_aidata_readers.md; coordinator 11-26: these are 不涉及)
-NOTES.update({f'全局常量/AIData.{f}': (NA, '程序不读：解析进 AIData、全程序找不到读处（work/re/l4_aidata_readers.md）')
+NOTES.update({f'全局常量/AIData.{f}': (NA, '程序不读：解析进 AIData、全程序找不到读处（work/re/l4_aidata_readers.md）；'
+                                               '台上 aiskna 九项一起改成极端值，和对照 aiskfon 逐秒相同')
               for f in ('WallHeight', 'MinDistanceForGroup', 'FormationEnemyDistance', 'FormationColumnWidth',
                         'FormationSquadSpacing', 'MaxSquadWidth', 'ChaseFromBehindLimit', 'RotateSkirmishBases',
                         'AICrushesInfantry')})

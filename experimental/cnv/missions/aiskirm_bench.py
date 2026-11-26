@@ -418,7 +418,12 @@ AIDATA = 'AIData:AIData'              # aiskad / aiskfon / aiskfof (check a / fm
 # canary: the team maker's poll handles at most Optimization_NumTeamsToRecruit teams a frame, none at <= 0 (l4_recruit)
 AIDATA_RUNS = {'aiskad': {'Optimization_NumTeamsToRecruit': '0'},
                'aiskfon': {'UseFormations': 'true'},     # retail's value, through the same override (the control)
-               'aiskfof': {'UseFormations': 'false'}}
+               'aiskfof': {'UseFormations': 'false'},
+               # aiskna: the nine fields no reader was found for (l4_aidata_readers), at extremes; must read as aiskfon
+               'aiskna': {'WallHeight': '500', 'RotateSkirmishBases': 'false', 'MinDistanceForGroup': '5000.0',
+                          'FormationEnemyDistance': '5000.0', 'AICrushesInfantry': 'false',
+                          'FormationColumnWidth': '600.0', 'FormationSquadSpacing': '600.0', 'MaxSquadWidth': '1',
+                          'ChaseFromBehindLimit': '5000.0'}}
 
 
 class AIDataPack:

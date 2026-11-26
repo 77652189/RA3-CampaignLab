@@ -1867,6 +1867,7 @@ def aiskirm_bench():
         'aiskad': lambda: mission('CampAISkAD', aidata=AIDATA_RUNS['aiskad']),      # check a: AIData canary
         'aiskfon': lambda: mission('CampAISkFOn', aidata=AIDATA_RUNS['aiskfon']),   # check fm: UseFormations true
         'aiskfof': lambda: mission('CampAISkFOff', aidata=AIDATA_RUNS['aiskfof']),  # check fm: false
+        'aiskna': lambda: mission('CampAISkNA', aidata=AIDATA_RUNS['aiskna']),      # check fm: nine unread fields
     }
     return dict(MISSION=MISSION)
 
