@@ -308,3 +308,15 @@ def test_a_bombing_run_drops_after_its_delay_and_the_monitor_holds_or_lets_it_go
     # the hit: the call + InitialDelay 53 + ApproachTime 23 + FALL 6 (82), seen at the end of its step
     want = {'a': 83, 'b own': 15 + 83, 'b late': 120 + 83, None: None}
     assert (died.get('a'), died.get('b')) == tuple(want[d] for d in dies)
+
+
+def test_natasha_calls_her_bombing_run_on_the_default_clock_too():
+    """Review 133 P1: her attack order brings the run without the opt-in shot clock (the levels' replays run without)."""
+    import engine.testing.small as simsmall
+    from engine.ports.command import Command
+    s = simsmall.small_world([('n', 'SovietCommandoTech1', 'Player_1', 1400.0, 2400.0),
+                              ('t', 'SovietAntiVehicleVehicleTech3', 'Soviet_1', 1400.0, 2530.0)], model=False)
+    s.act('UNIT_CHANGE_OBJECT_STATUS', ['t', 'NO_ATTACK', 1], None)
+    s.commands.do(Command('attack', units=('n',), target='t'))
+    s.advance(155)
+    assert not s.bodies['t'].alive

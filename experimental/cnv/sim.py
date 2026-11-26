@@ -1789,13 +1789,13 @@ class Sim:
             for effect in w.get('unmodeled_effects', []):
                 self.gap(GAP_WEAPON, effect, '武器第1轮尚未解释此效果的筛选、几何或时序')
             if not self.shot_clock and (w.get('hit_modifiers') or w.get('line') or w.get('strip_max_health') or w.get('emp_seconds')
-                                       or w.get('sweep') or w.get('contained') or w.get('dot') or w.get('special_powers') or w.get('attach') or w.get('lift') or w.get('meta_impacts')):
+                                       or w.get('sweep') or w.get('contained') or w.get('dot') or w.get('attach') or w.get('lift') or w.get('meta_impacts')):
                 self.gap(GAP_WEAPON, 'weapon effects', '逐发武器效果仅在离散命中时钟中模拟')
             if w.get('grapple') and not self.shot_clock:    # no hit events: the aim hooks (review 1125 G)
                 simgrapple.hook(a, pick, w['grapple'])
             self.first_shot(a, w, pick)
-            if w['dps'] or w.get('suppression') or (self.shot_clock and (w.get('sdps') or w.get('dot') or w.get('special_powers') or w.get('attach') or w.get('lift') or w.get('grapple') or w.get('meta_impacts'))):
-                if 'sched' in w and self.shot_clock:
+            if w['dps'] or w.get('suppression') or w.get('special_powers') or (self.shot_clock and (w.get('sdps') or w.get('dot') or w.get('attach') or w.get('lift') or w.get('grapple') or w.get('meta_impacts'))):
+                if 'sched' in w and (self.shot_clock or w.get('special_powers')):
                     self.volleys.append((pick, w, a))
                 else:
                     # Continuous DPS has no individual hit events. Do not run a second clip clock just for pressure (A4 guardians falsely suppressed at F1980).
