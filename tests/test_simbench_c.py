@@ -649,7 +649,7 @@ def test_fire_weapon_when_dead_a_scripted_kill_blows_the_mig_and_the_guardian_be
     assert 8.0 <= north.died_at <= 9.0 and 11.0 - 1.0 <= west.died_at <= 11.5, (north.died_at, west.died_at)
     assert s.body('UNIT - CNV Refill Keep').alive
     by = [row[1][1] for row in s.series]                       # 车旁: hundreds / thousands = the north / west mig
-    assert by[3] == 1100 and by[-1] == 3300, by                # bench: both gone by s11, as here
+    assert by[4] == 1111 and by[-1] == 3300, by                # bench: a drone on each car by s4, both gone by s11
 
 
 def test_weapon_bench_register_points_to_replayed_engine_probes():

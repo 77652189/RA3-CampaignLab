@@ -142,16 +142,17 @@ def test_objective_1_completes_when_the_soviets_are_gone(mission):
     """A01_OBJECTIVE_1 ('Objective 01 - Completed'): the buffer timer, Soviet_2's flag set when its 'TEAM - Intro
     Patrol 01' is destroyed (TEAM_DESTROYED, read from the other list as 'Soviet_2/FLAG - ...'), and no Soviet_1
     object of the list 'objective 01 - soviet infantry' (OBJECTLIST_ADDOBJECTTYPE: conscripts and war bears) left.
-    The Soviets killed by hand at 31 s: the objective is done in the next second."""
+    The Soviets killed by hand at 31 s: the dying are counted (cond_object) and a killed conscript lies its SlowDeath
+    127 frames (E228), so the objective is done about 8.5 s later."""
     s = sim.Sim(mission, script='30 摧毁 队 Soviet_2/TEAM - Intro Patrol 01')
     s.advance(31 * 15)
     assert not any('目标完成' in text for _, kind, text in s.log if kind == '目标')
     for b in s.living():
         if b.owner == 'Soviet_1' and b.template.lower() in s.of_types('objective 01 - soviet infantry'):
             s.world.kill(b, 'test')
-    s.advance(5 * 15)
+    s.advance(10 * 15)
     done = [t for t, kind, text in s.log if kind == '目标' and text == '目标完成：MISSIONOBJ:A01_OBJECTIVE_1']
-    assert done and 31 <= done[0] <= 32, s.log[-20:]
+    assert done and 39 <= done[0] <= 40, s.log[-20:]
 
 
 A02, A03 = 'camp_a02_cannes_smith', 'camp_a03_heidelberg_smith'
