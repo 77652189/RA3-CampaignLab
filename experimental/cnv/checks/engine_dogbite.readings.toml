@@ -43,3 +43,21 @@ bench = "CampDogBiteA: 走娜死 // 1000 = 58 at s3-s21 -- told every frame from
 proves = "the dog's pounce: the leap holds its target still 1.5 s and the orders given meanwhile take hold once it ends"
 mismatch = "sim 69: the hold from the leap at 34 ends at 57, she is out 12 frames later (the bench 4)"
 expect = "[v // 1000 for v in win(5, 20, '走娜死')] == [58] * 16"
+
+# b: as a, the dog killed (base) or deleted (high) by a script the frame its prey is hurt (the leap's 1); order the
+# control. CampDogBiteB (11-26, review 141 A386, head 4459512a; work/bench_results/engine_dogbite__b.json): s1-s21
+# 征起死 31034, 娜起落 31045 ... 31344 (never < 50 %), 控起落 31034.
+
+[[reading]]
+id = "b_a_dog_killed_in_the_air_still_lands"
+scene = {build = "engine_dogbite", check = "b", until = 21}
+bench = "CampDogBiteB (11-26): 征起死 31034 at s1-s21 -- the dog killed by NAMED_KILL once the conscript is hurt (frame 31), the conscript dies at 34 all the same: the landing as a's"
+proves = "engine/combat/projectile.arrive: a pounce whose shooter was killed in the air still lands its warhead"
+expect = "all(0 < v % 1000 - v // 1000 <= 4 for v in win(5, 20, '征起死'))"
+
+[[reading]]
+id = "b_a_dog_deleted_in_the_air_lands_nothing"
+scene = {build = "engine_dogbite", check = "b", until = 21}
+bench = "CampDogBiteB (11-26): 娜起落 31045, 31071 ... 31344 at s1-s21 -- the dog deleted by NAMED_DELETE once Natasha is hurt (frame 31): she never goes below 50 %, the 200 never lands"
+proves = "engine/combat/projectile.arrive: a pounce whose shooter (the shell) was deleted in the air lands nothing"
+expect = "all(v % 1000 > 60 for v in win(5, 20, '娜起落'))"

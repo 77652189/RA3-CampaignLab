@@ -38,11 +38,12 @@ def arrive(hit, hurt, detonate, clear):
     notification clears (clear) and it takes the launch-time damage (a new entry's attacker is the shooter). A shield up
     on the target (engine/modules/shield.py) takes the shell instead: nothing goes off, the notification clears.
     The shooter counts as the shield's ally when it has the same owner (review yy #5; another allied player's shell
-    is still taken: a gap, the host's relation is not reached from here)."""
+    is still taken: a gap, the host's relation is not reached from here). A pounce whose shooter (the shell) was deleted
+    in the air lands nothing; one killed in the air still lands (bench engine_dogbite b, review 141 A386)."""
     when, target, damage, attacker, weapon, centre = hit
     away = math.hypot(target.x - attacker.x, target.y - attacker.y)
     ally = attacker.owner == target.owner
-    if any([m.absorb(when, damage, weapon.get('type'), away, ally) for m in target.find(interfaces.Shield)]):
+    if weapon.get('pounce') and attacker.deleted or any([m.absorb(when, damage, weapon.get('type'), away, ally) for m in target.find(interfaces.Shield)]):
         clear(target, attacker.serial, weapon.get('weapon_key'))
         return
     detonate(weapon, target, centre, attacker)
@@ -104,7 +105,7 @@ def pounce(context, leap, now):
         if modifier and modifier['frames'] is not None:
             context.host.wear(t, mid, frames + modifier['frames'], xml)
     damage = context.n * leap['dmg'] * by.dealt * context.hit(t, leap['type'])
-    context.queue_hit(land, t, damage, by, dict(type=leap['type'], weapon_key=leap['weapon_key']))
+    context.queue_hit(land, t, damage, by, dict(type=leap['type'], weapon_key=leap['weapon_key'], pounce=True))
     deadlines = context.emp_until()
     deadlines[by.serial] = max(deadlines.get(by.serial, 0), land)
     if away > 0:

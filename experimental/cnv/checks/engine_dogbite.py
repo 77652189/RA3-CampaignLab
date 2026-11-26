@@ -22,6 +22,12 @@ landing 3 frames later (30 at 125 a second, not the 0.5 s FiringDuration); Natas
 after the first: the 0.5 s + 1.5 s reload, ~30); told to walk every frame from 34, she is out of her square at 58 --
 the 1.5 s stun from the leap (54) and a few frames of walking: the orders under IGNORE_AI_COMMAND are not dropped
 for good, she goes the moment it ends.
+
+  b dead in the air (review 141 A386): as a, but the dog is killed (base, the conscript's) or deleted (high,
+    Natasha's) the frame its prey is hurt -- the leap's 1, frames before the warhead lands; order is a's lane
+    untouched (the control). Counts as a: 征起死 (base), 娜起落 (high), 控起落 (order: Natasha < 100 % / < 50 %).
+Predicted (data): the landing is the dog's own weapon's warhead (HitStoredTarget), fired by nothing once the dog is
+gone -- 征死 / 娜落 run to the end; the control 31034 as a. The simulator: the queued 200 lands all the same.
 """
 from maps import probe_range
 from parts import Mission, Script, Test, square
@@ -66,5 +72,24 @@ def bite_check(m):
     return t
 
 
+def air_check(m):
+    t = Test()
+    prey = {lane: 'Prey ' + lane for lane in LANES}
+    t.scripts = [Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1')), ('SET_MILLISECOND_TIMER', 'Dog go', 2.0),
+                                             *[('UNIT_CHANGE_OBJECT_STATUS', n, 'NO_ATTACK', 1) for n in prey.values()]]),
+                 Script('Test - go', [('TIMER_EXPIRED', 'Dog go')],
+                        [('NAMED_ATTACK_NAMED', 'Dog ' + lane, n) for lane, n in prey.items()]),
+                 Script('Test - kill', [('UNIT_HEALTH', prey['base'], 0, 100)], [('NAMED_KILL', 'Dog base')]),
+                 Script('Test - delete', [('UNIT_HEALTH', prey['high'], 0, 100)], [('NAMED_DELETE', 'Dog high')])]
+    for counter, label, big, small in (
+            ('Dog con', '征起死', ('UNIT_HEALTH', prey['base'], 3, 100), ('NAMED_NOT_DESTROYED', prey['base'])),
+            ('Dog nat', '娜起落', ('UNIT_HEALTH', prey['high'], 3, 100), ('UNIT_HEALTH', prey['high'], 3, 50)),
+            ('Dog end', '控起落', ('UNIT_HEALTH', prey['order'], 3, 100), ('UNIT_HEALTH', prey['order'], 3, 50))):
+        t.scripts += [_until(counter, 1000, big), _until(counter, 1, small)]
+        t.counters.append((counter, label))
+    t.bench = [('bench_watch', dict(seconds=20, every=2, sheet=False, lines=3))]
+    return t
+
+
 MISSION = {'engine_dogbite': mission}
-CHECKS = {'engine_dogbite': {'a': bite_check}}
+CHECKS = {'engine_dogbite': {'a': bite_check, 'b': air_check}}
