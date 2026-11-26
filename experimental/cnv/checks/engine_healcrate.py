@@ -101,18 +101,23 @@ HYP = {'Hum': ('switch', (HUMAN,), False, True), 'Sit': ('low', (), True, False)
        'Rel': ('removed', (REL,), False, True), 'All': ('order', (HUMAN, REL), True, True)}
 
 
-def hypotheses():
-    """engine_healcrate_h: a p1 Peacekeeper (50%, NO_ATTACK) per lane. Hum: the clone with
+LIFE = ('<Behaviors>', '<Behaviors><LifetimeUpdate id="ModuleTag_CNVLife" MinLifetime="12s" MaxLifetime="12s" />')
+
+
+def hypotheses(verify=False):
+    """engine_healcrate_h (verify: engine_healcrate_v, each edited clone also given a 12 s LifetimeUpdate -- its crate
+    gone from 箱子位 at ~14 s says the game ran the edited XML): a p1 Peacekeeper (50%, NO_ATTACK) per lane. Hum: the clone with
     IsHumanOnlyPickupInSinglePlayerCampaign false (H2: the bench is no campaign / p1 no human seat), mover sent through
     at 2 s as in a; Sit: the plain clone, the mover placed on the crate's centre and never ordered (H1: no collision
     ever happens); Rel: the clone's filter given Relationship ALLIES ENEMIES NEUTRAL SAME_PLAYER (H3), sent through;
     All: both edits, placed on the centre and sent through. Counters 箱子位 (lane k's crate stands: 2**k) and 满血位
     (lane k's mover >= 99%)."""
-    m = Mission(name='CampHCHyp', map=probe_range, units=[])
+    m = Mission(name='CampHCHyp' + 'V' * verify, map=probe_range, units=[])
     for tag, (lane, edits, sit, _) in HYP.items():
         crate = clone('Neutral/Crates/HealCrate.xml', 'HealCrate', 'CNVHC' + tag)
+        edits += (LIFE[1],) * (verify and bool(edits))
         for new in edits:
-            old = new.split(' ')[0] if new.startswith('id=') else 'Rule="ANY"'
+            old = new.split(' ')[0] if new.startswith('id=') else LIFE[0] if new == LIFE[1] else 'Rule="ANY"'
             crate.xml = crate.xml.replace(old, new, 1)
             assert new in crate.xml
         m.units.append(crate)
@@ -141,7 +146,8 @@ def hyp_check(m):
     return t
 
 
-MISSION = {'engine_healcrate': mission, 'engine_healcrate_r': lambda: mission(True), 'engine_healcrate_h': hypotheses}
+MISSION = {'engine_healcrate': mission, 'engine_healcrate_r': lambda: mission(True), 'engine_healcrate_h': hypotheses,
+           'engine_healcrate_v': lambda: hypotheses(True)}
 CHECKS = {'engine_healcrate': {'a': check, 'b': passed, 'c': ordered}, 'engine_healcrate_r': {'a': check},
-          'engine_healcrate_h': {'a': hyp_check}}
+          'engine_healcrate_h': {'a': hyp_check}, 'engine_healcrate_v': {'a': hyp_check}}
 CONTROL_ARMS = {'engine_healcrate': ('On', 'Off')}

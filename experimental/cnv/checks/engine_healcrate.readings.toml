@@ -46,5 +46,14 @@ bench = "engine_healcrate_h:a, run_queue CampHCHypA_mcp_1126_011501: 箱子位 /
 proves = """HealCrateCollide (negative, D191's table): a p1 Peacekeeper at 50% takes no crate and heals none when the crate's \
 IsHumanOnlyPickupInSinglePlayerCampaign is false (H2), when it starts on the crate's centre and is never ordered (H1), when \
 the crate's filter is given Relationship ALLIES ENEMIES NEUTRAL SAME_PLAYER (H3), or with all three -- none of them is the \
-missing gate (that the edited XML is what the game read is not checked)"""
+missing gate (that the game read the edited XML: engine_healcrate_v below)"""
 expect = "all(r['箱子位'] == 15 and r['满血位'] == 0 for r in rows)"
+
+[[reading]]
+id = "the_hypothesis_clones_edited_xml_is_what_the_game_runs"
+scene = {build = "engine_healcrate_v", check = "a", until = 18}
+bench = "engine_healcrate_v:a, run_queue CampHCHypVA_mcp_1126_042402: 箱子位 / 满血位 15 0 at s1-s10, 2 0 at s10-s17"
+proves = """engine_healcrate_h with each edited clone (Hum, Rel, All) also given a 12 s LifetimeUpdate by the same text edit: \
+those three crates go together (箱子位 15 -> 2, Sit's unedited crate stays), still nobody healed -- the edited XML is what \
+the game ran, so h's negatives are about the fields, not a build that dropped the edits"""
+expect = "rows[0]['箱子位'] == 15 and rows[-1]['箱子位'] == 2 and all(r['满血位'] == 0 for r in rows)"
