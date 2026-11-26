@@ -1868,6 +1868,8 @@ def aiskirm_bench():
         'aiskfon': lambda: mission('CampAISkFOn', aidata=AIDATA_RUNS['aiskfon']),   # check fm: UseFormations true
         'aiskfof': lambda: mission('CampAISkFOff', aidata=AIDATA_RUNS['aiskfof']),  # check fm: false
         'aiskna': lambda: mission('CampAISkNA', aidata=AIDATA_RUNS['aiskna']),      # check fm: nine unread fields
+        'aiskmrd': lambda: mission('CampAISkMRD', aidata=AIDATA_RUNS['aiskmrd']),   # check fm: MaxRecruitDistance 1
+        'aiskts': lambda: mission('CampAISkTS', aidata=AIDATA_RUNS['aiskts']),      # check fm: TeamSeconds 600
     }
     return dict(MISSION=MISSION)
 

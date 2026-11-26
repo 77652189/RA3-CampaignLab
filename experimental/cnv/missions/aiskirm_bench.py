@@ -423,7 +423,9 @@ AIDATA_RUNS = {'aiskad': {'Optimization_NumTeamsToRecruit': '0'},
                'aiskna': {'WallHeight': '500', 'RotateSkirmishBases': 'false', 'MinDistanceForGroup': '5000.0',
                           'FormationEnemyDistance': '5000.0', 'AICrushesInfantry': 'false',
                           'FormationColumnWidth': '600.0', 'FormationSquadSpacing': '600.0', 'MaxSquadWidth': '1',
-                          'ChaseFromBehindLimit': '5000.0'}}
+                          'ChaseFromBehindLimit': '5000.0'},
+               'aiskmrd': {'MaxRecruitDistance': '1.0'},   # read fields, one at a time against aiskfon
+               'aiskts': {'TeamSeconds': '600'}}
 
 
 class AIDataPack:

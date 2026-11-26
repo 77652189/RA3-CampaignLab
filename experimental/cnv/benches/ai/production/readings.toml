@@ -733,6 +733,30 @@ expect = ["rows[-1]['激流总数'] >= 1", "all(r['激流在家'] == min(r['激�
 
 [[reading]]
 bench_id = "engine_aiskirm"
+id = "max_recruit_distance_1_leaves_the_skirmish_team_as_stock"
+item = "AI 全局常量/AIData.MaxRecruitDistance"
+scene = {build = "aiskmrd", check = "fm", until = 250}
+bench = """\
+B 11-26 aiskmrd (CampAISkMRDFm_mcp_1126_021052; MaxRecruitDistance 1 spliced into the global stream) reads second for \
+second as aiskfon run beside it: 激流到 1 at s156, 3 at s185, 6 at s215-s229, home again by s237. The program reads the \
+field only on the script-team recruit path (work/re l4_aidata_readers.md), not the skirmish team maker's"""
+proves = "simai team maker: the skirmish AI's recruit takes no distance limit -- MaxRecruitDistance does not reach it"
+expect = ["max(r['激流到'] for r in rows) >= 3"]
+
+[[reading]]
+bench_id = "engine_aiskirm"
+id = "team_seconds_600_leaves_the_skirmish_team_as_stock"
+item = "AI 全局常量/AIData.TeamSeconds"
+scene = {build = "aiskts", check = "fm", until = 250}
+bench = """\
+B 11-26 aiskts (CampAISkTSFm_mcp_1126_021212; TeamSeconds 600 spliced into the global stream) reads second for \
+second as aiskfon run beside it: 激流到 1 at s156, 3 at s185, 6 at s215-s229, home again by s237. The program keeps the \
+field on a per-player AI object only (work/re l4_aidata_readers.md), the skirmish team maker does not wait on it"""
+proves = "simai team maker: the first attack team is not held back by TeamSeconds"
+expect = ["max(r['激流到'] for r in rows) >= 3"]
+
+[[reading]]
+bench_id = "engine_aiskirm"
 id = "a_new_barracks_first_unit_is_the_unit_builders"
 scene = {build = "aiskvveh", check = "t", until = 100}
 bench = """\
