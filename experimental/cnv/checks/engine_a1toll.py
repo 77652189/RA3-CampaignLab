@@ -52,6 +52,24 @@ LONE = {'d': (2, 3, 4, 5), 'g': (1, 2, 3, 4, 5), 'h': (1, 2, 3, 4, 5)}
 # 2 the truck at the wall turned to 0 (the box's long side along the lane, so a thick block); 3 a Guardian at e's wall
 OD = 'OD_Wall01'
 RUNS['i'] = ((ZERO, ZERO, GUARDIAN), ({OD: (63.9, math.pi / 2)}, {OD: (9.47, 0.0)}, {OD: (63.9, math.pi / 2)}))
+# E258 (mod A1): NOCRUSH given an ArmorSet -- BaseParkedCar has none and h's cars took no damage. The retail civilian
+# structures' BaseCivilianStructureArmor: 100 % but SNIPER / MELEE 0 and EXPLOSIVE 125, so its 300 health reads as
+# shots. j: a wall of them; 1 the truck, 2 a Guardian (held up still?); 3 the truck, 4 a Guardian, the middle three
+# killed (NAMED_KILL) at 3 s; 5 the truck, killed at 5 s (on its way round by then): back to the straight way, when?
+# k: one a lane, 1 a Guardian, 2 a conscript, 3 a Hammer ordered on it; 4 a Guardian not ordered (NOT_AUTOACQUIRABLE);
+# 5 a Guardian ordered on NOCRUSH (no ArmorSet, h's control).
+ARMORED = 'CNVA1TollArmCar'
+ARM = {ARMORED: (15.13, 0.0)}
+RUNS |= {'j': ((ZERO, GUARDIAN, ZERO, GUARDIAN, ZERO), ARM),
+         'k': ((GUARDIAN, CONSCRIPT, HAMMER, GUARDIAN, GUARDIAN), (ARM,) * 4 + (CAND[0],))}
+LONE['k'] = (1, 2, 3, 4, 5)
+# l (j, k both read nothing): 1 a Guardian ordered on BARE (ARMORED without SIMPLE_OBJECT_PROP), 2 on an s1 ARMORED;
+# 3..5 j's 3..5 with the middle three NAMED_DELETEd (no 3 s SlowDeath sinking): is it the wreck or no new path?
+BARE = 'CNVA1TollBareCar'
+RUNS['l'] = ((GUARDIAN, GUARDIAN, ZERO, GUARDIAN, ZERO), ({BARE: (15.13, 0.0)}, ARM, ARM, ARM, ARM))
+LONE['l'], SIDES['l'] = (1, 2), {2: 's1'}
+KILL = {'d': {1: 3.5}, 'j': {3: 3.0, 4: 3.0, 5: 5.0}, 'l': {3: 3.0, 4: 3.0, 5: 5.0}}
+IDLE = {('h', 3), ('k', 4)}
 
 
 def _kinds(kinds, k):
@@ -89,12 +107,16 @@ def mission(run):
     truck.xml, n = re.subn(r'\s*<GameObject\s+id="SovietMiner_Naval".*?</GameObject>', '', truck.xml, flags=re.S)
     assert n == 1
     m.units.append(truck)
-    if kinds is CAND:
-        car = clone('Civilian/Santa_Monica_SA/Props/SM_Auto04.xml', 'SM_Auto04', NOCRUSH)
+    used = {t for lane in (kinds if isinstance(kinds, tuple) else (kinds,)) for t in lane or {}}
+    for ident in sorted({NOCRUSH, ARMORED, BARE} & used):
+        car = clone('Civilian/Santa_Monica_SA/Props/SM_Auto04.xml', 'SM_Auto04', ident)
+        prop = '' if ident == BARE else ' SIMPLE_OBJECT_PROP'
         car.xml = car.xml.replace('inheritFrom="BaseParkedCar"', 'inheritFrom="BaseParkedCar" KindOf="IMMOBILE '
-                                  'NOT_AUTOACQUIRABLE STRUCTURE CAN_SEE_THROUGH_STRUCTURE RESIST_EMP SIMPLE_OBJECT_PROP '
+                                  f'NOT_AUTOACQUIRABLE STRUCTURE CAN_SEE_THROUGH_STRUCTURE RESIST_EMP{prop} '
                                   'CLEARED_BY_BUILD"', 1)
-        assert 'KindOf="IMMOBILE' in car.xml
+        if ident != NOCRUSH:
+            car.xml = car.xml.replace('<Geometry', '<ArmorSet Armor="BaseCivilianStructureArmor" />\n    <Geometry', 1)
+        assert 'KindOf="IMMOBILE' in car.xml and (ident == NOCRUSH or '<ArmorSet' in car.xml)
         m.units.append(car)
     for k, mover in enumerate(movers, 1):
         lone, lane = k in LONE.get(run, ()), _kinds(kinds, k)
@@ -123,7 +145,7 @@ def check(m, run, view=False):
         name = m.role(f'mover {k}').name
         t.areas[f'A1T Mid {k}'] = square(x, y + _dy(k), 50.0)
         if k in LONE.get(run, ()):
-            if (run, k) != ('h', 3):
+            if (run, k) not in IDLE:
                 go.append(('NAMED_ATTACK_NAMED', name, m.role(f'car {k} 0').name))
             t.scripts.append(Script(f'Test - A1T at {k}', [('NAMED_DESTROYED', m.role(f'car {k} 0').name)],
                                     [('SET_FLAG', f'A1T At {k}', 1)]))
@@ -137,9 +159,9 @@ def check(m, run, view=False):
     if view or run == 'i':                      # a's v: the camera on lane 1's middle, to see the truck at the cars
         t.waypoints['A1T View'] = (x, y + _dy(1))
         s8.at(t, 'view', 1., [('MOVE_CAMERA_TO', 'A1T View', 0.5, 0.0, 1.0, 1.0)])
-    if run == 'd':
-        kill = [('NAMED_KILL', m.role(f'car 1 {i}').name) for i in _middle(_wall(kinds))]
-        s8.at(t, 'kill', 3.5, kill)
+    for k, secs in KILL.get(run, {}).items():
+        act = 'NAMED_DELETE' if run == 'l' else 'NAMED_KILL'
+        s8.at(t, f'kill {k}', secs, [(act, m.role(f'car {k} {i}').name) for i in _middle(_wall(_kinds(kinds, k)))])
     for label, ks in (('到时甲', (1, 2, 3)), ('到时乙', (4, 5))):
         counter = 'A1TTime' + ('A' if 1 in ks else 'B')
         t.counters.append((counter, label))
@@ -147,7 +169,7 @@ def check(m, run, view=False):
             if k in lanes:
                 t.scripts.append(Script(f'Test - {counter} {k}', [going, ('FLAG', f'A1T At {k}', 0)],
                                         [('INCREMENT_COUNTER', 1000 ** j, counter)], once=False))
-    if run == 'h':                              # the lone movers' 穿心 says nothing: 伤 takes its line
+    if run in ('h', 'k'):                       # the lone movers' 穿心 says nothing: 伤 takes its line
         s8.total(t, 'A1THurt', '伤', [(10 ** (k - 1), ('UNIT_HEALTH', m.role(f'car {k} 0').name, 0, pct))
                                      for k in lanes for pct in (100, 75, 50, 25)])
     else:
