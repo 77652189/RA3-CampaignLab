@@ -99,14 +99,25 @@ KILL = {'d': {1: (3.5, KIL, False)}, 'j': {3: (3.0, KIL, False), 4: (3.0, KIL, F
         'l': {3: (3.0, DEL, False), 4: (3.0, DEL, False), 5: (5.0, DEL, False)},
         'n': {1: (1.0, DEL, False), 2: (1.0, DEL, False), 3: (1.0, KIL, False), 4: (1.0, DEL, True)}}
 IDLE = {('h', 3), ('k', 4)}
+# q (E259's open end): the player's own order, given by the bench's clicks (no script order), 80 apart on one screen:
+# a Guardian on 1 CIV with Ctrl + right click (force attack), 2 MJ_PalaceWall01 with Ctrl + right, 3 CIV with a plain
+# right click, 4 a neutral CIVA with Ctrl + right; 5, 240 out (beyond the others' sight), on HOLD_FIRE, a plain right
+# click on an s1 CIVA (the click's positive control). lane: (dy, ctrl, the target's pixel), in click order. The pixels
+# are where q's first run drew them (calib's world point missed the cars by 15-25 px: those clicks hit the ground).
+RUNS['q'] = ((GUARDIAN,) * 5, ({CIV: (15.13, 0.0)}, {'MJ_PalaceWall01': (30.0, 0.0)}, {CIV: (15.13, 0.0)},
+                               {CIVA: (15.13, 0.0)}, {CIVA: (15.13, 0.0)}))
+LONE['q'], SIDES['q'] = (1, 2, 3, 4, 5), {5: 's1'}
+IDLE |= {('q', k) for k in LONE['q']}
+CLICK = {5: (240.0, False, (726, 103)), 1: (-160.0, True, (759, 505)), 2: (-80.0, True, (756, 365)),
+         3: (0.0, False, (743, 311)), 4: (80.0, True, (736, 233))}
 
 
 def _kinds(kinds, k):
     return kinds[k - 1] if isinstance(kinds, tuple) else kinds
 
 
-def _dy(k):
-    return 600.0 + 500.0 * (k - 1)
+def _dy(k, run=''):
+    return 1600.0 + CLICK[k][0] if run == 'q' else 600.0 + 500.0 * (k - 1)
 
 
 def _wall(kinds):
@@ -163,13 +174,13 @@ def mission(run):
         assert 'KindOf="IMMOBILE' in car.xml and (ident == NOCRUSH or '<ArmorSet' in car.xml)
         m.units.append(car)
     for k, mover in enumerate(movers, 1):
-        lone, lane = k in LONE.get(run, ()), _kinds(kinds, k)
-        m.put(mover, 'order gun', -150.0 if lone else -START, _dy(k), angle=0.0, role=f'mover {k}', name=f'A1T Mover {k}')
+        lone, lane, dy = k in LONE.get(run, ()), _kinds(kinds, k), _dy(k, run)
+        m.put(mover, 'order gun', -150.0 if lone else -START, dy, angle=0.0, role=f'mover {k}', name=f'A1T Mover {k}')
         first = next(iter(lane or {}), None)
         wall = [(first, 0.0, lane[first][1])] if lone else _wall(lane) if kinds else []
         side = SIDES.get(run, {}).get(k, 'neutral')
         for i, (t, y, ang) in enumerate(wall):
-            m.put(t, 'order gun', 0.0, _dy(k) + (0.0 if lone else y), angle=ang, side=side, role=f'car {k} {i}',
+            m.put(t, 'order gun', 0.0, dy + (0.0 if lone else y), angle=ang, side=side, role=f'car {k} {i}',
                   name=f'A1T Car {k} {i}')
     return m
 
@@ -182,12 +193,13 @@ def check(m, run, view=False):
     hold = [('UNIT_SET_STANCE', m.role(f'mover {k}').name, 3) for k in lanes if k not in LONE.get(run, ())]
     if run == 'h':
         hold += [('UNIT_SET_STANCE', m.role(f'car {k} 0').name, 3) for k in (1, 2, 3)]
-        hold.append(('UNIT_SET_STANCE', m.role('mover 1').name, 3))
+    if run in 'hq':
+        hold.append(('UNIT_SET_STANCE', m.role(f'mover {1 if run == "h" else 5}').name, 3))
     t.scripts.append(Script('Test - A1T start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))] + hold))
     go, going = [('SET_FLAG', 'A1T Going', 1)], ('FLAG', 'A1T Going', 1)
     for k in lanes:
         name = m.role(f'mover {k}').name
-        t.areas[f'A1T Mid {k}'] = square(x, y + _dy(k), 50.0)
+        t.areas[f'A1T Mid {k}'] = square(x, y + _dy(k, run), 50.0)
         if k in LONE.get(run, ()):
             if (run, k) not in IDLE:
                 go.append(('NAMED_ATTACK_NAMED', name, m.role(f'car {k} 0').name))
@@ -200,8 +212,9 @@ def check(m, run, view=False):
         t.scripts.append(Script(f'Test - A1T at {k}', [('NAMED_INSIDE_AREA', name, f'A1T Goal {k}')],
                                 [('SET_FLAG', f'A1T At {k}', 1)]))
     s8.at(t, 'go', 2., go)
-    if view or run in ('i', 'o', 'p'):          # a's v: the camera on lane 1's middle (o: 3's), to see the movers
-        t.waypoints['A1T View'] = (x - 75.0 * (run in 'op'), y + _dy(3 if run in 'op' else 1))
+    if view or run in ('i', 'o', 'p', 'q'):     # a's v: the camera on lane 1's middle (o: 3's), to see the movers
+        t.waypoints['A1T View'] = (x - 75.0 * (run in 'opq'),     # q: 40 south, its lanes 85..520 px down the screen
+                                   y + _dy(3 if run in 'opq' else 1, run) - 40.0 * (run == 'q'))
         s8.at(t, 'view', 1., [('MOVE_CAMERA_TO', 'A1T View', 0.5, 0.0, 1.0, 1.0)])
     for k, (secs, act, every) in KILL.get(run, {}).items():
         wall = _wall(_kinds(kinds, k))
@@ -214,20 +227,28 @@ def check(m, run, view=False):
             if k in lanes:
                 t.scripts.append(Script(f'Test - {counter} {k}', [going, ('FLAG', f'A1T At {k}', 0)],
                                         [('INCREMENT_COUNTER', 1000 ** j, counter)], once=False))
-    if run in ('h', 'k', 'm', 'o', 'p'):        # the lone movers' 穿心 says nothing: 伤 takes its line (m keeps both)
+    if run in ('h', 'k', 'm', 'o', 'p', 'q'):   # lone movers' 穿心 says nothing: 伤 takes its line (m keeps both)
         s8.total(t, 'A1THurt', '伤', [(10 ** (k - 1), ('UNIT_HEALTH', m.role(f'car {k} 0').name, 0, pct))
                                      for k in lanes if k in LONE[run] for pct in (100, 75, 50, 25)])
-    if run not in ('h', 'k', 'o', 'p'):
+    if run not in ('h', 'k', 'o', 'p', 'q'):
         t.counters.append(('A1TMid', '穿心'))
     t.scripts += [Script(f'Test - A1T mid {k}', [going, ('NAMED_INSIDE_AREA', m.role(f'mover {k}').name, f'A1T Mid {k}')],
                          [('INCREMENT_COUNTER', 10 ** (k - 1), 'A1TMid')]) for k in lanes]
-    if kinds and run not in 'mop':              # four lines fit: m's 到时 says when its lone cars go
+    if kinds and run not in 'mopq':             # four lines fit: m's 到时 says when its lone cars go
         parts = []
         for k in lanes:
             idx = [0] if k in LONE.get(run, ()) else _middle(_wall(_kinds(kinds, k)))
             parts += [(10 ** (k - 1), ('NAMED_NOT_DESTROYED', m.role(f'car {k} {i}').name)) for i in idx]
         s8.total(t, 'A1TCars', '车存', parts)
     s8.watch(t, RUN, .5)
+    if run == 'q':                              # engine_healcrate c's way: the clicks after the camera is there
+        watch, (vx, vy) = t.bench[0][1], t.waypoints['A1T View']
+        t.bench = [('bench_watch', dict(watch, seconds=2.0)), ('bench_view', dict(x=vx, y=vy, look=True))]
+        for k, (dy, ctrl, (u, v)) in CLICK.items():
+            my = y + _dy(k, run)
+            t.bench += [('bench_box', dict(x0=x - 180, y0=my - 30, x1=x - 120, y1=my + 30, look=True)),
+                        ('bench_click', dict(x=u, y=v, world=False, right=True, ctrl=ctrl, look=True))]
+        t.bench.append(('bench_watch', dict(watch, seconds=RUN - 2.0)))
     return t
 
 

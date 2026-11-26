@@ -172,12 +172,14 @@ def bench_caption(frame: int = 0) -> list:
 @server.tool(structured_output=False)
 @guard
 def bench_click(x: float, y: float, world: bool = True, right: bool = False, air: bool = False,
-                look: bool = True) -> list:
+                look: bool = True, ctrl: bool = False) -> list:
     """Left click (select) or right click (move / attack the thing under it) at a world point (or a screen pixel with
-    world=false, e.g. a UI button). air=true: a hovering aircraft, clicked where it is drawn."""
+    world=false, e.g. a UI button). air=true: a hovering aircraft, clicked where it is drawn. ctrl=true: Ctrl held
+    (force attack)."""
     u, v = S.to_screen(x, y, air) if world else (x, y)
-    harness.click(go(), u, v, right)
-    return after(f'{"right" if right else "left"} click at screen ({u:.0f}, {v:.0f})', look)
+    harness.click(go(), u, v, right, ctrl)
+    with_ctrl = ' with ctrl' if ctrl else ''
+    return after(f'{"right" if right else "left"} click at screen ({u:.0f}, {v:.0f}){with_ctrl}', look)
 
 
 @server.tool(structured_output=False)

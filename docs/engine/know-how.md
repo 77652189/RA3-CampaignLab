@@ -50,6 +50,7 @@
 - **超时空甲板落点挨着自家建筑**：被传的车落到建筑上会被弄死（Telefrag），自家的也一样（liberty jump 少一辆守护者就是这个）。
 - **测试台开始计时的那一刻，任务已经跑了多久，每次不一样**（2026-10-22，信标兵）：差几秒。有一次第 5 秒的脚本动作在测试台第 1 帧之前就做完了。脚本里第一个动作放到第 10 秒以后，或者用条件触发。
 - **脚本放技能不受距离上限限制**：`NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT` 不管 `MaxCastRange` / `LIMIT_DISTANCE`，玩家手点才受限。要测距离，只能手动选中单位再放技能（`bench_click` + `bench_ability`），而且目标点要在画面内（`bench_ability` 不会替你挪镜头）。
+- **玩家强制攻击（Ctrl + 右键）**（E260）：`bench_click(..., right=true, ctrl=true)`，游戏认（点地面就对地开炮）；不带 Ctrl 的右键点中立物件只是开过去。点小物件（车、箱子）别用世界坐标：calib 换算偏 15–25 像素会点到地上，先跑一局看画面，再用 `world=false` 点画出来的像素（镜头由任务 `MOVE_CAMERA_TO` 摆好时像素每局一样，例 `checks/engine_a1toll.py` 的 q）。
 - **让载具能装载具**（合体机甲，2026-10-22）：
   - 载具默认占 5 个座位（BaseVehicle `TransportSlotCount="5"`），座位上限要写 5。
   - KindOf 要有 `TRANSPORT`。

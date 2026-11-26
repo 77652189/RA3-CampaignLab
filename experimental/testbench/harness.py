@@ -169,11 +169,18 @@ def post(h, msg, w, l):
     user32.PostMessageW(h, msg, w, l)
 
 
-def click(h, x, y, right=False):
+def click(h, x, y, right=False, ctrl=False):
+    """ctrl=True: Ctrl held through the click (RA3's force attack) every way the game might read it -- a posted Ctrl
+    down before and up after, MK_CONTROL on the mouse messages, the shim's key.req holding VK_CONTROL."""
     down, up, mk = (0x0204, 0x0205, 2) if right else (0x0201, 0x0202, 1)
-    post(h, 0x0200, 0, lp(x, y)); time.sleep(0.06)
-    post(h, down, mk, lp(x, y)); time.sleep(0.06)
-    post(h, up, 0, lp(x, y))
+    held = 0x0008 if ctrl else 0
+    if ctrl:
+        key(h, 0x11, hold=1500); time.sleep(0.1)
+    post(h, 0x0200, held, lp(x, y)); time.sleep(0.06)
+    post(h, down, mk | held, lp(x, y)); time.sleep(0.06)
+    post(h, up, held, lp(x, y))
+    if ctrl:
+        time.sleep(0.1); post(h, 0x0101, 0x11, 0xC0000001 | user32.MapVirtualKeyW(0x11, 0) << 16)
 
 
 def drag(h, x1, y1, x2, y2, right=False, both=False):
@@ -195,16 +202,17 @@ def drag(h, x1, y1, x2, y2, right=False, both=False):
     post(h, up, 0, lp(x2, y2))
 
 
-def key(h, vk):
+def key(h, vk, hold=0):
     """WM_KEYDOWN / WM_KEYUP after telling the game it is active (it drops keys otherwise); the shim also makes the
-    key read as held for 300 ms (the game polls GetAsyncKeyState)."""
+    key read as held for 300 ms (the game polls GetAsyncKeyState). hold: no key-up, the shim holds it that many ms."""
     sc = user32.MapVirtualKeyW(vk, 0) << 16
     post(h, 0x001C, 1, 0); post(h, 0x0006, 1, 0); post(h, 0x0007, 0, 0)
     time.sleep(0.1)
-    post(h, 0x0100, vk, sc | 1); time.sleep(0.08)
-    post(h, 0x0101, vk, 0xC0000001 | sc)
+    post(h, 0x0100, vk, sc | 1)
+    if not hold:
+        time.sleep(0.08); post(h, 0x0101, vk, 0xC0000001 | sc)
     with open(os.path.join(SHOTS, 'key.req'), 'w', encoding='ascii') as f:
-        f.write(str(vk))
+        f.write(f'{vk} {hold}' if hold else str(vk))
 
 
 def park(h):
