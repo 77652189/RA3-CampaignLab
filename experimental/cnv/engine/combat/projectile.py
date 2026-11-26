@@ -59,9 +59,12 @@ class Projectile:
     lands as a direct hit."""
 
     def payload(self, weapon):
-        return weapon.get('projectile') or None
+        return weapon.get('projectile') or weapon.get('pounce') or None
 
     def apply(self, context, projectile):
+        now = context.world.frame_now()
+        if isinstance(projectile, dict):
+            return pounce(context, projectile, now)
         speed = context.speed(projectile)
         w = context.weapon
         if speed == NO_FLIGHT:
@@ -74,7 +77,7 @@ class Projectile:
             # the side-facing miners' 68 %, from the launch)
             damage = context.n * w['dmg'] * by.dealt * context.hit(t, w['type'])
             if frames:
-                context.queue_hit(context.world.frame_now() + frames, t, damage, by, w)
+                context.queue_hit(now + frames, t, damage, by, w)
             else:
                 context.detonate(w, t, attacker=by)
                 context.clear_notice(t, by.serial, w.get('weapon_key'))
@@ -82,3 +85,29 @@ class Projectile:
             return True
         context.gap('ProjectileNugget', '仅无复合效果的直线弹飞行已建模；曲线弹/复合弹/自制弹体待核')
         return False
+
+
+def pounce(context, leap, now):
+    """A melee ProjectileSelf weapon (the dog's Maul): the shooter itself is the shell. At the shot its own nuggets go
+    on (False: the 1 UNRESISTABLE, the hold on the prey); it flies at the WeaponSpeed and its warhead (leap: speed,
+    dmg, type, weapon_key) lands after the frames it takes to come within the prey's radius + REACH, the shooter
+    held still and silent meanwhile (the EMP deadlines, as the Sickle's leap). Bench engine_dogbite a: the leap at 31,
+    the 200 at 34 (3 frames: 30 at 125 a second, not the 0.5 s FiringDuration). INFERRED: the shooter put beside its
+    prey at the leap (where it lands is not read); the warhead's modifiers (MaulLanded: NO_ATTACK 2 s) put on at the
+    leap to run till their Duration after the landing (the leap's own hold covers the flight)."""
+    t, by = context.target, context.by
+    away = math.hypot(t.x - by.x, t.y - by.y)
+    frames = context.frames(max(0.0, away - (t.radius or 0.0) - REACH) / leap['speed'])
+    land = now + frames
+    for mid in leap['landed']:
+        modifier, xml = context.host.modifier(by.template, mid)
+        if modifier and modifier['frames'] is not None:
+            context.host.wear(t, mid, frames + modifier['frames'], xml)
+    damage = context.n * leap['dmg'] * by.dealt * context.hit(t, leap['type'])
+    context.queue_hit(land, t, damage, by, dict(type=leap['type'], weapon_key=leap['weapon_key']))
+    deadlines = context.emp_until()
+    deadlines[by.serial] = max(deadlines.get(by.serial, 0), land)
+    if away > 0:
+        side = ((t.radius or 0.0) + (by.radius or 0.0)) / away
+        by.x, by.y, by.path, by.dest = t.x + (by.x - t.x) * side, t.y + (by.y - t.y) * side, [], None
+    return False

@@ -278,7 +278,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v49.json')    # v49: the SPN's StatusBitFlagsExclude (A374); v48: the shotgun's self-centred arc shock (A363); v47: the grapple nugget (E226); v46: the lift's retail filter; v45: the link guns' ally filter; v44: + taper (DamageDealtAtSelfPosition); v43: weapons from the data port (W1), the cache keeps `sets`; v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v50.json')    # v50: the dog's pounce (A386); v49: the SPN's StatusBitFlagsExclude (A374); v48: the shotgun's self-centred arc shock (A363); v47: the grapple nugget (E226); v46: the lift's retail filter; v45: the link guns' ally filter; v44: + taper (DamageDealtAtSelfPosition); v43: weapons from the data port (W1), the cache keeps `sets`; v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
 ARMOR_DEFAULT = 100.0           # a damage type an armour does not name: taken in full (a guess)
@@ -551,6 +551,14 @@ def _weapons(texts, base_table=None):
                                              unkinds=['INFANTRY'], exclude=[v.lower() for v in excluded],
                                              status_exclude=['UNDER_IRON_CURTAIN'])
                         inner = ''
+                    elif (attrs == dict(Rule='ALL', Exclude='STRUCTURE VEHICLE AIRCRAFT') and not leftover
+                            and _attr(h, 'AttributeModifierName') == 'AlliedScoutInfantryMaulAttributeModifier'):
+                        # the dog's leap holds its prey (engine_dogbite a: 1.5 s SPEED 0); the dog's own 0.5 s
+                        # IGNORE_AI_COMMAND (AttributeModifierOwnerName) is not modelled (INFERRED: it is in the air)
+                        target_filter = dict(rule='ALL', kinds=[], unkinds=attrs['Exclude'].split(),
+                                             exclude=[v.lower() for v in excluded],
+                                             status_exclude=(_attr(h, 'ForbiddenTargetObjectStatus') or '').split())
+                        inner, h = '', f'<AttributeModifierNugget AttributeModifierName="{_attr(h, "AttributeModifierName")}"'
                     elif attrs == dict(Rule='NONE', Relationship='ALLIES') and len(included := re.findall(
                             r'<IncludeThing>\s*([^<>\s]+)\s*</IncludeThing>', fi)) == 1 and not re.sub(
                             r'<IncludeThing>\s*[^<>\s]+\s*</IncludeThing>', '', fi).strip():
@@ -712,6 +720,8 @@ def _weapons(texts, base_table=None):
                 got['pretype'] = _attr(head, 'PreAttackType')
             if _attr(head, 'WeaponSpeed'):
                 got['weapon_speed'] = _num(_attr(head, 'WeaponSpeed'))
+            if _attr(head, 'ProjectileSelf') is not None:     # a melee one flies its shooter (the dog's pounce)
+                got['pounce'] = _attr(head, 'ProjectileSelf') == 'true' and _attr(head, 'MeleeWeapon') == 'true'
             got['weapon_key'] = wid
             if _attr(head, 'AttackRange'):
                 got['range'] = _num(_attr(head, 'AttackRange'))
@@ -818,6 +828,10 @@ def _resolve(w, weapons):
                 inform=w.get('inform', []), weapon_speed=w.get('weapon_speed', 999999.0),
                 weapon_key=w.get('weapon_key'), **({'taper': w['taper']} if w.get('taper') else {}),
                 **({'at_self': True} if w.get('at_self') else {}),
+                **({'pounce': dict(speed=w['weapon_speed'], dmg=weapons[w['warhead']]['damage'],
+                                   type=weapons[w['warhead']]['type'], weapon_key=w['warhead'],
+                                   landed=[m['modifier'] for m in special_weapon(w['warhead'])['modifiers']])}
+                   if w.get('pounce') and w.get('weapon_speed') and w.get('warhead') in weapons else {}),
                 meta_impacts=w.get('meta_impacts', weapons.get(w.get('warhead'), {}).get('meta_impacts', [])),
                 delayed_meta_impacts=w.get('delayed_meta_impacts',
                     weapons.get(w.get('warhead'), {}).get('delayed_meta_impacts', [])),

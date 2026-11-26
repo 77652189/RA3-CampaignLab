@@ -4,28 +4,42 @@
 # is the frames from the start while its event has not come yet, two to a counter line (x 1000 + x 1): 征起死 the
 # conscript hurt / gone, 娜起落 Natasha < 100 % / < 50 %, 走娜死 the third lane's Natasha out of her square / the second
 # lane's gone. CampDogBiteA (11-26, A383, head 355e4e8c; work/bench_results/engine_dogbite__a.json): s3-s21 31034
-# 31034 58063.
+# 31034 58063. The simulator (A386, engine/combat/projectile.pounce): 34038 34038 69066.
 
 [[reading]]
 id = "a_the_dog_leaps_at_31_and_lands_its_200_at_34"
 scene = {build = "engine_dogbite", check = "a", until = 21}
 bench = "CampDogBiteA (11-26, A383): 征起死 31034 and 娜起落 31034 at s3-s21 -- the leap's 1 at frame 31, the landing 3 frames later (30 at 125 a second, not the 0.5 s FiringDuration): the conscript dead, Natasha down to 33 %"
 proves = "the dog's pounce: a ProjectileSelf weapon flies the dog to its target and its warhead lands (200 MELEE) after the gap at the WeaponSpeed"
-mismatch = "sim 征起死 / 娜起落 33xxx and still counting: the dog chips the 1 UNRESISTABLE every 2.07 s from frame 33, the warhead's 200 never lands (its weapon has no ProjectileTemplate, so weapon_table drops the ProjectileNugget)"
+mismatch = "sim 34038 / 34038: the leap 3 frames late (the sim's dog waits for the 2 s order, the bench's runs at its prey from the start) and the flight 4 frames (27 at 125 a second from where the chase stops)"
 expect = ["win(5, 20, '征起死') == [31034] * 16", "win(5, 20, '娜起落') == [31034] * 16"]
+
+[[reading]]
+id = "a_the_landing_comes_at_the_weapon_speed"
+scene = {build = "engine_dogbite", check = "a", until = 21}
+bench = "CampDogBiteA: 征起死 and 娜起落 31034 at s3-s21 -- the 200 lands 3 frames after the leap's 1, not after the 0.5 s FiringDuration (8)"
+proves = "the dog's pounce: its warhead lands within a few frames of the leap (30 at 125 a second: 4 at most), the leap's 1 UNRESISTABLE first"
+expect = ["all(0 < v % 1000 - v // 1000 <= 4 for v in win(5, 20, '征起死'))", "all(0 < v % 1000 - v // 1000 <= 4 for v in win(5, 20, '娜起落'))"]
 
 [[reading]]
 id = "a_natasha_dies_at_the_second_landing_63"
 scene = {build = "engine_dogbite", check = "a", until = 21}
 bench = "CampDogBiteA: 走娜死 % 1000 = 63 at s3-s21 -- the second leap lands 29 frames after the first (the 0.5 s + 1.5 s reload)"
 proves = "the dog's pounce: the next leap after FiringDuration + ClipReloadTime, its landing kills"
-mismatch = "sim: Natasha never dies (only the 1-point chips land)"
+mismatch = "sim 66: the first landing at 38 (above), the second 28 after it"
 expect = "[v % 1000 for v in win(5, 20, '走娜死')] == [63] * 16"
+
+[[reading]]
+id = "a_the_second_landing_two_seconds_on"
+scene = {build = "engine_dogbite", check = "a", until = 21}
+bench = "CampDogBiteA: 走娜死 % 1000 - 娜起落 % 1000 = 63 - 34 = 29 at s3-s21 -- Natasha (33 % after the first landing) dies at the second"
+proves = "the dog's pounce: it leaps again after FiringDuration + ClipReloadTime (2 s, 30 frames, give or take the flight) and its landing kills"
+expect = "all(27 <= a % 1000 - b % 1000 <= 31 for a, b in zip(win(5, 20, '走娜死'), win(5, 20, '娜起落')))"
 
 [[reading]]
 id = "a_the_bitten_walk_once_the_stun_ends_58"
 scene = {build = "engine_dogbite", check = "a", until = 21}
 bench = "CampDogBiteA: 走娜死 // 1000 = 58 at s3-s21 -- told every frame from 34 to walk 300 west (the dog deleted), she leaves her 20 square at 58: the leap's 1.5 s SPEED 0 (MaulAttributeModifier) ends at 54 and the orders given under it are not dropped"
 proves = "the dog's pounce: the leap holds its target still 1.5 s and the orders given meanwhile take hold once it ends"
-mismatch = "sim: never under 50 %, so the walk never starts (90+)"
+mismatch = "sim 69: the hold from the leap at 34 ends at 57, she is out 12 frames later (the bench 4)"
 expect = "[v // 1000 for v in win(5, 20, '走娜死')] == [58] * 16"

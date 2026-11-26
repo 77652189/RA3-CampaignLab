@@ -1795,7 +1795,7 @@ class Sim:
                 simgrapple.hook(a, pick, w['grapple'])
             self.first_shot(a, w, pick)
             if w['dps'] or w.get('suppression') or w.get('special_powers') or (self.shot_clock and (w.get('sdps') or w.get('dot') or w.get('attach') or w.get('lift') or w.get('grapple') or w.get('meta_impacts'))):
-                if 'sched' in w and (self.shot_clock or w.get('special_powers')):
+                if 'sched' in w and (self.shot_clock or w.get('special_powers') or w.get('pounce')):
                     self.volleys.append((pick, w, a))
                 else:
                     # Continuous DPS has no individual hit events. Do not run a second clip clock just for pressure (A4 guardians falsely suppressed at F1980).
