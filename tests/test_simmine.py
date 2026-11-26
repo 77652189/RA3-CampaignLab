@@ -44,9 +44,10 @@ def test_collect_applies_the_ai_income_multiplier_and_carries_the_fraction():
     assert m.money['AI'] == 25 and m.income['AI'] == (1.5, 0.5)
 
 
-def test_the_income_window_counts_no_deposit_past_the_ai_frame_and_drops_the_old():
-    m = simmoney.Money()                                   # review 134 P1 / P3: the world runs ahead of the AI
+def test_the_income_window_counts_no_deposit_past_the_ai_frame_and_asking_only_reads():
+    m, w = simmoney.Money(), SimpleNamespace(relations={})  # review 134 P1, 141 P3: the world runs ahead of the AI
     for frame in (10, 156, 157, 158):
-        m.earn(SimpleNamespace(relations={}), 'P', 8, frame)
-    assert m.mined_since('P', 20, 151) == 0 and m.mined_since('P', 20, 157) == 16
-    assert [f for f, _ in m.mined['P']] == [156, 157, 158]
+        m.earn(w, 'P', 8, frame)
+    assert m.mined_since('P', 20, 151) == 0 and [m.mined_since('P', f, 157) for f in (0, 20, 0)] == [24, 16, 24]
+    m.earn(w, 'P', 8, 158 + m.KEEP)
+    assert [f for f, _ in m.mined['P']] == [158, 158 + m.KEEP]

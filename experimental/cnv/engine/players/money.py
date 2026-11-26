@@ -12,6 +12,8 @@ from engine.world.handle import CIV
 
 
 class Money:
+    KEEP = 3000             # frames of deposits kept for mined_since: longer than any window asked (the AI's 90 s, 1350)
+
     def __init__(self):
         self.money = {}                     # player -> money
         self.income = {}                    # player -> (AI income multiplier, fraction carried) (simai: ResourceMultiplierCheat)
@@ -59,7 +61,10 @@ class Money:
             return
         self.money[player] = have + amount
         if frame is not None and amount > 0:
-            self.mined.setdefault(player, []).append((frame, amount))
+            log = self.mined.setdefault(player, [])
+            log.append((frame, amount))
+            if log[0][0] < frame - self.KEEP:           # the old drop off as deposits come in (review 134 / 141 P3)
+                del log[:next(i for i, (f, _) in enumerate(log) if f >= frame - self.KEEP)]
 
     def collect(self, world, owner, give, frame=None):
         """A collector's unloading `give` into `owner`'s money (simmine hands this in): an AI's income multiplier first
@@ -76,15 +81,10 @@ class Money:
         """What `player`'s collectors paid in at frames `frame` .. `until`: IncomeAdvantageHeuristic's input (read,
         work/re/l4_states.md 11-25: each mining-type deposit goes into the player's tracker as (frame, amount), entries
         older than the window drop off, the input is the sum left). The world runs ahead of the AI's frame, so the
-        deposits after `until` are not in yet (review 134 P1). Entries before `frame` are dropped: the AI's window
-        only moves on (review 134 P3). Refunds and sales do not count; a deposit building's pay (deposit) is left out
+        deposits after `until` are not in yet (review 134 P1). Asking only reads (review 141 P3: it used to drop the
+        entries before `frame`); the old drop off in _pay. Refunds and sales do not count; a deposit building's pay (deposit) is left out
         -- its type is not read (INFERRED)."""
-        log = self.mined.get(player)
-        if not log:
-            return 0
-        old = next((i for i, (f, _) in enumerate(log) if f >= frame), len(log))
-        del log[:old]
-        return sum(a for f, a in log if f <= until)
+        return sum(a for f, a in self.mined.get(player, ()) if frame <= f <= until)
 
     def credit(self, player, amount):
         """Money paid that is no income (a sale's refund, simbody.Life.sell; what a spy takes, siminfiltrator): never

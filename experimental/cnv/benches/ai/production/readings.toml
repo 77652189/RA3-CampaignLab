@@ -755,7 +755,8 @@ B 11-26 aiskmrd (CampAISkMRDFm_mcp_1126_021052; MaxRecruitDistance 1 spliced int
 second as aiskfon run beside it: 激流到 1 at s156, 3 at s185, 6 at s215-s229, home again by s237. The program reads the \
 field only on the script-team recruit path (work/re l4_aidata_readers.md), not the skirmish team maker's"""
 proves = "simai team maker: the skirmish AI's recruit takes no distance limit -- MaxRecruitDistance does not reach it"
-expect = ["max(r['激流到'] for r in rows) >= 3"]
+let = {first = "next(i for i, r in enumerate(rows) if r['激流到'] >= 1)", three = "next(i for i, r in enumerate(rows) if r['激流到'] >= 3)"}
+expect = ["146 <= times[first] <= 176", "15 <= times[three] - times[first] <= 35", "rows[-1]['激流到'] == 0"]
 
 [[reading]]
 bench_id = "engine_aiskirm"
@@ -767,7 +768,8 @@ B 11-26 aiskts (CampAISkTSFm_mcp_1126_021212; TeamSeconds 600 spliced into the g
 second as aiskfon run beside it: 激流到 1 at s156, 3 at s185, 6 at s215-s229, home again by s237. The program keeps the \
 field on a per-player AI object only (work/re l4_aidata_readers.md), the skirmish team maker does not wait on it"""
 proves = "simai team maker: the first attack team is not held back by TeamSeconds"
-expect = ["max(r['激流到'] for r in rows) >= 3"]
+let = {first = "next(i for i, r in enumerate(rows) if r['激流到'] >= 1)", three = "next(i for i, r in enumerate(rows) if r['激流到'] >= 3)"}
+expect = ["146 <= times[first] <= 176", "15 <= times[three] - times[first] <= 35", "rows[-1]['激流到'] == 0"]
 
 [[reading]]
 bench_id = "engine_aiskirm"
@@ -780,7 +782,8 @@ the whole run some 8 s earlier from the first Peacekeeper on (s44 / s48; a start
 was as early): the first Riptide in the player's base at s158 / s166, the first Peacekeeper at s173 / s183, 6 Riptides \
 at s217 / s228 -- with formations on or off the team does not march as one"""
 proves = "simai team maker: UseFormations does not reach the skirmish attack team"
-expect = ["max(r['激流到'] for r in rows) >= 3"]
+let = {first = "next(i for i, r in enumerate(rows) if r['激流到'] >= 1)", three = "next(i for i, r in enumerate(rows) if r['激流到'] >= 3)"}
+expect = ["146 <= times[first] <= 176", "15 <= times[three] - times[first] <= 35", "rows[-1]['激流到'] == 0"]
 
 [[reading]]
 bench_id = "engine_aiskirm"
@@ -810,7 +813,8 @@ B 11-26 aiskgf (aiskgf__fm 05:14; SkirmishGroupFudgeValue 200, stock 4, spliced 
 aiskfon / aiskfof, shifted by the start jitter: the first Riptide in the player's base at s163, the first Peacekeeper \
 at s179, 6 Riptides at s224, home again by s247"""
 proves = "simai team maker: the skirmish attack team's arrival takes no group fudge radius"
-expect = ["max(r['激流到'] for r in rows) >= 3"]
+let = {first = "next(i for i, r in enumerate(rows) if r['激流到'] >= 1)", three = "next(i for i, r in enumerate(rows) if r['激流到'] >= 3)"}
+expect = ["146 <= times[first] <= 176", "15 <= times[three] - times[first] <= 35", "rows[-1]['激流到'] == 0"]
 
 [[reading]]
 bench_id = "engine_aiskirm"
@@ -823,7 +827,9 @@ only that asset differs from aiskfon's in the built .big) reads as aiskfon run b
 s53, 2 from s73 on, the first Riptide in the player's base at s157, 6 Riptides at s216-s230, home again by s238. No \
 reader of the field was found in the program (work/re b1126_armydef.md)"""
 proves = "simai: no GathererTemplate is read -- the miners and the first attack team come as stock"
-expect = ["max(r['激流到'] for r in rows) >= 3", "rows[-1]['矿车'] == 2"]
+let = {first = "next(i for i, r in enumerate(rows) if r['激流到'] >= 1)", three = "next(i for i, r in enumerate(rows) if r['激流到'] >= 3)"}
+expect = ["146 <= times[first] <= 176", "15 <= times[three] - times[first] <= 35", "rows[-1]['激流到'] == 0",
+          "rows[-1]['矿车'] == 2"]
 
 [[reading]]
 bench_id = "engine_aiskirm"
@@ -837,7 +843,9 @@ first Riptide in the player's base at s157, 6 Riptides at s217-s230, home again 
 resolves the template and drops it (work/re b1126_armydef.md); WallPiece's use is not read (INFERRED: none here). \
 The override takes: aipullsvx (SovietArmy's VehicleRepairFacility the barracks) sends no hurt tank home"""
 proves = "simai: neither EnergyProducer nor WallPiece is read -- the build and the first attack team come as stock"
-expect = ["max(r['激流到'] for r in rows) >= 3", "rows[-1]['矿车'] == 2"]
+let = {first = "next(i for i, r in enumerate(rows) if r['激流到'] >= 1)", three = "next(i for i, r in enumerate(rows) if r['激流到'] >= 3)"}
+expect = ["146 <= times[first] <= 176", "15 <= times[three] - times[first] <= 35", "rows[-1]['激流到'] == 0",
+          "rows[-1]['矿车'] == 2"]
 
 [[reading]]
 bench_id = "engine_aiskirm"
