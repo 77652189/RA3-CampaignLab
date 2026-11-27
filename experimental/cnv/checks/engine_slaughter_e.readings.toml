@@ -81,3 +81,31 @@ its SovietPowerPlant on infiltrator_batch (c), as does the Damage=1 clone (b), t
 at an AlliedBaseDefense (e) -- t's dark Athena does not come back, so E251's H6 / H7 / H8 / H9 are out and the carriers' \
 darkness is the carrier's own; left alone (a after its clear, d before f300) an Athena picks no plant 350 off"""
 expect = ["counter('A400Frame') == 900", "rows[-1]['打到'] == 30 and rows[-1]['掉血'] == 30", "all(r['早打'] == 0 for r in rows)"]
+
+[[reading]]
+id = "the_placed_carriers_target_dies_before_the_paired_order"
+scene = {build = "engine_slaughter_v", check = "v", until = 72}
+bench = "CampSlaughterVV_mcp_1127_070427: placed target 100% through f203, 50% at f212 and f218, 0% from f227. ua: records damage at f210 and f218. Both typed aircraft peaks stay 0; built target stays 100%; yard/reference/order gate stays 0 through f1050."
+proves = "the placed arm deals damage without a yard-built carrier in this setup. The built arm and the typed drone count yield no production or sortie comparison. See work/re/e290_slaughter_h4.md."
+mismatch = "sim also has no second carrier and both typed peaks are 0, but both targets stay at 100%; its carrier has no simulated weapon for AlliedAntiStructureAttackDrones."
+expect = ["counter('E251Frame') == 1050", "all(r['出厂位'] == 0 and r['现造'] == 100 for r in rows)",
+          "rows[-1]['预摆'] == 0", "13 <= first('预摆', lambda hp: hp < 100) <= 15"]
+
+[[reading]]
+id = "the_yard_builds_a_carrier_the_paired_order_can_reference"
+scene = {build = "engine_slaughter_v", check = "w", until = 72}
+bench = "CampSlaughterVW_mcp_1127_070738: production and live reference (gate 3) first sampled at f493, both orders (gate 7) at f606; pre-order meters 100 and 3100 (both targets full, three repair aircraft)."
+proves = "the build-button press enters the naval yard queue and produces a carrier addressable by the script. Both orders are dispatched in the same script."
+expect = ["counter('E251Frame') == 1050", "32 <= first('出厂位', lambda v: v == 3) <= 34",
+          "40 <= first('出厂位', lambda v: v == 7) <= 41",
+          "all(r['预摆'] == 100 and r['现造'] == 3100 for r in rows if r['完成帧'] < 600)"]
+
+[[reading]]
+id = "both_carriers_launch_five_and_kill_their_ships"
+scene = {build = "engine_slaughter_v", check = "w", until = 72}
+bench = "CampSlaughterVW_mcp_1127_070738: after the f600 orders, AIRCRAFT peak 0->5 placed (f622-f652 samples), 3->8 built (f659-f690). ua: first damage f662 and f692, second f670 and f700; both ships read 0% by f706."
+proves = "both carrier origins sortie and kill the same target type. Yard completion is unnecessary for launch in this setup. The built lane has three repair aircraft before the command; the region peak increases by five. See work/re/e290_slaughter_h4.md for the timing and counter limits."
+mismatch = "sim matches the production/order gate and the yard's three-aircraft baseline but has neither carrier sorties nor target damage; AlliedAntiStructureAttackDrones is a weapon gap."
+expect = ["rows[-1]['预摆'] == 5000 and rows[-1]['现造'] == 8000",
+          "44 <= first('预摆', lambda v: v % 1000 < 100) <= 45",
+          "46 <= first('现造', lambda v: v % 1000 < 100) <= 47"]

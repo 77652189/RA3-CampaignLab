@@ -383,13 +383,87 @@ def check_u(m):
     return t
 
 
+def mission_v():
+    """E251 H4: a naval-yard product versus a map-placed carrier."""
+    m = Mission(name='CampSlaughterV', map=infiltrator_batch, units=[], ext=True)
+    m.put('AlliedNavalYard', 'ship', -1200, 400, role='yard', name='E251 Yard')
+    m.put('AlliedPowerPlant', 'ship', -1200, -650)
+    m.put('AlliedAntiStructureShip', 'ship', -2510, 400, role='placed', name='E251 Placed')
+    for lane, x in [('placed', -2510), ('built', -1110)]:
+        m.put('SovietAntiAirShip', 'ship', x, 900, side='s1', role=lane + ' target', name='E251 ' + lane + ' target')
+        m.waypoint(lane, 'E251 ' + lane, 'ship', x, 650)
+    m.spawns.add('AlliedAttackDrone')
+    return m
+
+
+def check_v(m, controlled=False):
+    """At f30 press the yard's build button (SDK 30s, 2000 ore); expect a second ship around f480.
+
+    Gate bits: 1 second carrier in the built lane, 2 live reference bound to the unnamed product, 4 both
+    orders dispatched at or after f600. Each arm displays 1000 * peak count in its area + current target HP%.
+    Build w enables the real build button without the tech prerequisite and holds both hosts quiet
+    until the paired order. It counts AIRCRAFT because v's type meter missed the sortie. This includes
+    the yard's repair aircraft, so read the built arm against its pre-order peak.
+    H4 predicts a dark placed arm (100) and a built arm with 1-5 live drones and damage; without an
+    initialization difference the XML predicts both arms launch and deal damage. Both predictions INFERRED.
+    """
+    t, p1 = Test(), m.player('p1')
+    frame, gate, ref = 'E251Frame', 'E251Gate', 'UNITRef - CNV E251 Built'
+    yard, placed = m.role('yard').name, m.role('placed').name
+    host_type = m.role('placed').template
+    t.counters = [(frame, '完成帧'), (gate, '出厂位')]
+    t.scripts = [
+        Script('Test - frame', [('COUNTER', frame, 0, 1050)], [('INCREMENT_COUNTER', 1, frame)], once=False),
+        Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', p1), ('PLAYER_SET_MONEY', p1, 10000),
+                                    ('TECHTREE_MODIFY_BUILDABILITY_OBJECT', host_type, 1) if controlled else
+                                    ('NAMED_RECEIVE_UPGRADE', 'Upgrade_AlliedTech3', yard)] + [
+            ('UNIT_CHANGE_OBJECT_STATUS', m.role(lane + ' target').name, 'NO_ATTACK', 1)
+            for lane in ('placed', 'built')] + (
+                [('UNIT_CHANGE_OBJECT_STATUS', placed, 'NO_ATTACK', 1)] if controlled else [])),
+        Script('Test - queue carrier', [('COUNTER', frame, 2, 30)], [
+            ('NAMED_USE_COMMANDBUTTON_ABILITY', yard, 'Command_ConstructAlliedAntiStructureShip')]),
+        Script('Test - second carrier', [
+            ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', p1, 3, 1, host_type, 'E251 built')], [
+            ('INCREMENT_COUNTER', 1, gate),
+            ('SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER', host_type, p1, m.team('s1'), ref)]),
+        Script('Test - live reference', [('NAMED_NOT_DESTROYED', ref)], [('INCREMENT_COUNTER', 2, gate)] + (
+            [('UNIT_CHANGE_OBJECT_STATUS', ref, 'NO_ATTACK', 1)] if controlled else [])),
+        Script('Test - attack both', [('COUNTER', frame, 3, 600), ('NAMED_NOT_DESTROYED', ref),
+                                      ('NAMED_NOT_DESTROYED', placed)], ([
+            ('UNIT_CHANGE_OBJECT_STATUS', host, 'NO_ATTACK', 0) for host in (placed, ref)
+        ] if controlled else []) + [
+            ('NAMED_ATTACK_NAMED', host, m.role(lane + ' target').name)
+            for lane, host in [('placed', placed), ('built', ref)]] + [('INCREMENT_COUNTER', 4, gate)]),
+    ]
+    for lane, label in [('placed', '预摆'), ('built', '现造')]:
+        area, peak, meter = f'E251 {lane}', f'E251Peak{lane}', f'E251Meter{lane}'
+        victim = m.role(lane + ' target').name
+        t.areas[area] = square(*m.point(lane), 600)
+        t.counters.append((meter, label))
+        count = ('PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA', kindof('AIRCRAFT')) if controlled else (
+            'PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', 'AlliedAttackDrone')
+        for n in range(1, 10):
+            t.scripts.append(Script(f'Test - {lane} peak {n}', [
+                (count[0], p1, 3, n, count[1], area)],
+                [('INCREMENT_COUNTER', 1000, peak)]))
+        t.scripts += [
+            Script(f'Test - {lane} HP', [('NAMED_NOT_DESTROYED', victim)],
+                   [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', victim, meter)], once=False),
+            Script(f'Test - {lane} dead', [('NAMED_DESTROYED', victim)], [('SET_COUNTER', meter, 0)], once=False),
+            Script(f'Test - {lane} show', [], [('COUNTER_MATH_COUNTER', meter, 0, peak)], once=False),
+        ]
+    s8.watch(t, 81., .5)
+    return t
+
+
 MISSION = {'engine_slaughter_e': mission, 'engine_slaughter_p': lambda: mission('CampSlaughterP', ('p1', 'p1')),
            'engine_slaughter_q': mission_q, 'engine_slaughter_r': mission_r, 'engine_slaughter_s': mission_s,
-           'engine_slaughter_u': mission_u}
+           'engine_slaughter_u': mission_u, 'engine_slaughter_v': mission_v}
 CHECKS = {'engine_slaughter_e': {'a': check, 'b': lambda m: check(m, corrected=True)},
           'engine_slaughter_p': {'p': check_p}, 'engine_slaughter_q': {'q': check_q},
           'engine_slaughter_r': {'r': check_r}, 'engine_slaughter_s': {'s': check_s, 't': lambda m: check_s(m, True)},
-          'engine_slaughter_u': {'u': check_u}}
+          'engine_slaughter_u': {'u': check_u},
+          'engine_slaughter_v': {'v': check_v, 'w': lambda m: check_v(m, controlled=True)}}
 # Each arm's drones are counted by its own player, so the hosts (and targets) swap sides: a confound, held here
 # as the one freedom; both arms read 0 (a negative baseline). Put both on p1 and count by area when E170 reopens.
 CONTROL_ARMS = {'engine_slaughter_e': ('On', 'Off', 'side'), 'engine_slaughter_p': ('On', 'Off')}
