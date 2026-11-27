@@ -163,6 +163,23 @@ def test_path_cache_invalidates_when_a_structure_goes(action):
     assert grid(ground) is not old and grid(ground).endpoint(c) == c
 
 
+def test_path_cache_invalidates_when_fence_moves_only_on_fine_grid():
+    ground = map_ground()
+    p, q = (40, 160), (280, 160)
+    assert ground.set_blocks([], foot=[(151, 151, 40)])
+    coarse = ground.foot.copy()
+    assert ground.route('foot', p, q) is not None
+    old, version = ground.sight('foot'), ground.version
+
+    assert ground.set_blocks([], foot=[(152, 151, 40)])
+    assert (ground.foot == coarse).all()
+    assert ground.version == version + 1 and not ground.cache
+    moved = ground.sight('foot')
+    assert sum(a != b for a, b in zip(old.flat, moved.flat)) == 3
+    assert not ground.set_blocks([], foot=[(152, 151, 40)])
+    assert ground.sight('foot') is moved
+
+
 def test_path_cache_bridge_is_map_terrain_and_deck_ignores_obstacles():
     p, q = (80, 160), (220, 160)
     bridge = tuple(SimpleNamespace(x=x, y=y, angle=0, template='HB_Bridge_02', flags=flag)

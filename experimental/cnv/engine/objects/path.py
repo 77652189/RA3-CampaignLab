@@ -554,14 +554,18 @@ class Ground:
 
     def set_blocks(self, shapes, place=None, foot=()):
         """What stands in the way now: [(x, y, angle, length, thick) a bar, or (x, y, r) a round building]; off a
-        bridge's deck. Routes are worked out anew. place: the shapes a structure's placement sees (open(place=True)),
-        None = the same. foot: what stands in the way of surface 'foot' (infantry) only."""
+        bridge's deck. Return whether coarse routing or fine sight cells changed. place: the shapes a structure's
+        placement sees (open(place=True)), None = the same. foot: what blocks surface 'foot' (infantry) only."""
+        shapes, foot = list(shapes), list(foot)
+        foot_shapes = shapes + foot
         m = self._mask(shapes)
         f = m | self._mask(foot) if foot else m
         self.placed = m if place is None else self._mask(place)
-        if (m != self.blocked).any() or (f != self.foot).any():
+        coarse_changed = (m != self.blocked).any() or (f != self.foot).any()
+        if coarse_changed or any(old != new and not np.array_equal(self._fine_mask(old), self._fine_mask(new))
+                                 for old, new in ((self.shapes, shapes), (self.foot_shapes, foot_shapes))):
             self.blocked, self.foot, self.version, self.cache = m, f, self.version + 1, {}
-            self.shapes, self.foot_shapes = list(shapes), list(shapes) + list(foot)
+            self.shapes, self.foot_shapes = shapes, foot_shapes
             return True
         return False
 
@@ -576,6 +580,16 @@ class Ground:
 
     def _mask(self, shapes):
         return covered(shapes, *self.xy, GRID) & ~self.deck
+
+    def _fine_mask(self, shapes):
+        import platmap
+        h, w = self.fine['ground'].shape
+        cell = platmap.CELL
+        x = (np.arange(w) - self.b) * cell
+        y = (np.arange(h) - self.b) * cell
+        xx, yy = np.broadcast_arrays(x[None, :], y[:, None])
+        blocked = covered(shapes, xx, yy, cell)
+        return blocked & ~self.deck.repeat(self.d, 0).repeat(self.d, 1)
 
     def open(self, surface, x, y, place=False):
         """A world point a unit of that surface may stand on now (its routing cell walkable and not blocked); place:
@@ -737,13 +751,8 @@ class Ground:
         """Sight.of `surface`'s grid and CELL cells now (the shapes on each cell's own point; a deck's CELL
         cells its GRID cell's, INFERRED); cached until set_blocks."""
         if ('sight', surface) not in self.cache:
-            import platmap
-            fine, d = self.fine[surface], self.d
-            jj, ii = np.mgrid[0:fine.shape[0], 0:fine.shape[1]]
-            fb = covered(self.foot_shapes if surface == 'foot' else self.shapes, (ii - self.b) * platmap.CELL,
-                         (jj - self.b) * platmap.CELL, platmap.CELL)
-            fb &= ~self.deck.repeat(d, 0).repeat(d, 1)
-            self.cache['sight', surface] = Sight.of(self.grids[surface], fine, self.shut(surface), fb)
+            fb = self._fine_mask(self.foot_shapes if surface == 'foot' else self.shapes)
+            self.cache['sight', surface] = Sight.of(self.grids[surface], self.fine[surface], self.shut(surface), fb)
         return self.cache['sight', surface]
 
     def closest(self, g, a, z, surface):
