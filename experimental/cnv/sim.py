@@ -769,8 +769,8 @@ class Sim:
     def blocks(self, b, place=False):
         """What of the way a body takes up: a wall of ours its bar (or disc, square), a building its round. place:
         what a new structure's placement keeps clear of instead (an ore node's round, not its routing plate)."""
-        if b.topple:
-            return None                    # engine_topple: vehicles drive straight through, infantry can pass too
+        if b.topple and not ('CRUSHABLE_OBSTACLE' in b.kinds and b.radius):
+            return None                    # engine_topple / E266 a1tollw: only a shaped CRUSHABLE one holds infantry
         if b.template in self.walls:
             p = self.walls[b.template]
             if p.get('shape') == 'disc':

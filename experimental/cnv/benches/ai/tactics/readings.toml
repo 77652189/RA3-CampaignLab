@@ -500,6 +500,9 @@ bench = "aigar0 (EnterGarrisons off) / aigarfar (the house 450 south): 楼归AI 
 proves = "simai garrisons: with the switch off or the house beyond the pass's reach nobody of the team goes in"
 expect = "all(r['楼归AI'] == 0 for r in rows)"
 
+# Benched at EAST 40; the scene is at EAST 0 (round 121), where the house stands on niagara's road fence (CC_WOODFENCE
+# 38 / 53 from its centre, holding infantry as engine_a1toll w): two go round it into the guards' fire, the house the
+# AI's from s23 with two inside. At the benched spot (tests/test_simai_garrison_distance.py) from s19.
 [[reading]]
 bench_id = "engine_aigarrison"
 id = "the_team_goes_into_the_house"
@@ -508,7 +511,7 @@ bench = """\
 aigar1: s17 0 4 4 0 | s18-s75 0 3 3 1 -- the house the AI's at s18, three alive to s75 (aigar0's die by s28): read \
 as all three went in (alive at the end = inside)"""
 proves = "simai garrisons: EnterGarrisons sends the team into the neutral house near its way, and they stay in"
-expect = ["win(20, 74, '楼归AI') == [1] * 55", "rows[-1]['步兵数'] >= 3"]
+expect = ["win(23, 74, '楼归AI') == [1] * 52", "rows[-1]['步兵数'] >= 2"]
 
 [[reading]]
 bench_id = "engine_aigarrison"
@@ -518,9 +521,9 @@ bench = "aigar1: 步兵数 4 to s17, 3 from s18 to s75 -- one dies about the doo
 proves = "simai garrisons with the sim's fire: one of the four is shot on the way in"
 expect = "rows[-1]['步兵数'] == 3"
 mismatch = """\
-sim 步兵数 4 at s75 (house the AI's from s19), bench 3: since state 2's per-member pick (tactics._assign, B round \
-114) the men turn on the defenders on the way and take more fire (18 / 18 / 33 / 101 hp inside) but all four get \
-in -- the sim's fire, not the garrison rule"""
+sim 步兵数 2 at s75 (house the AI's from s23), bench 3: the scene's house is 40 west of the benched one, on the \
+road fence (comment above) -- two go round it and are shot; at the benched spot the sim has 2 dead too -- the sim's \
+fire, not the garrison rule"""
 
 # Bench readings of benches/ai/tactics/checks.py#engine_aihome (format: experimental/cnv/readings.py; runner: tests/conformance).
 # DefaultTacticHomeBaseCriteria (bench 2026-11-14).
