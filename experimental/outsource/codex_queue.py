@@ -8,7 +8,8 @@ runs first (name them 01-..., 02-...). A brief may say `Effort: high` on a line 
 runs as `codex_task.py <brief> --dir ../RA3-CampaignLab-cx-<stem> --full` in a worktree made fresh from
 origin/main, then moves to QUEUE_DIR/done/ with its answer beside it. Nothing is committed and no worktree is
 removed: the coordinator reviews each result, commits from that worktree, then removes it. A new brief dropped into
-the folder while this runs is picked up; with none left it waits (checking every 2 min) until --hours have passed.
+the folder while this runs is picked up; with none left it waits (checking every 2 min) until --hours have passed,
+or, given --lane, runs that engine line's next item (codex_lane.py) so Codex never idles waiting for briefs.
 The state -- running, done, waiting -- is in work/logs/<folder name>.json. Two folders, two runners: Codex works on
 two briefs at once (user 11-19: "codex的任务可以适当多派一些"); give each brief a name no other folder uses (the
 worktree is named after it).
@@ -62,6 +63,8 @@ def main():
     ap.add_argument('queue')
     ap.add_argument('--hours', type=float, default=12)
     ap.add_argument('--minutes', type=int, default=120, help='each brief\'s safety stop (codex_task.py --minutes)')
+    ap.add_argument('--lane', help='an engine line Codex owns (codex_lane.py c|e): with no brief waiting, do its '
+                                   'next item instead of idling (11-26: the queues sat empty for days)')
     a = ap.parse_args()
     queue = os.path.abspath(a.queue)
     done_dir = os.path.join(queue, 'done')
@@ -70,6 +73,17 @@ def main():
     while time.time() < end:
         briefs = sorted(glob.glob(os.path.join(queue, '*.md')))
         briefs = [b for b in briefs if not b.endswith('.answer.md')]
+        if not briefs and a.lane:
+            state['running'], state['waiting_since'] = f'lane {a.lane}', None
+            save(state)
+            t0 = time.time()
+            subprocess.run([sys.executable, '-I', '-X', 'utf8', os.path.join(HERE, 'codex_lane.py'), a.lane,
+                            '--minutes', str(a.minutes)], cwd=ROOT)
+            state['done'].append({'lane': a.lane, 'seconds': round(time.time() - t0)})
+            save(state)
+            if time.time() - t0 < 600:      # stopped at once (blocked, or failed to start): don't spin
+                time.sleep(1800)
+            continue
         if not briefs:
             state['running'], state['waiting_since'] = None, state['waiting_since'] or time.strftime('%Y-%m-%d %H:%M')
             save(state)
