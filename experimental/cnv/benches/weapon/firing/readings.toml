@@ -69,6 +69,45 @@ proves = "sim attack-move (R8): an attack-moving Guardian walks past a target be
 let = {R = "[r for t, r in zip(times, rows) if t >= 1]"}
 expect = "R[-1]['终点'] == 1 and all(r['坦克血'] == 100 for r in R)"
 
+# B 11-26: the guard AIData fields. gst / gsc / gch: the Guardian TEAM_GUARDs the half-100 square round S from its birth
+# (s1), the tank (450 north) is driven to N (180 north) at s4 and off to F (700 north) at s14; gsc / gch splice one
+# AIData field into the global stream (CampAqG15/16/17Frames_mcp_1126_2017-2020, the three runs read the same, gsc 1 s
+# later all through: the start's jitter). Rows: 远 原地 近敌 坦克血 = 0 0 1 100 to s5, 87 s6, 75 s8, 62 s10, 50 from s12.
+
+[[reading]]
+bench_id = "engine_acquire"
+id = "guard_enemy_scan_rate_60s_does_not_hold_the_guard_back"
+item = "AI 全局常量/AIData.GuardEnemyScanRate"
+scenes = {st = {build = "acquire_gst450", check = "frames", until = 33}, sc = {build = "acquire_gsc450", check = "frames", until = 33}}
+bench = """\
+the tank first hurt at s6 (stock, scan 500 ms) and s7 (GuardEnemyScanRate 60000 ms: a scan due 60 s after the guard \
+began would leave it whole to s61); the field is the guard machine's scan interval in milliseconds (work/re \
+l4_aidata_readers.md), the guard takes the tank coming into its reach without waiting on it"""
+proves = "sim idle_chase under a guard order: a guarding unit takes an enemy coming into its reach at once -- GuardEnemyScanRate does not hold it back"
+let = {hurt = "lambda r: next(i for i, x in enumerate(r) if x['坦克血'] < 100)"}
+expect = ["hurt(sc) <= hurt(st) + 3", "hurt(sc) <= 10"]
+
+[[reading]]
+bench_id = "engine_acquire"
+id = "guard_chase_unit_frames_30_leaves_the_guard_as_stock"
+item = "AI 全局常量/AIData.GuardChaseUnitFrames"
+scenes = {st = {build = "acquire_gst450", check = "frames", until = 33}, ch = {build = "acquire_gch450", check = "frames", until = 33}}
+bench = """\
+GuardChaseUnitFrames 30 (stock 15000) reads second for second as stock: 远 0 all along, the tank left at 50 from s12. \
+Stock does not follow the tank off here either (guard_does_not_follow_a_target_driving_off), so this shows only that a \
+1 s chase limit changes nothing in this scene, not where the limit would bite"""
+proves = "sim: GuardChaseUnitFrames is not read -- a short chase limit leaves the guard's run as stock"
+expect = ["[r['远'] for r in st] == [r['远'] for r in ch]", "st[-1]['坦克血'] == ch[-1]['坦克血']"]
+
+[[reading]]
+bench_id = "engine_acquire"
+id = "guard_does_not_follow_a_target_driving_off"
+scene = {build = "acquire_gst450", check = "frames", until = 33}
+bench = "远 0 all along (never within 180 of F), the tank's health 50 from s12 to s33: no shot after s12 though the tank stood at N to s14"
+proves = "sim guard: a guarding unit does not chase a target driving off out of its reach"
+mismatch = "sim walks up at s8, follows the tank to F (远 1 from s22) and kills it at s29; bench never leaves, stops firing at 50 (s12; why not read)"
+expect = ["all(r['远'] == 0 for r in rows)", "rows[-1]['坦克血'] >= 50"]
+
 # Bench readings of benches/weapon/firing/checks.py#engine_bezier_e (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]

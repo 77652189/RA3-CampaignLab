@@ -11,7 +11,8 @@ def engine_acquire():
       T                    the player's tank, named, NO_ATTACK: idle / guard (0, -400 + d) straight north of S;
                            attack-move (300, -400 + d) beside the path, d to the side of the path's middle
       E (600, -400)        the attack-move end
-    Published waypoints: s, e.
+      N (0, -220), F (0, 300)  gst / gsc / gch: the tank (T 450 north of S) driven to N, then off to F
+    Published waypoints: s, e, t, n, f.
     """
     from maps import island
     from parts import Mission
@@ -19,7 +20,11 @@ def engine_acquire():
     TANK = 'AlliedAntiVehicleVehicleTech1'
     S, E = (0.0, -400.0), (600.0, -400.0)
     VARIANTS = ('idle180', 'idle260', 'idle400', 'guard260', 'guard400', 'am260', 'am400', 'idle200', 'idle220', 'idle240',
-                'hold180', 'hold220', 'agg220', 'agg240', 'agg260')
+                'hold180', 'hold220', 'agg220', 'agg240', 'agg260', 'gst450', 'gsc450', 'gch450')
+    # gst / gsc / gch: guarding from birth, the tank driven in to N then off to F; gsc / gch with one AIData field
+    # spliced into the global stream (missions/aiskirm_bench.AIDataPack)
+    AIDATA = {'gsc': {'GuardEnemyScanRate': '60000'}, 'gch': {'GuardChaseUnitFrames': '30'}}
+    N, F = (0.0, S[1] + 180.0), (0.0, S[1] + 700.0)
 
 
     def target(variant):
@@ -31,8 +36,11 @@ def engine_acquire():
         m = Mission(name=name, map=island, facts={'variant': VARIANTS.index(variant)})
         m.crew('Aq', 's1')
         m.put(TANK, 'west field', *target(variant), role='tank', name='UNIT - CNV Aq Tank')
-        for part, label, at in (('s', 'S', S), ('e', 'E', E), ('t', 'T', target(variant))):
+        for part, label, at in (('s', 'S', S), ('e', 'E', E), ('t', 'T', target(variant)), ('n', 'N', N), ('f', 'F', F)):
             m.waypoint(part, f'CNV Aq {label}', 'west field', *at)
+        if variant[:3] in AIDATA:
+            from missions.aiskirm_bench import AIDataPack
+            m.statics = [AIDataPack(AIDATA[variant[:3]])]
         return m
 
 
