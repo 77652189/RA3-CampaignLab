@@ -1,0 +1,11 @@
+# Bench readings of checks/engine_knock_psy.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Counters: yuri near, yuri tank, rocket near, rocket tank -- script frames each neighbour (a man 40 east, a
+# 0-resistance Hammer copy 40 west of the rocket's target) still on its spot.
+
+[[reading]]
+id = "a_the_psyonic_blasts_rule_none_infantry_filter_shocks_the_man_not_the_tank"
+scene = {build = "engine_knock_psy", check = "a", until = 23, shot_clock = true}
+bench = "engine_knock_psy__a (11-26, A391, head 41a16f4f): yuri near 190 from s13.07, yuri tank 196 ... 347 at s23 (never moves); rocket (the filter removed) near 191, tank 190 from s13.07. Predicted the other way (NONE = none of the kinds): wrong"
+proves = "engine/data/units MetaImpact parse + engine/combat/meta_impact.launch: SpecialObjectFilter Rule NONE Include INFANTRY (+ StatusBitFlagsExclude NO_COLLISIONS) shocks infantry only; ShockWaveClearRadius false (the SDK default) changes nothing; the 1 s delay as Katana's"
+item = "武器效果 MetaImpactNugget:步兵筛选延迟"
+expect = ["len(set(win(15, 22, 'yuri near'))) == 1", "win(22, 22, 'yuri tank')[0] > win(15, 15, 'yuri tank')[0] + 90", "len(set(win(15, 22, 'rocket near'))) == 1", "len(set(win(15, 22, 'rocket tank'))) == 1", "win(15, 15, 'yuri near')[0] < 200"]

@@ -113,9 +113,10 @@ def unit_has_modelcondition(sim, name, a):
 
 def unit_health(sim, name, a):
     # whole percent, rounded down (int(health * 100 / max): 99.9 % reads 99, so "< 50" holds at 49.9 %); a dying
-    # unit reads 0 (E4)
+    # unit reads 0 (E4); one deleted this tick the health it had (engine_a1coil k: engineers deleted whole read
+    # false on "< 100"; INFERRED that a deletion leaves the health as it was)
     b = sim.body(a[0])
-    pct = math.floor(b.health + 1e-6) if b is not None and b.alive else 0
+    pct = math.floor(b.health + 1e-6) if b is not None and (b.alive or b.deleted) else 0
     return bool(sim.present(b) and CMP[a[1]](pct, a[2]))
 
 

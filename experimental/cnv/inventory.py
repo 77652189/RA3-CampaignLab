@@ -715,6 +715,12 @@ def nugget_form_slice(ntype, forms, at_self=False):
         if all(not list(n) and set(n.attrib) <= allowed
                and {'ShockWaveAmount', 'ShockWaveRadius'} <= set(n.attrib) for n in forms):
             return ':普通无延迟显式Z' if all('ShockWaveZMult' in n.attrib for n in forms) else ':省略Z默认值'
+        if all(set(n.attrib) <= allowed | {'ShockwaveDelaySeconds', 'ShockWaveClearRadius'}
+               and n.get('ShockWaveClearRadius', 'false') == 'false' and len(n) == 1 and not list(n[0])
+               and n[0].tag.rsplit('}', 1)[-1] == 'SpecialObjectFilter' and not (n[0].text or '').strip()
+               and n[0].attrib == dict(Rule='NONE', Include='INFANTRY', StatusBitFlagsExclude='NO_COLLISIONS')
+               for n in forms):
+            return ':步兵筛选延迟'
         if all(not list(n) and set(n.attrib) <= allowed | {'ShockwaveDelaySeconds'}
                and {'ShockWaveAmount', 'ShockWaveRadius', 'ShockwaveDelaySeconds'} <= set(n.attrib) for n in forms):
             return ':自身延迟' if at_self else ':普通延迟'
@@ -753,6 +759,7 @@ NUGGET_SCOPES = {
     'MetaImpactNugget:散弹自身弧': '仅瞬发DamageDealtAtSelfPosition散弹（维和/AAAVT1/ABD）：圆心=射手脚下，Arc沿射手→目标；engine_knock_self a 原样(0,25)(0,38)冲、39°侧邻与60外不冲，只删Arc侧邻也冲，三人初速度与模拟器公式同（tests/modules/test_nugget_meta_impact_self.py）；engine_knock_self b 原位计数读数（原样man离位/侧邻不动，只删Arc两人都离位）。半角arc/2、射手自身不受（自身或敌我未分）、禁FLAILING=飞行中跳过均INFERRED；AAAVT1继承后另加半径100一条（游戏是否两条都冲未量，模拟器只取自己那条）；弹体爆心的Arc轴未量（gap）',
     'MetaImpactNugget:普通延迟': '仅非DamageDealtAtSelfPosition的普通延迟写法（机甲王Katana）：碰撞帧c入队，D=ceil(float32秒×15)（1.9s→29、1.2s→18），c+D+1帧在碰撞爆心派发默认Physics冲击；首格出现在到期帧、下一帧停一格、到期+14落地（engine_knock_delay a原始轨迹）。engine_knock_delay b原位帧数读数：冲击帧−碰撞帧=30/19。台上用弹体碰撞；Katana是瞬发近战，瞬发的爆心按目标半身高取（INFERRED，未上台）；停一格的原因、目标中途死亡/移动、延迟期间新碰撞叠加未量（gap）',
     'MetaImpactNugget:自身延迟': '仅DamageDealtAtSelfPosition的普通延迟写法（机甲王Omega）：开火帧入队，c+D+1帧在开火那刻射手脚下派发（射手自己不受）；engine_knock_selfd a 散弹去Arc加1.2s两路，命中帧92、ra3ext冲击全在111帧，射手命中后被传送150外的一路爆心仍是原位、计数与不动的一路相同。Omega原本由特殊能力（WeaponFireSpecialAbilityUpdate）开火，那条链、它的DamageSpeed 800伤害和射手死于延迟期间未量（gap）；逐帧离位晚2帧归A363散弹轨迹（mismatch读数）',
+    'MetaImpactNugget:步兵筛选延迟': '仅百合子PsyonicBlast写法（延迟1s、Z8.5、ClearRadius false=默认、Rule NONE Include INFANTRY+排除NO_COLLISIONS）：engine_knock_psy a 弹体爆心，步兵邻人冲、零抗性锤子复制不冲，去筛选两者都冲（NONE+列表=只要列表）。原版是瞬发能力开火（engine_knock_probe retail 瞬发不冲），那条开火链、敌我关系、ClearRadius true 未量（gap）',
     'MetaImpactNugget:省略Z默认值':'仅普通无延迟弹头省略ShockWaveZMult→SDK默认1及默认Physics轨迹；engine_knock_z a高度93邻人14帧落(2420,3740)、目标99%/邻人100%。碰撞时刻/爆心为台上输入；直击噪声方向/网格/选人仍INFERRED，完整曲线弹/坡地/筛选未对拍',
     'AttachNugget:恐怖机器人近战': '仅原版恐怖机器人近战附着武器（AttachNugget筛选含Relationship/ExcludeThing）+原版完整AttachUpdate块（engine/modules/attach.py TERROR整块比对）；engine_attachterror a 14s 127/127/3/3、20s 127007/127000/3006/3002：附着后子ATTACHED/ENCLOSED/UNATTACKABLE、父VEHICLE_ATTACHED/BOOBY_TRAPPED，脚本杀父子随死，删Nugget不附着。派发时Range10不当门槛（台上在武器射程25外沿派发也附着；更近处是否卡未量，INFERRED）；子随父死按"父最后伤害者不是子"判（自己杀死父时不死INFERRED）；弹跳、无人驾驶脱离、父禁用状态致死、修理中拒绝未量（gap）',
     'AttachNugget:谭雅C4': '仅原版谭雅C4附着武器（Radius 1、StatusBitFlagsExclude并入禁用状态）+原版完整AttachUpdate块（engine/modules/attach.py C4整块比对）；engine_attachc4 a 11/10024/10030/10028、b（删ForbiddenParentStatus）11/10024/15/10028：附着后父MARCH_OF_DEATH、引爆炸死父、子活着脱离；父有EXPLOSIVES_ATTACHED时照样置MARCH_OF_DEATH但不链接；删Nugget不附着。地面车辆父 + 建筑父（engine_a1gate h：s1 的宫墙、电厂各被炸、谭雅留在旁边，乙末两位 66）；引爆武器的AttributeModifierNugget（父EXPLOSIVES_ATTACHED、谭雅EXPLOSIVES_DETONATING 20s）不建（台上父命中帧即死，从未读到该位）；Range 5、DETACH_WHEN_IDLE、铁幕/空中拒绝未量（gap）',

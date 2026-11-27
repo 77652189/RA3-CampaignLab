@@ -87,6 +87,10 @@ def launch(host, weapon, centre, attacker, axis=None, delayed=False):
                 # CampKKG a/b: independently measured kind/status gates.
                 if 'INFANTRY' not in b.kinds:
                     continue
+            elif target_filter and 'kinds' in target_filter:      # A391 engine_knock_psy a
+                if (not any(k in b.kinds for k in target_filter['kinds'])
+                        or any(s in b.status for s in target_filter['status_exclude'])):
+                    continue
             elif target_filter:
                 # CampKSG a/b: NO_COLLISIONS rejects only when the XML
                 # excludes it; no independent status gate in this slice.

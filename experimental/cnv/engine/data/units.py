@@ -278,7 +278,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v51.json')    # v51: inherited armour (A387 h); v50: the dog's pounce (A386); v49: the SPN's StatusBitFlagsExclude (A374); v48: the shotgun's self-centred arc shock (A363); v47: the grapple nugget (E226); v46: the lift's retail filter; v45: the link guns' ally filter; v44: + taper (DamageDealtAtSelfPosition); v43: weapons from the data port (W1), the cache keeps `sets`; v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v52.json')    # v52: PsyonicBlast's infantry shock (A391); v51: inherited armour (A387 h); v50: the dog's pounce (A386); v49: the SPN's StatusBitFlagsExclude (A374); v48: the shotgun's self-centred arc shock (A363); v47: the grapple nugget (E226); v46: the lift's retail filter; v45: the link guns' ally filter; v44: + taper (DamageDealtAtSelfPosition); v43: weapons from the data port (W1), the cache keeps `sets`; v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
 ARMOR_DEFAULT = 100.0           # a damage type an armour does not name: taken in full (a guess)
@@ -461,6 +461,12 @@ def _weapons(texts, base_table=None):
                             and _attr(h, 'ForbiddenTargetObjectStatus') == 'LEECHED_TARGET_ACTIVE'
                             and not fields & {'ShockwaveDelaySeconds', 'InvertShockWave'}):
                         target_filter = dict(rush_infantry=True)
+                    # A391 engine_knock_psy a: retail PsyonicBlast's Rule NONE + Include INFANTRY shocks the man,
+                    # not a 0-resistance tank (NONE + a list = the list, as aitfnone's team filter)
+                    if (attrs == dict(Rule='NONE', Include='INFANTRY', StatusBitFlagsExclude='NO_COLLISIONS')
+                            and not fi.strip() and not forbidden and len(children) == 1
+                            and _attr(h, 'ShockWaveClearRadius', 'false') == 'false'):
+                        target_filter = dict(kinds=['INFANTRY'], status_exclude=['NO_COLLISIONS'])
                 # CampKOG isolates this status, CampKKG adds only infantry.
                 # Native leech lifecycle and other combinations remain gaps.
                 object_gate = (_attr(h, 'ForbiddenTargetObjectStatus') == 'LEECHED_TARGET_ACTIVE'
@@ -479,6 +485,7 @@ def _weapons(texts, base_table=None):
                         'id', 'ShockWaveAmount', 'ShockWaveRadius', 'ShockWaveZMult', 'ShockWaveTaperOff',
                         'ShockwaveDelaySeconds', 'InvertShockWave',
                         *(['ShockWaveArc'] if shotgun else []),
+                        *(['ShockWaveClearRadius'] if _attr(h, 'ShockWaveClearRadius') == 'false' else []),   # default
                         *(['ForbiddenTargetObjectStatus'] if object_gate else []),
                         *(['ForbiddenTargetModelCondition'] if target_filter or shotgun else [])} and all(
                         _attr(h, field) is not None for field in

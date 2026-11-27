@@ -79,8 +79,8 @@ expect = ["win(1, 30, '驻甲') == [100] * 30", "win(1, 30, '驻乙') == [10] * 
 id = "k_every_passenger_sits_at_a_bone_and_the_houses_differ"
 scene = {build = "engine_a1gar", check = "k", until = 31}
 bench = "CampA1GarK (11-26, head a7fb2450; j with every engineer deleted at the start): 位甲 258788, 位乙 788428 at s1-s31 -- no digit 0 (no one at the centre), the same entry seated on four sides"
-proves = "engine/objects/garrison.seats / spot / put: a passenger stands at a free seat bone of its house (data/garrison_bones.json), turned with the house, drawn (not the first free)"
-expect = ["all(c != '0' for v in win(1, 30, '位甲') + win(1, 30, '位乙') for c in str(v).zfill(6))", "len(set(str(win(1, 30, '位甲')[0]) + str(win(1, 30, '位乙')[0]))) > 2"]
+proves = "engine/objects/garrison.seats / spot / put: a passenger stands at a free seat bone of its house (data/garrison_bones.json), turned with the house, drawn (not the first free); engine/script/cond_object.unit_health: an engineer deleted whole reads no hurt (驻 0 0)"
+expect = ["win(1, 30, '驻甲') == [0] * 30", "win(1, 30, '驻乙') == [0] * 30", "all(c != '0' for v in win(1, 30, '位甲') + win(1, 30, '位乙') for c in str(v).zfill(6))", "len(set(str(win(1, 30, '位甲')[0]) + str(win(1, 30, '位乙')[0]))) > 2"]
 
 [[reading]]
 id = "k_with_no_target_each_house_seats_its_two_its_own_way"
