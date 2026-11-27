@@ -92,6 +92,27 @@ def test_a_seat_inside_a_neighbouring_building_is_blocked_by_it():
     assert s.shot_blocked(gi, man, gi.weapons[0])
 
 
+def test_an_aiming_passenger_takes_a_clear_seat_by_the_targets_own_height():
+    # review_1126e P2 (A390): the seat is changed in the aim, a clear line first (not the nearer bone behind the
+    # plant, never firing from there), and a Twinblade's flight counts (the 50-up bone, not the 10-up one by the map)
+    s = simsmall.small_world()
+    house = s.add('house', 'GE_TownHouse01', None, 300.0, 300.0)
+    s.add('plant', 'AlliedPowerPlant', s.human, 401.0, 339.0)
+    gi = s.add('gi', 'AlliedAntiInfantryInfantry', s.human, 400.0, 300.0)
+    man = s.add('man', 'SovietEngineer', 'Soviet_4', 450.0, 300.0)
+    assert s.garrison.put(gi, house, script=True)
+    s.garrison.seat[gi.serial] = (57.45, -13.79, 50.0)
+    gi.x, gi.y = s.garrison.spot(gi, house)
+    simorder.order_attack(s, simorder.Peers(s), gi, man, force=True)
+    simorder.fight(s, simorder.Peers(s))
+    assert s.garrison.seat[gi.serial] == (57.44, -20.08, 10.0) and any(a is gi for _, _, a in s.firing)
+    jav = s.add('jav', 'AlliedAntiVehicleInfantry', s.human, 400.0, 300.0)
+    heli = s.add('heli', 'SovietAntiGroundAircraft', 'Soviet_4', 300.0, 450.0)
+    assert s.garrison.put(jav, house, script=True)
+    s.garrison.track(jav, [heli], lambda: False)
+    assert s.garrison.seat[jav.serial] == (11.98, 37.86, 50.0)
+
+
 def test_player_exit_all_buildings_lets_nobody_out():
     """engine_plexit a / b (bench 11-23): PLAYER_EXIT_ALL_BUILDINGS on the human player or a campaign computer player
     leaves every man in (unlike TEAM_EXIT_ALL_BUILDINGS), and it is a known action, no gap."""

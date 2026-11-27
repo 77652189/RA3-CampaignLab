@@ -27,10 +27,10 @@ LAG = 0.0                        # the readings' clock: mission seconds, as the 
 class Tick:
     """`moved`: the tick's first-frame block ran; `coarse`: the frame whose coarse move (non-precise Sim.move) ran,
     so the cells after it (follow ... auto_kill) run on that frame only, as move's tail did."""
-    __slots__ = ('t0', 'moved', 'coarse', 'aimed')
+    __slots__ = ('t0', 'moved', 'coarse')
 
     def __init__(self, t0):
-        self.t0, self.moved, self.coarse, self.aimed = t0, False, None, ()   # aimed: the tick's (fight)
+        self.t0, self.moved, self.coarse = t0, False, None
 
 
 # ---- cells (the rules stay in their owners; a cell only calls one and holds its gate)
@@ -115,7 +115,7 @@ def expire(s, frame, tick):
 
 
 def garrison(s, frame, tick):
-    s.garrison.due(tick.aimed)
+    s.garrison.due()
 
 
 def frame_movers(s, frame, tick):
@@ -175,7 +175,7 @@ def tick_first(s, frame, tick):
         tick.moved = True
         simmodifier.aura_tick(s)
         if s.combat:
-            tick.aimed = simorder.fight(s, simorder.Peers(s)) or ()
+            simorder.fight(s, simorder.Peers(s))
         if not s.shot_clock:
             s.move()
             tick.coarse = frame

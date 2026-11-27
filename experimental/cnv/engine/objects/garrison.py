@@ -55,6 +55,7 @@ import engine.data.units as simunits
 import engine.modules.locomotor as locomotor
 import engine.objects.locomotion as simlocomotion
 import engine.objects.modifier as simmodifier
+from engine.objects.body import top
 from engine.kernel import interfaces
 
 TAGS = ('GarrisonContain', 'ContestableGarrisonContain')
@@ -287,6 +288,7 @@ class Garrisons:
     def put(self, u, g, script=False):
         """u into g now; True when it is inside. script: the script's ..._INSTANTLY (no relation, no room)."""
         world = self.world
+        label = world.label
         sp = self.box(g) if g is not None and g.alive else None     # walked in: a transport asks the room too
         if sp is None or u is None or not u.alive or u is g or u.serial in self.where or not self.fits(u, sp):
             return False
@@ -299,7 +301,7 @@ class Garrisons:
             for p in held:
                 if p.team != u.team and world.relation(p.owner, u.owner) != 'ALLIES':
                     self.out(p)
-                    world.note('驻军', f'{world.label(u)} 把 {world.label(p)} 挤出 {world.label(g)}，自己也没进去')
+                    world.note('驻军', f'{label(u)} 把 {label(p)} 挤出 {label(g)}，自己也没进去')
                     return False
         house = sp['tag'] in TAGS                       # a transport keeps its owner
         if not held and house:
@@ -321,22 +323,31 @@ class Garrisons:
         self.secondary(g)
         for b in (u, g):
             simmodifier.modify(world, b)
-        world.note('驻军', f'{world.label(u)} 进 {world.label(g)}')
+        world.note('驻军', f'{label(u)} 进 {label(g)}')
         world.change()
         return True
 
-    def track(self, aimed):
-        """The tick's aimed fire (order.fight: (target, _, shooter)): a house's passenger aiming moves to the free bone
-        nearest its target, the bone's height counted, when nearer than its own (j: high's con 0 east to bone 08; base,
-        nothing in reach, stays; n: 150 north, 03 and 06 at 10 up, not 01 at 50 up the nearer on the map)."""
-        for t, _, u in aimed:
-            g = self.where.get(u.serial) if t.alive else None
-            bones = seats(g.template) if g is not None else ()
-            if bones:
+    def track(self, u, picks, blocked):
+        """u's picks this aim (target.picks: a target or None a weapon slot): a house's passenger aiming moves to the
+        free bone nearest its target, heights counted -- the house's base + the bone's against the target's own, an
+        aircraft's flight too (j: high's con 0 east to bone 08; base, nothing in reach, stays; n: 150 north, 03 and 06
+        at 10 up, not 01 at 50 up the nearer on the map; review 1126e: a Twinblade 130 up, the 50-up bone); one with
+        its lines clear (blocked(): any pick's from where u stands) before a nearer one behind a neighbour, taken in
+        the aim (review 1126e: not fired from the old seat, nor sitting there never firing; INFERRED, not benched)."""
+        g = self.where.get(u.serial)
+        bones = seats(g.template) if g is not None else ()
+        z = self.world.ground.z if bones else None
+        for t in picks if bones else ():
+            if t is not None and t.alive:
                 taken = [self.seat.get(p.serial) for p in self.boxes[g.serial].passengers()]
-                self.seat[u.serial] = min([self.seat[u.serial]] + [s for s in bones if s not in taken],
-                                          key=lambda s: math.hypot(*(a - b for a, b in zip(_at(g, s), (t.x, t.y))),
-                                                                   *s[2:]))
+                at = (t.x, t.y, top(z, self.world.own, t) - z(g.x, g.y))
+
+                def key(s):
+                    u.x, u.y = _at(g, s)
+                    return blocked(), math.dist((u.x, u.y, s[2]), at)
+                self.seat[u.serial] = min([self.seat[u.serial]] + [s for s in bones if s not in taken], key=key)
+        if bones:
+            u.x, u.y = self.spot(u, g)
 
     def spot(self, u, g):
         """Where the passenger u of g stands: its seat turned with g (a transport's riders, g's spot)."""
@@ -400,7 +411,8 @@ class Garrisons:
         passengers go out one by one in due()). StartAbilityRange 0 with a spot away: it goes there first, out on
         arrival (engine_acts_drop air: the bomber drop's load rides its bombers from the store to the spot)."""
         world = self.world
-        power = power or simunits.command_power(command, world.own)
+        own = world.own
+        power = power or simunits.command_power(command, own)
         found = []
 
         def walk(xml):
@@ -409,7 +421,7 @@ class Garrisons:
                 if power and simunits._attr(head, 'SpecialPowerTemplate') == power:
                     found.append(head)
         try:
-            simunits._chain(g.template, world.own, walk)
+            simunits._chain(g.template, own, walk)
         except (OSError, ValueError):
             pass
         if not found or g is None or not g.alive:
@@ -474,11 +486,10 @@ class Garrisons:
                     simmodifier.modify(world, u)
                     world.change()
 
-    def due(self, aimed=()):
-        """Once a frame: the tick's aimed passengers to their seats (track); the ones sent in that have got there; a building at or under its REALLYDAMAGED line empties;
+    def due(self):
+        """Once a frame: the ones sent in that have got there; a building at or under its REALLYDAMAGED line empties;
         the dead inside are let go of."""
         world = self.world
-        self.track(aimed)
         for key, (u, g) in list(self.going.items()):
             if not u.alive or not g.alive or world.bodies.get(u.name) is not u:     # dead, or out of the world
                 del self.going[key]

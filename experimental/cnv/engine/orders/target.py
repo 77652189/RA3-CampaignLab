@@ -85,4 +85,5 @@ def picks(a, targets, aimable, tx, ty, q):
             if v is not None:
                 out[-1], fired[-1] = t, v
                 break
+    q.garrison.track(a, out, lambda: any(p is not None and q.shot_blocked(a, p, v) for p, v in zip(out, fired)))
     return d, idx, out, fired

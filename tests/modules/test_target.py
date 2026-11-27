@@ -9,7 +9,7 @@ from engine.orders import target  # noqa: E402
 Q = types.SimpleNamespace(hostile=lambda a, t: a.owner != t.owner, can_hit=lambda w, t: True,
                           in_range=lambda a, t, w, d=None: np.hypot(t.x - a.x, t.y - a.y) - a.radius - t.radius <= 20,
                           side_sees=lambda s, t: True, shot_blocked=lambda a, t, w: False, reach_of=lambda w: 20,
-                          unshot={'Ice'}, ai=())
+                          unshot={'Ice'}, ai=(), garrison=types.SimpleNamespace(track=lambda a, out, blocked: None))
 SERIAL = itertools.count()
 
 
