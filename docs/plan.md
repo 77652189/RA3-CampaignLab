@@ -17,7 +17,7 @@
 | 关卡 | 纸面设计只做盟军 9 关，苏联、帝国两条线停着（用户 2026-11-22："先集中精力做盟军线"；Dot 的 J4 / J5 / S7 / S8 研究留在各流程稿末尾待定）。不推新关。A4 对照局收尾（测试台和模拟器的差别已归因到战斗模型，见 [story/sim-vs-bench-a4.md](story/sim-vs-bench-a4.md)）；接着做原版战役关验收题（测试台 mod 任务不写录像，原版关能否存录像还没试）和自动玩家框架 | [story/handoff-phase4.md](story/handoff-phase4.md) 最末一节 |
 | 模拟器界面 | 浏览器里能玩（`experimental/simui/`）；试玩版的快进和跳过场已做成开发热键（`experimental/cnv/playtest.py`）；跳阶段要读的阶段存档点清单格式是草稿，随关卡暂停 | [simui/handoff.md](simui/handoff.md) |
 | 策划 | A4 地图诊断 [story/map-diagnosis-a4.md](story/map-diagnosis-a4.md) 做完，原版实测规律并进 [story/map-language.md](story/map-language.md) 4.3；用户："先不做，先记文档，然后整理一下文档"——**地图先不改**，地图设计 skill 暂停 | [地图内容稿](design/maps/README.md) |
-| 外壳 | 11-06 做完笔记本演示包、I21、I22；能改的地图页、画新地图随关卡暂停 | [shell/handoff.md](shell/handoff.md) |
+| 外壳 | 11-06 做完笔记本演示包、I21、I22；地图页和画新地图 11-26 移交地图工具（ADR 0038） | [shell/handoff.md](shell/handoff.md) |
 | 画面 | DXVK 和帧率解锁能同跑（第 0 步）；按 [ADR 0022](adr/0022-simulator-before-levels.md) 外观放最后，没有在做的事 | [render/handoff.md](render/handoff.md) |
 | 音乐 | A4 第五版配乐等用户试听（随游戏内试玩一起） | [music/handoff.md](music/handoff.md) |
 | 单位 | 暂停（用户 2026-11-04：美术不提前、不返工） | [units/handoff.md](units/handoff.md) |
@@ -43,7 +43,7 @@
 | 盟军 9 关重新实装、可试玩、交用户试玩 | 清单达标 | 一关"可试玩"的标准见 ADR 0023 第 3 条；9 关都达标后一次交给用户，每关附一句"考什么"。现有草稿（A1～A9，`build.py campaign --shell`）、27 关题卡和两遍流程稿都留着当起点；暂停期间关卡线只做题卡和数值区间的纸面打磨 |
 | CampShell 独立验收的待验项 | 关卡恢复、真打 A4 | 待验 I2 I3 I4 I6 I7 I9 I13 I17 I22，状态在 [issues.md](issues.md)；架构整改（[ADR 0016](adr/0016-one-outlet-per-class.md)）第 0～3 阶段和第 4 阶段生成器（K3 K4 K7）都已做完，等这些项验过 |
 | 地图设计感（策划线） | 用户定 | 用户 2026-11-08 看完 A4 诊断："先不做，先记文档"。恢复时从 [story/map-diagnosis-a4.md](story/map-diagnosis-a4.md) 的四层做起 |
-| 能改的地图页、画新地图（[ADR 0017](adr/0017-engine-layers-and-map-page.md)，外壳线） | 关卡恢复 | A4 地图页本地能用（拖地点、钉批注、地形编辑）；草图生成新地图模块草稿、图形化编辑器是之后的事 |
+| **地图工具：一句话出图（[ADR 0038](adr/0038-agent-map-generator.md)，[mapgen/design.md](mapgen/design.md)）** | 用户 2026-11-26 定架构；开工前先过探针 | 需求和架构已写，没写代码。探针按顺序做，**任何一项不通就停，回总控和用户商量**：① 我们生成的图能不能在 WorldBuilder 里打开；② 量化后的崖能不能贴上崖壁件、不露白盒；③ 从原版图找出的重复组合是不是像样的场景件；④ 拿 A1 老城一小片走一整轮"决定 → 展开 → 检查"，其中故意做坏几块，看诊断抓不抓得到。探针代码放 `work/`，不进仓库；四项都通过再开地图工具线做正式工具 |
 | 画面（渲染） | 逻辑层之后（ADR 0022） | 第 0 步做完；渲染器只调研不写代码 |
 | 游戏音乐（[ADR 0005](adr/0005-own-pathfinder-music.md)） | 用户试听 A4 第五版 | 其他关的音乐没开始 |
 | 后半段才用的单位 | 做到那一关再做 | 招牌（磁力空间站、超级要塞·完全体）、老面孔（光棱坦克、基洛夫空投天启、将军处刑者；先兆炮艇机 11-22 砍掉）、终局原子球塔、心灵巫女 |
