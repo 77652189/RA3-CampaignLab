@@ -524,13 +524,18 @@ class Ground:
     """The map's routing grids (GRID cells): ground (dry, not too steep, bridges over), water, both; paths by
     least cost, cached per surface and goal cell."""
 
-    def __init__(self, mapmod):
+    def __init__(self, mapmod, scene_objects=()):
         import platmap
         dims = getattr(mapmod, 'DIMS', platmap.CONTAINER)       # a retail map's own size (retail.Terrain)
         w, h, b = dims
+        objs = list(getattr(mapmod, 'OBJECTS', []))
         if hasattr(mapmod, 'LAYOUT'):
+            # E302: preplaced scene bridge pairs also lay a deck over the map's water.
+            for start, end in zip(scene_objects, scene_objects[1:]):
+                if start.flags == platmap.BRIDGE_START and end.flags == platmap.BRIDGE_END:
+                    objs.extend((start, end))
             e, _ = platmap.heights(mapmod.LAYOUT, w, h, b)
-            walk = platmap.walkable(mapmod.LAYOUT, getattr(mapmod, 'OBJECTS', []), dims, e)
+            walk = platmap.walkable(mapmod.LAYOUT, objs, dims, e)
             bridge = walk & ~platmap.walkable(mapmod.LAYOUT, [], dims, e)    # walkable only for a bridge laid on it
         else:
             e = mapmod.ground().e
@@ -573,7 +578,6 @@ class Ground:
         # a bridge's deck: what stands on it blocks nobody (bench 2026-10-27, reroute: the warriors walked through an
         # ice wall on the deck)
         self.deck = np.zeros_like(self.blocked)
-        objs = list(getattr(mapmod, 'OBJECTS', []))
         jj, ii = np.mgrid[0:self.blocked.shape[0], 0:self.blocked.shape[1]]
         self.xy, self.shapes, self.foot_shapes = self.world((jj, ii)), [], []
         for o, q in zip(objs, objs[1:]):
