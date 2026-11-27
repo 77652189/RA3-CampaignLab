@@ -1,7 +1,7 @@
 """Expand and export a map from its design and original asset library."""
 
 from copy import deepcopy
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from experimental.mapgen import buildings, checks, design, dressing, library, paint, roads, terrain
@@ -18,7 +18,8 @@ class MapBuild:
     frame: terrain.DesignFrame | None
     scenery: tuple[terrain.Piece, ...]
     atmosphere: dict | None = None
-    flank_shapes: tuple = ()
+    footprints: tuple[buildings.Footprint, ...] = ()
+    scenery_slots: dict[str, terrain.Piece] = field(default_factory=dict)
     level: str = 'full'
     has_road_kit: bool = False
 
@@ -31,7 +32,7 @@ class MapBuild:
         if self.sketch is None:
             return {}
         return checks.evaluate(self.sketch, self.ground, self.roadbed, self.layout, CONTAINER[2], self.frame,
-                               self.flank_shapes, sketch_only=self.level == 'sketch', has_road_kit=self.has_road_kit)
+                               self.footprints, sketch_only=self.level == 'sketch', has_road_kit=self.has_road_kit)
 
     def require_full(self):
         if self.level != 'full':
@@ -51,6 +52,8 @@ class MapBuild:
     def apply_terrain(self, m):
         """Fill the ground and atmosphere for the shared game/editor map."""
         self.require_full()
+        if self.ground.errors:
+            raise ValueError("\n".join(self.ground.errors))
         previews = terrain.apply(m, self.plan, self.ground)
         if self.frame is not None:
             hm = mapterrain.HeightMap(m)
@@ -83,10 +86,10 @@ class MapBuild:
             objects.append(newmap.object_node(m, {}, piece.flags, piece.template, piece.x, piece.y,
                                              z=piece.z, angle=piece.angle, originalOwner=f'{owner}/team{owner}',
                                              uniqueID=f'{piece.template} {len(objects)}'))
+        answers = self.check_relations()
         for suffix, data in zip(('game.map', 'editor.map', 'locked.json'), self.outputs(m), strict=True):
             Path(f'{stem}-{suffix}').write_bytes(data)
         if self.sketch is not None:
-            answers = self.check_relations()
             checks.draw_failures(self.sketch, answers, f'{stem}-relations.svg')
             rows = ['# 地图关系', '']
             for name, answer in answers.items():
@@ -94,6 +97,8 @@ class MapBuild:
                 rows.append(f'- {result} · `{name}` · {answer.sentence}')
                 if answer.decision:
                     rows.append(f'  - {answer.decision}')
+            if self.ground.issues:
+                rows.extend(['', '## 地形提示', '', *(f'- {issue}' for issue in self.ground.issues)])
             Path(f'{stem}-checks.md').write_text('\n'.join(rows) + '\n', encoding='utf-8')
 
 
@@ -122,14 +127,14 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
     Design faces define the playable ground and supply the grade at a dry
     rectangular frame. Blocks can override the default kit for their surfaces, buildings
     and scenery. Road_kit supplies model roads; fronts gives measured civilian
-    front angles in radians. Sketch stops at terrain, layout adds all geometry
-    used by relation checks, and full adds surface paint, dressing and mood.
+    front angles in radians. Sketch stops at terrain, layout adds roads, buildings
+    and flanks, and full adds surface paint, dressing and mood.
     """
     if level not in ('sketch', 'layout', 'full'):
         raise ValueError(f'Unknown map build level: {level!r}')
-    assets = library.load_library(library_file)
+    catalogue = library.load_library(library_file)
     sketch = design.load(design_file) if design_file is not None else None
-    atmosphere = retail_atmosphere(sketch.mood, assets) if sketch is not None and level == 'full' else None
+    atmosphere = retail_atmosphere(sketch.mood, catalogue) if sketch is not None and level == 'full' else None
     background_count = len(plan.blocks)
     border = CONTAINER[2]
     if sketch is not None:
@@ -139,33 +144,43 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
             plan = replace(plan, ground=sketch.commitments['ground_texture'])
         if kit is None:
             raise ValueError('building from a design requires a civilian kit')
+        if level != 'sketch' and road_kit is None:
+            road = next(roads.unpainted_roads(sketch), None)
+            if road is not None:
+                raise design.DesignError(road, 'road_kit', 'supply a model kit or paint the entire dry road')
         plan = terrain.from_design(sketch, plan, kit)
         if not background_count:
-            expanded = terrain.frame_apron(sketch, plan, kit, CONTAINER)
+            expanded = terrain.frame_apron(sketch, plan, CONTAINER)
             background_count = len(expanded.blocks) - len(plan.blocks)
             plan = expanded
-    ground = terrain.expand(plan, assets, *CONTAINER)
+    ground = terrain.expand(plan, catalogue, *CONTAINER)
     layout, roadbed = buildings.Layout(()), None
-    frame, scenery, flank_shapes = None, (), ()
-    if sketch is not None and level != 'sketch':
-        if road_kit is not None:
-            roadbed = roads.expand(sketch, ground, border, road_kit)
+    frame, scenery, footprints, slots = None, (), (), {}
+    if sketch is not None:
         sage = Path(labpaths.SDK3) / 'SageXML'
-        kits = {name: spec.get('kit', kit) for name, spec in sketch.blocks.items()}
-        layout = buildings.BuildingPlanner(sketch, ground, assets, kits,
-                                           fronts or {}, sage, border).lock()
+        assets = dressing.Assets(catalogue, sage)
+        if level == 'sketch':
+            footprints = assets.occupied(ground.pieces)
+        else:
+            if road_kit is not None:
+                roadbed = roads.expand(sketch, ground, border, road_kit)
+            kits = {name: spec.get('kit', kit) for name, spec in sketch.blocks.items()}
+            flanks = tuple(dressing.footpath_flanks(sketch, assets))
+            scenery = tuple(prop for _, prop in flanks)
+            native = (*ground.pieces, *(roadbed.placements if roadbed else ()), *scenery)
+            footprints = assets.occupied(native)
+            obstacles = tuple(s for obj in footprints for s in obj.placement + obj.collision)
+            layout = buildings.BuildingPlanner(sketch, ground, catalogue, kits, fronts or {}, sage, border,
+                                               obstacles).lock()
     if level == 'full':
-        ground = paint.paint(plan, assets, ground, roadbed)
+        ground = paint.paint(plan, catalogue, ground, roadbed)
     if sketch is not None:
         # Roads and paint see the real backdrop before the frame closes it to movement.
         frame = terrain.design_frame(sketch, ground, background_count, border)
         ground = frame.close(ground)
         if level == 'full':
-            dressed = dressing.expand(sketch, ground, roadbed, layout, assets, kits, sage, border, frame)
-            ground, scenery = dressed.ground, dressed.pieces
-        if level != 'sketch':
-            flanks = tuple(dressing.footpath_flanks(sketch, assets, sage))
-            scenery = (*scenery, *(prop for prop, _ in flanks))
-            flank_shapes = tuple(shape for _, shape in flanks)
-    return MapBuild(plan, ground, roadbed, layout, sketch, frame, scenery, atmosphere, flank_shapes,
+            dressed = dressing.expand(sketch, ground, roadbed, layout, catalogue, kits, sage, border, frame,
+                                       assets=assets, native=footprints, flanks=flanks)
+            ground, scenery, footprints, slots = dressed.ground, dressed.pieces, dressed.footprints, dressed.slots
+    return MapBuild(plan, ground, roadbed, layout, sketch, frame, scenery, atmosphere, footprints, slots,
                     level, road_kit is not None)

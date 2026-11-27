@@ -4,12 +4,13 @@ import json
 import struct
 
 import numpy as np
+import pytest
 
 from experimental.campaign.mapscript import MapFile
 from experimental.mapgen.design import Design
 from experimental.mapgen.terrain import Block, Cliff, Ramp, Surface, TerrainPlan, Water, apply, expand, from_design
 from experimental.mapgen.build import build
-from experimental.mapgen import paint
+from experimental.mapgen import paint, terrain
 from experimental.mappage import sketch2map
 
 import mapterrain
@@ -230,3 +231,39 @@ def test_named_atmosphere_reaches_both_mapgen_outputs_and_saves_review(tmp_path,
         assert {name: (nodes[name].ver, nodes[name].head) for name in donor} == donor
         assert mapxml._typed_props(output, nodes['WorldInfo'].head, 0) == {
             'cameraMaxHeight': (2, 450.), 'weather': (1, 5)}
+
+
+def test_winter_apron_keeps_the_adjacent_surface():
+    from experimental.mapgen.design import Design
+
+    sketch = Design({
+        'version': 2, 'blocks': {'woods': {'height': 3, 'at': [500, 400], 'use': 'snow_woodland',
+                                            'kit': 'Iceland_IL', 'ground_texture': 'Snow_Iceland03'}},
+        'borders': {'frame': {'line': [[200, 200], [800, 200], [800, 600], [200, 600], [200, 200]]}},
+    })
+    plan = terrain.from_design(sketch, terrain.TerrainPlan(), 'Heidelberg_HB')
+    extended = terrain.frame_apron(sketch, plan, (161, 141, 30))
+    assert len(extended.blocks) == 5
+    assert all(block.surface == plan.blocks[0].surface for block in extended.blocks)
+
+
+def test_delivery_rejects_missing_cliff_wall(tmp_path):
+    from experimental.mapgen.build import MapBuild
+    from experimental.mapgen.buildings import Layout
+
+    plan = terrain.TerrainPlan(
+        blocks=(terrain.Block(((0, 100), (300, 100), (300, 300), (0, 300)), 4),),
+        cliffs=(terrain.Cliff((0, 100), (300, 100), 'test'),),
+    )
+    size = 91, 91, 30
+    ground = terrain.expand(plan, {'kits': {}}, *size)
+    assert any('no measured 1-step straight piece' in issue for issue in ground.issues)
+    built = MapBuild(plan, ground, None, Layout(()), None, None, ())
+    source = tmp_path / 'container.map'
+    m = _container(*size)
+    m.name_id('ObjectsList')
+    m.nodes.append(Node('ObjectsList', 3, b'', []))
+    source.write_bytes(m.map_file())
+    with pytest.raises(ValueError, match='no measured 1-step straight piece'):
+        built.write(source, tmp_path / 'map')
+    assert not list(tmp_path.glob('map-*'))

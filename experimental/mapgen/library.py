@@ -30,6 +30,19 @@ CATEGORIES = {
 }
 
 
+# Civilian SDK directories normally drop their two-letter suffix. These names
+# differ, or have no usable terrain kit in the RA3 atlas sources (e.g. Romania).
+KIT_ALIASES = {
+    'Floating_Island_FI': 'Tokyo_Harbor', 'Miyako_MI': 'Hawaii',
+    'Mount_Fuji_MJ': 'Hot_Springs', 'Northern_Russia_NR': 'Iceland',
+    'Osaka_OK': 'Tokyo_Harbor', 'Romania_RM': 'Yucatan', 'Sakhalin_Island_SI': 'Iceland',
+    'Shiro_Sanitarium_SS': 'Hot_Springs', 'Snowy_Hot_Springs_SN': 'Hot_Springs',
+    'StPetersburg_ST': 'Saint_Petersburg', 'Yosemite_Park_YP': 'Mount_Rushmore',
+}
+def texture_kit(kit):
+    return KIT_ALIASES.get(kit, kit.rsplit('_', 1)[0])
+
+
 def _read(path, source, load, issues):
     try:
         return load(path)

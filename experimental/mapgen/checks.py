@@ -9,10 +9,11 @@ from pathlib import Path
 import numpy as np
 from scipy.ndimage import label
 
-from experimental.mapgen.buildings import Shape, TOWN
+from experimental.mapgen.buildings import FOOT_ONLY_BLOCK, NO_PATH_BLOCK, Shape, TOWN
 from experimental.mapgen.campaign_writer import rules
-from experimental.mapgen.roads import ROAD_WIDTH, crosses_water
-from experimental.mapgen.terrain import CELL, polygon_mask, strip_coordinates, unit_direction
+from experimental.mapgen.design import ROAD_WIDTH, ROUTING_CELL
+from experimental.mapgen.roads import crosses_water, unpainted_roads
+from experimental.mapgen.terrain import CELL, polygon_mask, strip_mask
 
 
 # SDK: Peacekeeper geometry and weapon, AttributeModifier_Garrisoned, BaseCivilianStructure.
@@ -21,6 +22,7 @@ GARRISON_RANGE = 150 * 1.75
 GARRISON_VISION = 600.
 # SkirmishAI/AIData.xml and the Hydrofoil's regular DEEP_WATER locomotor.
 SHIP_DEPTH = 35.
+ROUTE_STRIDE = int(ROUTING_CELL / CELL)
 UNITS = {'foot': '步兵', 'vehicle': '车辆', 'amphibian': '两栖单位', 'ship': '舰艇'}
 
 
@@ -40,52 +42,52 @@ class Answer:
     witness: Witness | None = None
 
 
-def _shape_mask(shape, x, y):
-    dx, dy = x - shape.center[0], y - shape.center[1]
-    if shape.kind != 'BOX':
-        return dx * dx + dy * dy <= shape.half_x ** 2
-    c, s = np.cos(shape.angle), np.sin(shape.angle)
-    return (abs(c * dx + s * dy) <= shape.half_x) & (abs(-s * dx + c * dy) <= shape.half_y)
-
-
 class _Grid:
-    def __init__(self, sketch, ground, roadbed, layout, border, frame, flank_shapes):
+    def __init__(self, sketch, ground, roadbed, layout, border, frame, footprints):
         self.sketch, self.border, self.frame = sketch, border, frame
         self.ground, self.roadbed = ground, roadbed
         self.z = ground.raw / rules.RAW_PER_WORLD
         self.x = (np.arange(self.z.shape[1])[None, :] - border) * CELL
         self.y = (np.arange(self.z.shape[0])[:, None] - border) * CELL
         self.buildings = dict(layout.blocks)
-        self.solids = [(b, shape) for group in self.buildings.values() for b in group for shape in b.collision]
-        solid = np.zeros(self.z.shape, bool)
-        foot = solid.copy()
-        for building, shape in self.solids:
-            if building.blocking in {'none', 'none?', 'topple', 'foot_topple_noshape'}:
-                continue
-            mask = _shape_mask(shape, self.x, self.y)
-            foot |= mask
-            if building.blocking not in {'foot', 'foot_topple'}:
-                solid |= mask
-        for shape in flank_shapes:
-            mask = _shape_mask(shape, self.x, self.y)
-            solid |= mask
-            foot |= mask
+        buildings = tuple(b for group in self.buildings.values() for b in group)
+        self.occupants = (*buildings, *footprints)
+        self.solids = tuple((b, s) for b in self.occupants for s in b.collision)
         self.dry = ground.raw > ground.waterline
         land = self.dry & ~ground.blocked
         deep_water = (ground.waterline - ground.raw >= SHIP_DEPTH * rules.RAW_PER_WORLD) & ~ground.blocked
         self.deck = np.zeros(self.z.shape, bool)
         for bridge in roadbed.bridges if roadbed is not None else ():
-            self.deck |= self.strip(*bridge.landings, bridge.deck_width / 2)
+            self.deck |= bridge.mask(self.x, self.y)
         self.deck &= frame.mask
+        # Fold the 10-unit terrain samples, then use the SDK object shapes on the routing lattice.
+        land, swim, ship, deck = (self.fold(mask & frame.mask).all(axis=(1, 3))
+                                  for mask in (land, ~ground.blocked, deep_water, self.deck))
+        step = ROUTE_STRIDE
+        x, y = self.x[:, :land.shape[1] * step:step], self.y[:land.shape[0] * step:step, :]
+        solid = np.zeros_like(land)
+        foot = solid.copy()
+        for obj, shape in self.solids:
+            if obj.blocking in NO_PATH_BLOCK:
+                continue
+            mask = shape.contains(x, y)
+            foot |= mask
+            if obj.blocking not in FOOT_ONLY_BLOCK:
+                solid |= mask
         # The swim layer has no deck. An amphibian on land can take the separate land route.
-        self.grids = {'foot': ((land & ~foot) | self.deck,),
-                      'vehicle': ((land & ~solid) | self.deck,), 'ship': (deep_water,),
-                      'amphibian': (~ground.blocked & ~solid, (land & ~solid) | self.deck)}
+        vehicle = (land & ~solid) | deck
+        self.grids = {'foot': ((land & ~foot) | deck,), 'vehicle': (vehicle,),
+                      'ship': (ship & ~solid,), 'amphibian': (swim & ~solid, vehicle)}
         self.masks = {}
 
-    def strip(self, a, b, half, ends=0.):
-        along, across = strip_coordinates(self.x, self.y, a, unit_direction(np.subtract(b, a)))
-        return (along >= -ends) & (along <= dist(a, b) + ends) & (abs(across) <= half)
+    @staticmethod
+    def fold(mask):
+        step = ROUTE_STRIDE
+        height, width = (n // step for n in mask.shape)
+        return mask[:height * step, :width * step].reshape(height, step, width, step)
+
+    def route_area(self, name):
+        return self.fold(self.area(name)).any(axis=(1, 3))
 
     def area(self, name):
         if name not in self.masks:
@@ -104,14 +106,15 @@ class _Grid:
                 mask = np.zeros(self.z.shape, bool)
                 if name in sketch.roads:
                     for a, b in pairwise(sketch.lines[name]):
-                        mask |= self.strip(a, b, ROAD_WIDTH[sketch.roads[name]['width']] / 2)
-                    mask &= self.deck | (self.roadbed.paved if self.roadbed is not None else False)
+                        mask |= strip_mask(self.x, self.y, a, b, ROAD_WIDTH[sketch.roads[name]['width']] / 2)
+                    if self.roadbed is not None:
+                        mask &= self.deck | self.roadbed.paved
                 else:
                     border = name.split('.')[0]
                     for a, b, _, _, section in sketch.border_sections(border):
                         if name in (border, section):
                             # A cell intersecting the cut can cover half a cell diagonal.
-                            mask |= self.strip(a, b, CELL / sqrt(2), CELL / 2)
+                            mask |= strip_mask(self.x, self.y, a, b, CELL / sqrt(2), CELL / 2)
             self.masks[name] = mask
         return self.masks[name]
 
@@ -126,16 +129,20 @@ class _Grid:
         return (x0 * CELL <= p[0] <= x1 * CELL and y0 * CELL <= p[1] <= y1 * CELL
                 and self.frame.mask[self.cell(p)])
 
+    def route_cell(self, p):
+        return tuple(floor((v / CELL + self.border) / ROUTE_STRIDE) for v in reversed(p))
+
     def route_layers(self, who, names, without=()):
         points = [self.point(name) for name in names]
         if not all(map(self.inside, points)):
             return
-        cells = [self.cell(p) for p in points]
+        cells = [self.route_cell(p) for p in points]
         for layer in self.grids[who]:
-            grid = layer & self.frame.mask
+            grid = layer.copy()
             for name in without:
-                grid &= ~self.area(name)
-            if all(grid[c] for c in cells):
+                grid &= ~self.route_area(name)
+            h, w = grid.shape
+            if all(0 <= j < h and 0 <= i < w and grid[j, i] for j, i in cells):
                 yield grid, cells
 
     def reachable(self, who, a, b, without=()):
@@ -152,19 +159,19 @@ class _Grid:
         only = rel['only_via']
         without = (only, rel['without']) if 'without' in rel else (only,)
         for grid, (start, end) in self.route_layers(rel['who'], (rel['from'], rel['to']), without):
-            search = MCP_Geometric(np.where(grid, CELL, inf))
+            search = MCP_Geometric(np.where(grid, ROUTING_CELL, inf))
             costs, _ = search.find_costs([start], [end])
             if not isfinite(costs[end]):
                 continue
             route = search.traceback(end)
-            openings = {name: self.area(name) for spans in self.sketch.spans.values() for name in spans
+            openings = {name: self.route_area(name) for spans in self.sketch.spans.values() for name in spans
                         if name not in without}
             unit = UNITS[rel['who']]
             for cell in route:
                 for name, mask in openings.items():
                     if mask[cell]:
-                        return Witness(name, self.world(cell), f'{unit}从这里绕过 {only}')
-            return Witness(f'{rel["from"]} 到 {rel["to"]}', self.world(route[len(route) // 2]),
+                        return Witness(name, self.world(cell, ROUTING_CELL), f'{unit}从这里绕过 {only}')
+            return Witness(f'{rel["from"]} 到 {rel["to"]}', self.world(route[len(route) // 2], ROUTING_CELL),
                            f'{unit}绕开 {only} 后仍能通行')
         return None
 
@@ -173,11 +180,14 @@ class _Grid:
         who, a, b = (rel[k] for k in ('who', 'from', 'to'))
         depth = self.ground.waterline - self.ground.raw
         points = [self.point(name) for name in (a, b)]
+        layer = self.grids[who][0]
+        h, w = layer.shape
         for name, p in zip((a, b), points, strict=True):
             if not self.inside(p):
                 return Witness(name, tuple(p), '地点在可玩区外')
             cell = self.cell(p)
-            if not any(g[cell] for g in self.grids[who]):
+            j, i = self.route_cell(p)
+            if not (0 <= j < h and 0 <= i < w and any(g[j, i] for g in self.grids[who])):
                 if who == 'ship' and 0 <= depth[cell] < SHIP_DEPTH * rules.RAW_PER_WORLD:
                     return self.shallows(name, cell, depth)
                 return Witness(name, self.world(cell), f'{UNITS[who]}在这个格子无法通行')
@@ -214,8 +224,8 @@ class _Grid:
                          if spec.get('kind') == 'water' and self.area(name)[cell]), f'{a} 到 {b}')
         return self.shallows(here, cell, depth)
 
-    def world(self, cell):
-        return tuple((int(i) - self.border) * CELL for i in reversed(cell))
+    def world(self, cell, spacing=CELL):
+        return tuple(int(i) * spacing - self.border * CELL for i in reversed(cell))
 
     def shallows(self, name, cell, depth):
         return Witness(name, self.world(cell),
@@ -227,11 +237,11 @@ class _Grid:
 
         best = inf
         for grid, (start, end) in self.route_layers(who, (source, goal)):
-            search = MCP_Geometric(np.where(grid, CELL, np.inf))
+            search = MCP_Geometric(np.where(grid, ROUTING_CELL, np.inf))
             if via is None:
                 value = search.find_costs([end], [start])[0][start]
             else:
-                through = self.area(via)
+                through = self.route_area(via)
                 outbound = search.find_costs([start])[0][through]
                 inbound = search.find_costs([end])[0][through]
                 value = (outbound + inbound).min(initial=inf)
@@ -259,8 +269,15 @@ class _Grid:
         ray = start + (end - start) * t
         if np.any(self.height(x, y) > ray):
             return False
-        return not any(np.any(_shape_mask(shape, x, y) & (ray <= bld.foundation.z + shape.center[2] + shape.height))
-                       for bld, shape in self.solids if bld is not building and shape.height > 0)
+        for obj, shape in self.solids:
+            if obj is building or shape.height <= 0:
+                continue
+            hits = shape.contains(x, y)
+            if hits.any():
+                z = obj.foundation.z if hasattr(obj, 'foundation') else self.height(*shape.center[:2])
+                if np.any(ray[hits] <= z + shape.center[2] + shape.height):
+                    return False
+        return True
 
     def cover(self, point, road, by, fraction):
         at = self.point(point)
@@ -269,10 +286,10 @@ class _Grid:
         building = next((b for b in candidates if any(s.point_gap(at) <= 0 for s in b.collision)), None)
         if building is None:
             building = next((b for b in candidates if b.protagonist), None)
-        if building is None or self.roadbed is None:
+        if building is None:
             return False
         limit = GARRISON_RANGE if by == 'range' else GARRISON_VISION
-        paved = self.roadbed.paved | self.deck
+        paved = self.area(road)
         covered = total = 0.
         for a, b in pairwise(self.sketch.lines[road]):
             length = dist(a, b)
@@ -299,10 +316,10 @@ class _Grid:
         square = Shape('BOX', (x, y, 0.), half, half, 0.)
         return (np.ptp(self.height(xx[None, :], yy[:, None])) <= rules.BUILD_VARIATION
                 and np.all(self.dry[j, i] & ~self.ground.blocked[j, i])
-                and all(square.gap(s) >= 0 for group in self.buildings.values() for b in group for s in b.placement))
+                and all(square.gap(s) >= 0 for obj in self.occupants for s in obj.placement))
 
 
-def _answer(grid, rel, held, pending):
+def _answer(grid, rel, held):
     kind = rel['type']
     who = rel.get('who')
     unit = UNITS.get(who)
@@ -322,9 +339,9 @@ def _answer(grid, rel, held, pending):
             sentence = f'{order} 航令：{sentence}' if who == 'ship' else f'{order} 行动命令：{sentence}'
         if held:
             return not expected, sentence, places, f'在 {rel["state"]} 状态放行 {order}。'
-        if pending:
-            return False, sentence, places, ''
         without = (avoid,) if avoid else ()
+        if grid is None:
+            return False, sentence, places, ''
         connected = grid.reachable(who, a, b, without)
         if connected != expected:
             if expected and avoid and not only:
@@ -340,31 +357,31 @@ def _answer(grid, rel, held, pending):
         return not bypass, sentence, places, f'封住绕开 {only} 的口子，让{unit}只能从那里通过。'
     if kind == '谁先到':
         a, b, goal, lead = rel['a'], rel['b'], rel['to'], rel['min_lead']
-        left, right = (inf, inf) if pending else (grid.length(who, start, goal) for start in (a, b))
+        left, right = (grid.length(who, start, goal) if grid else inf for start in (a, b))
         return (isfinite(left) and isfinite(right) and right - left >= lead,
                 f'{unit}从 {a} 去 {goal} 比从 {b} 至少近 {lead:g}', (a, b, goal),
                 f'让两边都能到 {goal}，再把 {a} 的入口移近或让 {b} 的来路绕过一段界。')
     if kind == '绕多远':
         via, extra = rel['via'], rel['max_extra']
-        best = inf if pending else grid.length(who, a, b)
-        detour = inf if pending else grid.length(who, a, b, via)
+        best = grid.length(who, a, b) if grid else inf
+        detour = grid.length(who, a, b, via) if grid else inf
         return (isfinite(detour) and detour - best <= extra,
                 f'{unit}从 {a} 经 {via} 到 {b} 多走不超过 {extra:g}', (a, via, b),
                 f'把 {via} 的出入口移向 {a} 到 {b} 的主通路，或移开绕路上的阻挡。')
     if kind == '罩住':
         road, by, fraction = rel['road'], rel['by'], rel['fraction']
         sense = '射程' if by == 'range' else '视野'
-        return (not pending and grid.cover(point, road, by, fraction),
+        return (grid and grid.cover(point, road, by, fraction),
                 f'{point} 的驻军楼{sense}罩住 {road} 的 {fraction:.0%}',
                 (point, road), f'在 {point} 设可驻军的主角楼并朝 {road} 放近，或移开两者之间的遮挡。')
     if kind == '看得见':
         visible = rel['visible']
-        start, end = grid.point(a), grid.point(b)
-        return (not pending and grid.inside(start) and grid.inside(end) and grid.sight(start, end) == visible,
+        start, end = (grid.point(a), grid.point(b)) if grid else (None, None)
+        return (grid and grid.inside(start) and grid.inside(end) and grid.sight(start, end) == visible,
                 f'从 {a} {"看得见" if visible else "看不见"} {b}', (a, b),
                 f'调整 {a} 到 {b} 之间的高度档，或{"移开" if visible else "加入"}遮挡物。')
     side = rel['side']
-    return (not pending and grid.room(point, side), f'{point} 有边长 {side:g} 的净平地', (point,),
+    return (grid and grid.room(point, side), f'{point} 有边长 {side:g} 的净平地', (point,),
             f'在 {point} 留一块同高的空地，移开侵入的主角，或把集结点移离岸线和坡肩。')
 
 
@@ -373,36 +390,38 @@ def _layout_dependencies(sketch, has_road_kit):
     frontage = {block for edge in road_edges for block in sketch.sides[edge]}
     buildings = any('protagonist' in spec or (name in frontage and spec['use'] in TOWN)
                     for name, spec in sketch.blocks.items() if spec.get('kind') != 'water')
-    bridges = has_road_kit and any(crosses_water(sketch, edge) for edge in road_edges)
+    bridges = any(crosses_water(sketch, edge) for edge in road_edges)
     flanks = any('footpath' in cut for spec in sketch.borders.values() for cut in spec.get('segments', {}).values())
-    return buildings, bridges, flanks
+    model_roads = sketch.roads.keys() if has_road_kit else set(unpainted_roads(sketch))
+    return buildings, bridges, flanks, model_roads
 
 
-def _requires_layout(grid, rel, dependencies, has_road_kit):
-    buildings, bridges, flanks = dependencies
+def _requires_layout(grid, rel, dependencies):
+    buildings, bridges, flanks, model_roads = dependencies
     kind = rel['type']
     if kind == '罩住':
         return '需要布局：核对驻军楼和实路。'
     if kind == '看得见':
-        # Buildings can obscure a clear ray, but cannot clear one blocked by terrain.
-        if buildings and grid.sight(grid.point(rel['from']), grid.point(rel['to'])):
-            return '需要布局：核对楼房对视线的遮挡。'
+        # Layout objects can obscure a clear ray, but cannot clear one blocked by terrain.
+        if (buildings or bridges or flanks or model_roads) and grid.sight(
+                grid.point(rel['from']), grid.point(rel['to'])):
+            return '需要布局：核对布局物件对视线的遮挡。'
     elif kind == '放得下':
-        if buildings:
-            return '需要布局：核对楼房是否占用净地。'
-    elif has_road_kit and any(rel.get(key) in grid.sketch.roads for key in ('via', 'only_via', 'without')):
+        if (buildings or bridges or flanks or model_roads) and grid.room(rel['point'], rel['side']):
+            return '需要布局：核对布局物件是否占用净地。'
+    elif any(rel.get(key) in model_roads for key in ('via', 'only_via', 'without')):
         return '需要布局：核对实际道路所占的通行格。'
-    elif rel['who'] != 'ship' and (buildings or bridges or flanks):
+    elif bridges or (rel['who'] != 'ship' and (buildings or flanks)):
         return '需要布局：核对楼房、桥面或小径侧挡对通行的影响。'
     return ''
 
 
-def evaluate(sketch, ground, roadbed, layout, border, frame, flank_shapes=(), *, sketch_only=False,
+def evaluate(sketch, ground, roadbed, layout, border, frame, footprints=(), *, sketch_only=False,
              has_road_kit=False):
     """Answer named orders and check open routes on the exported geometry."""
     if not sketch.relations:
         return {}
-    grid = _Grid(sketch, ground, roadbed, layout, border, frame, flank_shapes)
+    grid = _Grid(sketch, ground, roadbed, layout, border, frame, footprints)
     dependencies = _layout_dependencies(sketch, has_road_kit) if sketch_only else None
     answers = {}
     for name, relation in sketch.relations.items():
@@ -413,8 +432,8 @@ def evaluate(sketch, ground, roadbed, layout, border, frame, flank_shapes=(), *,
             if any(table[state] != table['base'] for table in (sketch.state_pass, sketch.state_heights, sketch.playable)):
                 pending = f'先把 {state} 的过口、水位或可玩区变动展开成可检查的地图。'
             elif dependencies is not None:
-                pending = _requires_layout(grid, relation, dependencies, has_road_kit)
-        ok, sentence, places, decision = _answer(grid, relation, held, pending)
+                pending = _requires_layout(grid, relation, dependencies)
+        ok, sentence, places, decision = _answer(None if pending else grid, relation, held)
         if state != 'base':
             sentence = f'{state} 状态下，{sentence}'
         witness = None

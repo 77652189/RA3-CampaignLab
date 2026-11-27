@@ -188,3 +188,26 @@ def test_winter_woods_leave_a_building_pad_and_ice_bare(slice_inputs, tmp_path, 
     assert all(p.y < 500 and max(abs(p.x - 120), abs(p.y - 120)) > 100 for p in result.scenery)
     assert 'Snow_Solvang02' in result.ground.textures[95:115, 45:75]
     assert result.check_relations()['room'].status == 'pass'
+
+
+def test_patches_apply_to_the_written_scenery_slots(slice_inputs):
+    data = slice_inputs[0].data
+    args = slice_inputs[1:]
+    bad = Design(data | {'patches': {'missing': {'op': 'delete', 'slot': 'south.trees.noSuchSlot'}}})
+    with pytest.raises(DesignError, match=r'missing.*south.trees.noSuchSlot'):
+        dressing.expand(bad, *args)
+
+    before = dressing.expand(Design(data), *args)
+    delete, move, swap = list(before.slots)[:3]
+    a, b, c = [before.slots[key] for key in (delete, move, swap)]
+    modified = Design(data | {'patches': {
+        'drop': {'op': 'delete', 'slot': delete},
+        'shift': {'op': 'move', 'slot': move, 'at': [1500, 100]},
+        'swap': {'op': 'replace', 'slot': swap, 'with': 'T_Bush'},
+    }})
+    after = dressing.expand(modified, *args)
+    assert a in before.pieces and delete not in after.slots and a not in after.pieces
+    assert (after.slots[move].x, after.slots[move].y) == (1500, 100)
+    assert after.slots[move].angle == b.angle and after.slots[swap].template == 'T_Bush'
+    assert (after.slots[swap].x, after.slots[swap].y) == (c.x, c.y)
+    assert tuple(after.slots.values()) == after.pieces

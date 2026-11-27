@@ -62,8 +62,8 @@ def test_t_junction_splits_face(sketch):
     sketch["roads"]["lane"] = {"line": [[100, 50], [200, 50]], "width": "alley"}
     design = Design(sketch)
     unnamed, = design.blocks.keys() - sketch["blocks"].keys()
-    assert design._face((125, 75)) == unnamed
-    assert design._face((125, 25)) == "square"
+    assert design.face_at((125, 75)) == unnamed
+    assert design.face_at((125, 25)) == "square"
 
 
 @pytest.mark.parametrize(("at", "message"), [
@@ -107,10 +107,56 @@ def test_missing_reference_identifies_owner(sketch):
 
 def test_only_through_c_requires_a_path_and_no_bypass(sketch):
     assert Design(sketch).check_relations()["approach"] == "pass"
-    # An unannotated contact at arc length 90 creates a second route down the ridge.
-    sketch["roads"]["ramp"] = {"line": [[130, 50], [190, 100], [190, 140]],
-                                "width": "street", "ends": ["end"]}
-    assert Design(sketch).check_relations()["approach"] == "fail"
-    del sketch["roads"]["ramp"]
+    # Scale the sketch to fit a 180-unit ramp in the gap after the explicit opening.
+    alternate = {**sketch, "roads": dict(sketch["roads"])}
+    alternate["roads"]["ramp"] = {"line": [[130, 50], [190, 100], [190, 140]],
+                                   "width": "street", "ends": ["end"]}
+    alternate = json.loads(json.dumps(alternate))
+    for section in ("roads", "borders"):
+        for spec in alternate[section].values():
+            spec["line"] = [[10 * x, 10 * y] for x, y in spec["line"]]
+            for span in spec.get("segments", {}).values():
+                span["span"] = [10 * v for v in span["span"]]
+    for section in ("blocks", "points"):
+        for spec in alternate[section].values():
+            spec["at"] = [10 * v for v in spec["at"]]
+    assert Design(alternate).check_relations()["approach"] == "fail"
     sketch["borders"]["east_scarp"]["segments"]["hairpin"]["pass"] = ["foot"]
     assert Design(sketch).check_relations()["approach"] == "fail"
+
+
+def test_land_use_is_shared_by_named_and_automatic_blocks():
+    sketch = Design({
+        'version': 2, 'blocks': {'yard': {'height': 3, 'use': '老街', 'at': [250, 200]}},
+        'borders': {'frame': {'line': [[0, 0], [1000, 0], [1000, 800], [0, 800], [0, 0]]}},
+        'roads': {'street': {'line': [[0, 400], [1000, 400]], 'width': 'street'}},
+    })
+    assert {name: spec['use'] for name, spec in sketch.blocks.items()} == {'yard': 'oldtown', '@2': 'park'}
+
+
+def test_relation_endpoint_requires_a_named_location():
+    data = {
+        'version': 2, 'blocks': {'yard': {'height': 3, 'use': 'park', 'at': [250, 200]}},
+        'borders': {'frame': {'line': [[0, 0], [1000, 0], [1000, 800], [0, 800], [0, 0]]},
+                    'ring': {'line': [[400, 300], [600, 300], [600, 500], [400, 500], [400, 300]],
+                             'pass': ['foot']}},
+        'relations': {'walk': {'type': '通不通', 'from': 'yard', 'to': '@1', 'who': 'foot'}},
+    }
+    with pytest.raises(DesignError, match=r'walk.*@1.*name'):
+        Design(data)
+
+
+def test_named_level_vehicle_gate_uses_width_and_crossing():
+    sketch = Design({
+        'version': 2,
+        'blocks': {'yard': {'height': 3, 'use': 'park', 'at': [500, 200]},
+                   'woods': {'height': 3, 'use': 'woodland', 'at': [500, 650]}},
+        'points': {'yardGate': {'block': 'yard', 'at': [500, 200]},
+                   'laneEnd': {'block': 'woods', 'at': [500, 600]}},
+        'borders': {'frame': {'line': [[0, 0], [1000, 0], [1000, 800], [0, 800], [0, 0]]},
+                    'trees': {'line': [[0, 400], [1000, 400]], 'pass': [], 'width': 100, 'segments': {
+                        'gate': {'from': 'yardGate', 'to': 'laneEnd',
+                                 'pass': ['foot', 'vehicle', 'amphibian']}}}},
+    })
+    assert [(a, b) for a, b, _, _, name in sketch.border_sections('trees') if name == 'trees.gate'] == [
+        ((450, 400), (550, 400))]

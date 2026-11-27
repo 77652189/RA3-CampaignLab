@@ -64,6 +64,7 @@ PAGE = Template("""<!doctype html>
   .protagonist { fill: #ffd680; }
   .highlight { fill: currentColor; fill-opacity: .19; stroke: currentColor; stroke-width: 4;
                pointer-events: none; filter: drop-shadow(0 1px 2px #080d10); }
+  .witness { fill: none; stroke: #ff7777; }
   [hidden] { display: none; }
   .pass { --state: #a6ecc1; } .fail { --state: #ffac97; }
   .pending { --state: #ffe197; }
@@ -245,10 +246,15 @@ def _write_viewer(directory, title, sketch, answers, bounds, retail_label=None, 
             + (f'<p>建议　{escape(answer.decision)}</p>' if answer.decision else '') + '</div></details>'
         )
         marks = ''.join(f'<use href="#place-{escape(place)}"/>' for place in answer.place)
-        if answer.witness is not None:
-            x, y = maprender.north_up(*answer.witness.at, north)
-            marks += (f'<circle cx="{x - west:g}" cy="{y:g}" r="{width / 95:g}">'
-                      f'<title>{escape(answer.witness.reason)}</title></circle>')
+        witness_text = ''
+        if answer.witness:
+            witness = answer.witness
+            x, y = witness.at
+            witness_text = f'{witness.place} ({x:g}, {y:g}) {witness.reason}'
+            sx, sy = maprender.north_up(x, y, north)
+            marks += (f'<circle class="witness" cx="{sx - west:g}" cy="{sy:g}" '
+                      f'r="{max(6, width / 100):g}" vector-effect="non-scaling-stroke">'
+                      f'<title>{escape(witness_text)}</title></circle>')
         highlights.append(f'<g class="highlight {answer.status}" data-highlight="{index}"'
                           f'{"" if active else " hidden"}>{marks}</g>')
         report.append(f'- {answer.status.upper()} `{name}` · {answer.sentence}')
@@ -261,6 +267,8 @@ def _write_viewer(directory, title, sketch, answers, bounds, retail_label=None, 
             report.append(f'  - 位置：{"、".join(locations)}。建议：{answer.decision}')
         elif answer.status == 'pending':
             report.append(f'  - {answer.decision}')
+        if witness_text:
+            report.append(f'  - 证据　{witness_text}')
 
     gallery = []
     for index, (caption, source) in enumerate(screenshots, start=1):

@@ -13,7 +13,7 @@ from experimental.mapgen.campaign_writer import BRIDGE_DECK, bridge as bridge_en
 
 PORT_TOLERANCE = 1.0  # Probe 5: matching retail socket centres, in world units.
 CELL_MARGIN = terrain.CELL / math.sqrt(2)
-ROAD_WIDTH = {'alley': 66.22, 'street': 85.48, 'avenue': 172.70}
+ROAD_WIDTH = design.ROAD_WIDTH
 STRAIGHTS = {'alley': ('HB_StreetSegment30', 50, None),
              'street': ('HV_StreetSegment09', 100, 'HV_StreetSegment17'),
              'avenue': ('HV_StreetSegment01', 100, None)}
@@ -55,6 +55,8 @@ class Bridge:
     channel_width: float
     clearance: float
 
+    def mask(self, x, y):
+        return terrain.strip_mask(x, y, *self.landings, self.deck_width / 2)
 
 @dataclass(frozen=True)
 class Roadbed:
@@ -505,6 +507,14 @@ def crosses_water(sketch, edge):
     """Whether this split road edge needs the bridge fitting pass."""
     sides = set(filter(None, sketch.sides[edge]))
     return bool(sides) and all(sketch.medium(block) == design.WATER for block in sides)
+
+
+def unpainted_roads(sketch):
+    """Yield roads with a segment that cannot be delivered as a dry painted road."""
+    for road, faces in sketch.pieces:
+        if any(sketch.medium(face) != design.LAND or 'ground_texture' not in sketch.blocks[face]
+               for face in faces):
+            yield road
 
 
 def expand(sketch, ground, border, kit):

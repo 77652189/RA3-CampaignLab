@@ -12,12 +12,17 @@ import re
 
 
 STEP_WORLD = 70
-STEP_RAW = 1792
 # A footpath cut leaves a routing cell for the tread and room for a solid
 # shoulder on each side. A street ramp has two 90-unit lanes.
 ROUTING_CELL = 20
 FOOTPATH_WIDTH = 3 * ROUTING_CELL
 STREET_RAMP_WIDTH = 180
+ROAD_WIDTH = {"alley": 66.22, "street": 85.48, "avenue": 172.70}
+USE_ALIASES = {"老街": "oldtown", "老城": "oldtown", "town": "oldtown", "住宅": "residential",
+               "郊区": "suburb", "广场": "square", "公园": "park", "林地": "woodland", "码头": "dock",
+               "工业": "industrial", "rowhouses": "residential", "shops": "oldtown",
+               "apartments": "residential", "towers": "residential", "warehouses": "industrial",
+               "villas": "suburb"}
 LAND = frozenset(("foot", "vehicle", "amphibian"))
 WATER = frozenset(("amphibian", "ship"))
 KINDS = LAND | WATER
@@ -205,7 +210,9 @@ def _spans(border, item, length, named_opening):
         sid = f"{item}.{name}"
         _id(name, sid)
         if isinstance(segment, dict) and ("from" in segment or "to" in segment):
-            _fields(segment, sid, "from to", "pass footpath")
+            _fields(segment, sid, "from to", "pass footpath width")
+            if "width" in segment:
+                _width(segment["width"], sid)
             _need(("pass" in segment) != ("footpath" in segment), sid, "opening",
                   "choose a street passage or a footpath with solid flanks")
             start, end = named_opening(segment, sid)
@@ -273,12 +280,15 @@ class Design:
         self.rings, self.sides = self._read_blocks()
         self._read_points()
         self._read_borders()
+        self._index_roads()
         self._read_states()
+        for state, passes in self.state_pass.items():
+            self._check_road_state(state, passes)
+        self._check_cliffs()
         self._read_mission(data.get("mission", {}), all_ids)
         self.via_ids = self.blocks.keys() | self.borders.keys() | self.base_pass.keys()
         self._read_relations()
         self._read_patches()
-        self._index_roads()
 
     def _read_lines(self):
         lines = {}
@@ -315,6 +325,8 @@ class Design:
             _text(block["use"], item, "use")
             _int(block["height"], item, "height")
             _ref(block.get("kind", "land"), ("land", "water"), item, "kind")
+            if block.get("kind") != "water":
+                self.blocks[item] = block | {"use": USE_ALIASES.get(block["use"], block["use"])}
             if "seed" in block:
                 _int(block["seed"], item, "seed")
             if "protagonist" in block:
@@ -359,12 +371,11 @@ class Design:
                 spec = self.blocks[parent]
                 self.blocks[item] = dict(use=spec["use"], height=spec["height"],
                                          kind=spec.get("kind", "land"))
-                if "kit" in spec:
-                    self.blocks[item]["kit"] = spec["kit"]
+                self.blocks[item].update({k: spec[k] for k in ("kit", "ground_texture") if k in spec})
             else:
                 named = min(_visit(adjacent, item) & named_faces, default=None)
                 spec = self.blocks.get(named, {})
-                self.blocks[item] = dict(use="未指定", height=spec.get("height", 0),
+                self.blocks[item] = dict(use="water" if spec.get("kind") == "water" else "park", height=spec.get("height", 0),
                                          kind=spec.get("kind", "land"))
             if parent is not None:
                 self.blocks[item] = self.blocks[item] | {"parent": parent}
@@ -416,8 +427,7 @@ class Design:
         if footpath:
             _text(spec["footpath"], name, "footpath")
         _need(self.medium(low) == self.medium(high) == LAND and low != high
-              and (self.blocks[low]["height"] < self.blocks[high]["height"]
-                   or footpath and self.blocks[low]["height"] == self.blocks[high]["height"]),
+              and (self.blocks[low]["height"] <= self.blocks[high]["height"]),
               name, "opening", "name two landings, from the lower side when they differ in height")
         if not footpath:
             _need(_pass(spec["pass"], name) == LAND, name, "ramp",
@@ -427,7 +437,7 @@ class Design:
             for p in _meet(a, b, *edge):
                 hits.setdefault(p, set()).update(self.sides[edge])
         _need(len(hits) == 1 and next(iter(hits.values())) >= {low, high}, name, "ramp",
-              f"{spec['from']} to {spec['to']} must cross this cliff once between those blocks")
+              f"{spec['from']} to {spec['to']} must cross this border once between those blocks")
         point = next(iter(hits))
         for edge, start, _ in self.border_edges[border]:
             if on_segment(point, *edge):
@@ -442,12 +452,14 @@ class Design:
                         snapped = math.floor(at / ROUTING_CELL) * ROUTING_CELL + ROUTING_CELL / 2
                         center += (snapped - at) * (1 if dx + dy > 0 else -1)
                 break
-        width = FOOTPATH_WIDTH if footpath else STREET_RAMP_WIDTH
+        same_height = self.blocks[low]["height"] == self.blocks[high]["height"]
+        width = FOOTPATH_WIDTH if footpath else spec.get("width", self.borders[border].get(
+            "width", ROAD_WIDTH["street"] if same_height else STREET_RAMP_WIDTH))
         lo, hi = center - width / 2, center + width / 2
-        if footpath:
+        if footpath or same_height:
             _need(all(set(self.sides[edge]) == {low, high}
                       for edge, start, end in self.border_edges[border] if start < hi and lo < end),
-                  name, "footpath", "the whole opening must join the named blocks")
+                  name, "opening", "the whole opening must join the named blocks")
         return lo, hi
 
     def _read_points(self):
@@ -457,10 +469,10 @@ class Design:
                 _text(point["use"], item, "use")
             _ref(point["block"], self.blocks, item, "block")
             at = _xy(point["at"], item)
-            _need(self._face(at) == point["block"], item, "point",
+            _need(self.face_at(at) == point["block"], item, "point",
                   f"point must be in the interior of {point['block']}")
 
-    def _face(self, point):
+    def face_at(self, point):
         for name, ring in self.rings.items():
             location = point_in_ring(point, ring)
             if location >= 0:
@@ -489,6 +501,12 @@ class Design:
                 name: self._override_pass(item, name, value, targets)
                 for name, value in passes.items()
             }
+            for border, spans in self.spans.items():
+                declared = self.borders[border].get("segments", {})
+                if border in passes:
+                    for name in spans:
+                        if name.split(".", 1)[1] not in declared and name not in passes:
+                            self.state_pass[item][name] = self.state_pass[item][border]
             self.state_heights[item] = {name: block["height"] for name, block in self.blocks.items()}
             for name, height in heights.items():
                 _ref(name, self.blocks, item, "heights")
@@ -565,7 +583,8 @@ class Design:
                       "expected at least three vertices enclosing an area")
 
     def _read_relations(self):
-        endpoints = self.blocks.keys() | self.points.keys()
+        automatic = {name for name, block in self.blocks.items() if "at" not in block}
+        endpoints = (self.blocks.keys() - automatic) | self.points.keys()
         orders = set().union(*self.held_orders.values())
         schemas = {
             "通不通": ("from to who", "only_via reachable without order"),
@@ -586,6 +605,9 @@ class Design:
             _fields(rel, item, "type " + required, "state " + optional)
             for field, choices in references.items():
                 if field in rel:
+                    if field in ("from", "to", "a", "b") and isinstance(rel[field], str):
+                        _need(rel[field] not in automatic, item, field,
+                              f'{rel[field]} has no position; name the block or add a point')
                     _ref(rel[field], choices, item, field)
             for field in ("reachable", "visible"):
                 if field in rel:
@@ -650,13 +672,11 @@ class Design:
                 self.pieces.append((name, owners))
                 for point in edge:
                     self.junctions[point].append(piece)
-        self.contacts = defaultdict(list)
-        for border, edges in self.border_edges.items():
-            for edge, start, end in edges:
-                left, right = self.sides[edge]
-                for point, arc in zip(edge, (start, end)):
-                    if point in self.junctions:
-                        self.contacts[point].append((border, self._span_at(border, arc), left, right))
+        self._index_contacts()
+        self._implicit_road_openings()
+        for point, contacts in self.contacts.items():
+            self.contacts[point] = [(border, self._span_at(border, arc), left, right)
+                                    for border, arc, left, right in contacts]
         for item, road in self.roads.items():
             first, last = self.lines[item][0], self.lines[item][-1]
             for end, point in (("start", first), ("end", last)):
@@ -673,9 +693,41 @@ class Design:
             _need(not disconnected, min(disconnected, default=first), "road_network",
                   f"road network is disconnected from {first}")
 
-        for state, passes in self.state_pass.items():
-            self._check_road_state(state, passes)
-        self._check_cliffs()
+    def _index_contacts(self):
+        self.contacts = defaultdict(list)
+        for border, edges in self.border_edges.items():
+            for edge, start, end in edges:
+                left, right = self.sides[edge]
+                for point, arc in zip(edge, (start, end)):
+                    if point in self.junctions:
+                        self.contacts[point].append((border, arc, left, right))
+
+    def _implicit_road_openings(self):
+        for point, contacts in self.contacts.items():
+            for border, arc, left, right in contacts:
+                if not (left and right and self.medium(left) == self.medium(right) == LAND
+                        and self.blocks[left]["height"] != self.blocks[right]["height"]):
+                    continue
+                if self._span_at(border, arc) in self.base_pass:
+                    continue
+                if not any(left in self.pieces[a][1] and right in self.pieces[b][1]
+                           or right in self.pieces[a][1] and left in self.pieces[b][1]
+                           for a, b in combinations(self.junctions[point], 2)):
+                    continue
+                lanes = sorted({self.pieces[i][0] for i in self.junctions[point]})
+                name = f"{border}.road-{lanes[0]}"
+                while name in self.base_pass:
+                    name += "-next"
+                width = self.borders[border].get("width", max(
+                    max(STREET_RAMP_WIDTH, ROAD_WIDTH[self.roads[road]["width"]]) for road in lanes))
+                lo, hi = arc - width / 2, arc + width / 2
+                spans = self.spans[border]
+                _need(0 <= lo < hi <= self.lengths[border]
+                      and all(hi <= start or end <= lo for start, end, _ in spans.values()),
+                      name, "ramp", "implicit road opening overlaps another opening or leaves the border")
+                spans[name] = (lo, hi, LAND)
+                self.spans[border] = dict(sorted(spans.items(), key=lambda pair: pair[1][:2]))
+                self.base_pass[name] = LAND
 
     def _span_at(self, border, arc):
         for item, (start, end, _) in self.spans[border].items():
@@ -688,8 +740,8 @@ class Design:
             for road in sorted({self.pieces[i][0] for i in self.junctions[point]}):
                 if not passes[road]:
                     continue
-                for _, opening, _, _ in borders:
-                    _need(passes.get(opening, LAND), road, "road_no_pass",
+                for border, opening, _, _ in borders:
+                    _need(passes.get(opening, LAND if opening == border else ()), road, "road_no_pass",
                           f"meets closed {opening} in state {state}")
         heights = self.state_heights[state]
         for road, owners in self.pieces:
@@ -697,11 +749,6 @@ class Design:
                 left, right = sorted(owners)
                 _need(heights[left] == heights[right] and self.medium(left) == self.medium(right),
                       road, "sides", f"road sides must have equal height and kind in state {state}")
-
-    def _crossings(self, border):
-        """Face pairs and passage IDs for each positive-length border interval."""
-        for _, _, left, right, item in self.border_sections(border):
-            yield left, right, item
 
     def border_sections(self, border):
         """Oriented endpoints, face pair, and passage ID of each border section."""
@@ -746,7 +793,7 @@ class Design:
         heights = self.state_heights["base"]
         for item, border in self.borders.items():
             passages = defaultdict(set)
-            for left, right, opening in self._crossings(item):
+            for _, _, left, right, opening in self.border_sections(item):
                 if left and right and heights[left] != heights[right]:
                     passages[frozenset((left, right))].add(opening)
             for pair, openings in passages.items():
@@ -770,7 +817,7 @@ class Design:
                 graph[face] = set()
         for border in self.borders:
             if border not in without:
-                for left, right, item in self._crossings(border):
+                for _, _, left, right, item in self.border_sections(border):
                     if left in graph and right in graph and item not in without and who in passes.get(item, ()):
                         link(left, right)
 
@@ -788,7 +835,8 @@ class Design:
 
     def reachable(self, start, end, who, *, state="base", without=None):
         """Check graph connectivity between block or point IDs, optionally cutting one ID."""
-        endpoints = self.blocks.keys() | self.points.keys()
+        automatic = {name for name, block in self.blocks.items() if "at" not in block}
+        endpoints = (self.blocks.keys() - automatic) | self.points.keys()
         _ref(start, endpoints, str(start), "start")
         _ref(end, endpoints, str(end), "end")
         _ref(who, KINDS, str(start), "who")

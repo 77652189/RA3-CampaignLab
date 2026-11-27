@@ -7,11 +7,11 @@ import pytest
 from experimental.campaign.mapscript import Node
 from experimental.mapgen import build as builder, paint, terrain
 from experimental.mapgen.build import MapBuild
-from experimental.mapgen.buildings import Layout
+from experimental.mapgen.buildings import Footprint, Layout, Shape
 from experimental.mapgen.checks import draw_failures
 from experimental.mapgen.campaign_writer import rules
 from experimental.mapgen.design import Design
-from experimental.mapgen.dressing import footpath_flanks
+from experimental.mapgen.dressing import Assets, footpath_flanks
 from experimental.mapgen.export import export
 from experimental.mappage import viewer
 from test_mapgen_terrain import _container
@@ -202,15 +202,18 @@ def test_named_footpath_lays_real_flanks_at_its_crossing(tmp_path):
     library = {'kits': {'test': {'props': [{'template': 'T_Rock', 'geometry': {'shapes': [shape]}}],
                                  'buildings': [], 'destructibles': []}},
                'blocking': {'t_rock': {'cls': 'rockbig'}}}
-    flanks = tuple(footpath_flanks(sketch, library, tmp_path))
+    assets = Assets(library, tmp_path)
+    flanks = tuple(p for _, p in footpath_flanks(sketch, assets))
     # The inner edges bound [180, 200]; both props extend into the shoulders of the cut.
-    assert [(p.template, p.x, p.y) for p, _ in flanks] == [('T_Rock', 161.25, 200.), ('T_Rock', 218.75, 200.)]
-    assert [s.point_gap((190., 200.)) for _, s in flanks] == [10., 10.]
+    assert [(p.template, p.x, p.y) for p in flanks] == [('T_Rock', 161.25, 200.), ('T_Rock', 218.75, 200.)]
+    assert [assets.posed(p).collision[0].point_gap((190., 200.)) for p in flanks] == [10., 10.]
     ground = terrain.expand(plan, library, 97, 101, 30)
     frame = terrain.design_frame(sketch, ground, 0, 30)
-    built = MapBuild(plan, frame.close(ground), None, Layout(()), sketch, frame, tuple(p for p, _ in flanks),
-                     flank_shapes=tuple(s for _, s in flanks))
-    assert {name: a.status for name, a in built.check_relations().items()} == {'foot': 'pass', 'tank': 'fail'}
+    built = MapBuild(plan, frame.close(ground), None, Layout(()), sketch, frame, flanks,
+                     footprints=assets.occupied(flanks))
+    # The two flanks leave only the x=190 terrain sample free. The adjacent
+    # routing columns at x=180 and x=200 are occupied by the measured boxes.
+    assert {name: a.status for name, a in built.check_relations().items()} == {'foot': 'fail', 'tank': 'pass'}
 
 
 def test_failed_channel_draws_its_best_route_bottleneck(tmp_path):
@@ -267,3 +270,102 @@ def test_level_boundary_keeps_one_opening():
     assert result.check_relations()['through'].status == 'pass'
     assert ground.raw[53, 40] == ground.raw[59, 63]
     assert ground.blocked[53, 40] and not ground.blocked[59, 63]
+
+
+def _split_design(*, height=4, coast=False, passage=None):
+    wall = {'line': [[0, 400], [1000, 400]]}
+    if passage is not None:
+        wall.update(passage)
+    return {
+        'version': 2,
+        'blocks': {'south': {'height': 0 if coast else 3, 'use': 'park', 'at': [500, 200]},
+                   'north': {'height': height, 'use': 'park', 'at': [500, 600]}},
+        'borders': {'frame': {'line': [[0, 0], [1000, 0], [1000, 800], [0, 800], [0, 0]]}, 'wall': wall},
+    }
+
+
+def _expanded(sketch, plan=None, **options):
+    plan = plan or terrain.from_design(sketch, terrain.TerrainPlan(), 'test')
+    ground = terrain.expand(plan, {'kits': {}}, 160, 140, 30)
+    frame = terrain.design_frame(sketch, ground, 0, 30)
+    return MapBuild(plan, frame.close(ground), None, Layout(()), sketch, frame, (), **options)
+
+
+def test_implicit_street_crossing_has_a_ramp():
+    data = _split_design()
+    data['blocks']['south']['at'] = [400, 200]
+    data['blocks']['north']['at'] = [600, 600]
+    data['roads'] = {'street': {'line': [[500, 0], [500, 800]], 'width': 'street'}}
+    data['relations'] = {'cross': {'type': '通不通', 'from': 'south', 'to': 'north', 'who': 'vehicle'}}
+    sketch = Design(data)
+    assert sketch.check_relations()['cross'] == 'pass'
+    assert _expanded(sketch).plan.ramps == (terrain.Ramp((500, 310), (0, 1), 1, 180),)
+
+
+def test_sealed_shore_blocks_amphibians():
+    data = _split_design(height=3, coast=True, passage={'pass': [], 'closed_reason': 'sealed'})
+    data['blocks']['south']['kind'] = 'water'
+    data['relations'] = {'cross': {'type': '通不通', 'from': 'south', 'to': 'north',
+                                   'who': 'amphibian', 'reachable': False}}
+    sketch = Design(data)
+    assert sketch.check_relations()['cross'] == 'pass'
+    built = _expanded(sketch)
+    assert built.check_relations()['cross'].status == 'pass'
+    # The closed bank drops one full basin depth, rather than only 4 units per sample.
+    assert (terrain.STEP_WORLD * 3 - built.ground.raw[69, 80] / rules.RAW_PER_WORLD) == 80
+
+
+def test_flank_order_ignores_json_key_order(tmp_path):
+    data = _split_design()
+    data['points'] = {f'{side}{x}': {'block': side, 'at': [x, y]}
+                      for side, y in [('south', 200), ('north', 600)] for x in (210, 710)}
+    segments = {str_name: {'from': f'south{x}', 'to': f'north{x}', 'footpath': 'T_Rock'}
+                for str_name, x in [('west', 210), ('east', 710)]}
+    library = {'kits': {'test': {'buildings': [], 'destructibles': [], 'props': [
+        {'template': 'T_Rock', 'geometry': {'shapes': [
+            {'Type': 'BOX', 'MajorRadius': 20, 'MinorRadius': 9}]}}]}},
+        'blocking': {'t_rock': {'cls': 'rockbig'}}}
+    outputs = []
+    for order in (segments, dict(reversed(tuple(segments.items())))):
+        data['borders']['wall']['segments'] = order
+        outputs.append([p.x for _, p in footpath_flanks(Design(data), Assets(library, tmp_path))])
+    assert outputs == [[180, 240, 680, 740]] * 2
+
+
+def test_handwritten_ramp_keeps_other_design_opening():
+    data = _split_design(passage={'segments': {
+        name: {'span': [x-50, x+50], 'pass': ['foot', 'vehicle', 'amphibian']}
+        for name, x in [('west', 250), ('east', 750)]}})
+    sketch = Design(data)
+    west, east = terrain.from_design(sketch, terrain.TerrainPlan(), 'test').ramps
+    assert terrain.from_design(sketch, terrain.TerrainPlan(ramps=(west,)), 'test').ramps == (west, east)
+
+
+def test_net_room_counts_a_solid_flank():
+    data = _split_design(height=3)
+    data['points'] = {'pad': {'block': 'north', 'at': [500, 600]}}
+    data['relations'] = {'space': {'type': '放得下', 'point': 'pad', 'side': 80}}
+    stone = Shape('BOX', (500, 600, 0), 15, 15, 0)
+    built = _expanded(Design(data), footprints=(Footprint('rockbig', (stone,), (stone,)),))
+    assert built.check_relations()['space'].status == 'fail'
+
+
+def test_route_cannot_fit_a_single_fine_row():
+    data = _split_design(height=3)
+    data['points'] = {'a': {'block': 'south', 'at': [100, 200]},
+                      'b': {'block': 'south', 'at': [900, 200]}}
+    data['relations'] = {'route': {'type': '通不通', 'from': 'a', 'to': 'b', 'who': 'vehicle'}}
+    built = _expanded(Design(data))
+    built.ground.blocked[:, 79:82] = True
+    built.ground.blocked[50, 79:82] = False
+    assert built.check_relations()['route'].status == 'fail'
+
+
+def test_unexpanded_state_is_pending_even_if_base_has_room():
+    data = _split_design(height=3)
+    data['points'] = {'pad': {'block': 'north', 'at': [500, 600]}}
+    data['states'] = {'later': {'playable': ['north']}}
+    data['relations'] = {'baseRoom': {'type': '放得下', 'point': 'pad', 'side': 80},
+                         'laterRoom': {'type': '放得下', 'point': 'pad', 'side': 80, 'state': 'later'}}
+    answers = _expanded(Design(data)).check_relations()
+    assert [answer.status for answer in answers.values()] == ['pass', 'pending']

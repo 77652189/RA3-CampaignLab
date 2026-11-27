@@ -102,3 +102,34 @@ def test_same_plan_same_map_bytes_and_local_kit_swap(sample):
     assert b.texture_at(20, 15) == 'Asphalt'
     for j, i in zip(*np.nonzero(ground.owners != 0)):
         assert material(a, i, j) == material(b, i, j)
+
+
+def test_named_snow_skips_its_unused_palette(sample):
+    plan, library = sample
+    town, = plan.blocks[:1]
+    library['texture_kits']['Iceland'] = {'Snow': [
+        dict(id='Snow_Iceland03', Texture='surface.tga', BumpTexture='surface.tga')]}
+    surface = replace(town.surface, use='snow', ground_texture='Snow_Iceland03')
+    _, ground = _build(replace(plan, blocks=(replace(town, surface=surface),)), library)
+    assert ground.textures[15, 15] == 'Snow_Iceland03'
+
+
+def test_writer_blends_final_dressed_material(sample, monkeypatch):
+    plan, library = sample
+    from experimental.mapgen.roads import Roadbed
+    size = 61, 61, 0
+    ground = terrain.expand(plan, library, *size)
+    paved = np.zeros_like(ground.blocked)
+    paved[40, 40] = True
+    roadbed = Roadbed('StPetersburg_ST', (), (), paved, np.zeros_like(paved), np.zeros_like(paved))
+    ground = paint.paint(plan, library, ground, roadbed)
+    updated = ground.textures.copy()
+    updated[15, 30] = 'Asphalt'
+    original = terrain.newmap.paint_grid
+
+    def capture(tiles, materials, rank, edge):
+        assert edge(30, 15, 31, 15, materials[31, 15]) == materials[31, 15]
+        return original(tiles, materials, rank, edge)
+
+    monkeypatch.setattr(terrain.newmap, 'paint_grid', capture)
+    terrain.apply(_container(*size), plan, replace(ground, textures=updated))

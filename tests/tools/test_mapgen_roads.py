@@ -191,3 +191,26 @@ def test_bridge_deck_and_boat_channel():
     assert not result.hidden[80, 80]
     with pytest.raises(design.DesignError, match='main .*opening declares'):
         roads.expand(sketch(line, river=True, land_pass=('foot',)), ground, 0, KIT)
+
+
+def test_unpainted_road_requires_a_model_kit(tmp_path, monkeypatch):
+    data = sketch([[100, 500], [700, 500]]).data
+    data['points'] = {'end': {'at': [720, 520], 'block': 'west'}}
+    data['relations'] = {'viaRoad': {'type': '通不通', 'from': 'west', 'to': 'end',
+                                   'who': 'vehicle', 'only_via': 'main'}}
+    design_file, library_file = tmp_path / 'design.json', tmp_path / 'library.json'
+    design_file.write_text(json.dumps(data), encoding='utf-8')
+    monkeypatch.setattr(build, 'CONTAINER', (85, 85, 0))
+    monkeypatch.setattr(paint, 'ART', tmp_path)
+    (tmp_path / 'tile.tga').touch()
+    asset = dict(id='Grass_Heidelberg01', Texture='tile.tga', BumpTexture='tile.tga')
+    library = {'kits': {KIT: dict(buildings=[], destructibles=[], props=[])}, 'blocking': {},
+               'texture_kits': {'Heidelberg': {'Grass': [asset]}, 'Gibraltar': {'Cliff': [asset]}}}
+    library_file.write_text(json.dumps(library), encoding='utf-8')
+    draft = build.build(design_file, library_file, kit=KIT, level='sketch')
+    assert draft.roadbed is None
+    assert '需要布局' in draft.check_relations()['viaRoad'].decision
+    with pytest.raises(design.DesignError, match=r'main.*road_kit'):
+        build.build(design_file, library_file, kit=KIT, level='layout')
+    with pytest.raises(design.DesignError, match=r'main.*road_kit'):
+        build.build(design_file, library_file, kit='Heidelberg_HB')

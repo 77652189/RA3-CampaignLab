@@ -37,3 +37,17 @@ def test_failed_relation_has_a_place_in_a_repeatable_view(tmp_path):
     summary = (first / 'summary.md').read_text(encoding='utf-8')
     assert 'FAIL `musterSpace`' in summary and '`muster` (140, 175)' in summary
     assert '留一块同高的空地' in html and '留一块同高的空地' in summary
+
+
+def test_route_witness_is_drawn_at_its_own_location(tmp_path):
+    from experimental.mapgen.checks import Answer, Witness
+
+    sketch = Design({
+        'version': 2, 'blocks': {'bay': {'height': 0, 'kind': 'water', 'use': 'water', 'at': [400, 350]}},
+        'borders': {'frame': {'line': [[300, 200], [700, 200], [700, 600], [300, 600], [300, 200]]}},
+    })
+    answer = Answer('fail', '舰艇进港', ('bay',), '加深航道', Witness('bay', (500, 300), '航道水深 25'))
+    write_viewer(tmp_path, title='Example', sketch=sketch, answers={'enter': answer},
+                 bounds=(300, 200, 700, 600), retail_label='Example')
+    assert '<circle class="witness" cx="200" cy="300"' in (tmp_path / 'index.html').read_text(encoding='utf-8')
+    assert '(500, 300) 航道水深 25' in (tmp_path / 'summary.md').read_text(encoding='utf-8')

@@ -4,7 +4,6 @@ XY and water levels use world units. Block steps are absolute; a plane is in wor
 Cliff runs face left (high ground is on the left of the directed line). A ramp starts at its
 low landing and points uphill; the rise in steps determines its length. Blocks paint in order.
 """
-from collections.abc import Callable
 from dataclasses import dataclass, replace
 import math
 
@@ -85,7 +84,10 @@ class TerrainPlan:
     cliff: str = 'Cliff_Gibraltar1'
     shore: str = 'Sand_SantaMonica01'
     quays: tuple = ()
-    closed_edges: tuple = ()  # same-height land cuts, each an (a, b) world segment
+    closed_edges: tuple = ()  # closed land and shoreline cuts, each an (a, b) world segment
+    sealed_shores: tuple = ()
+    design_water: tuple | None = None
+    design_land_count: int = 0
 
 
 @dataclass(frozen=True)
@@ -95,6 +97,14 @@ class Piece:
     y: float
     angle: float
     z: float = 0.
+
+
+@dataclass(frozen=True)
+class Blend:
+    backdrop: str
+    ramp: str | None
+    road: str | None
+    asphalt: str | None
 
 
 @dataclass
@@ -111,7 +121,22 @@ class Ground:
     waterline: np.ndarray
     ramp_edges: np.ndarray
     rank: tuple = ()
-    edge_texture: Callable[[int, int, int, int, str], str | None] | None = None
+    blend: Blend | None = None
+    errors: tuple = ()
+    water: tuple = ()
+
+    def edge_texture(self, i, j, ni, nj, name):
+        if self.hidden[j, i] or self.hidden[nj, ni]:
+            return None
+        blend = self.blend
+        materials = (self.textures[j, i], self.textures[nj, ni])
+        if blend.road in materials or blend.asphalt in materials or self.owners[j, i] == self.owners[nj, ni]:
+            return name
+        if self.blocked[j, i] or self.blocked[nj, ni]:
+            return name if self.ramp_edges[j, i] or self.ramp_edges[nj, ni] else None
+        if self.ramp[j, i] and self.ramp[nj, ni]:
+            return blend.ramp
+        return blend.backdrop
 
 
 @dataclass(frozen=True)
@@ -172,7 +197,7 @@ def _design_water(sketch):
     return tuple(Water(points(rim), islands=tuple(map(points, holes))) for rim, holes in islands.items())
 
 
-def frame_apron(sketch, plan, kit, size):
+def frame_apron(sketch, plan, size):
     """Continue the grade at each side of a rectangular dry cut into the camera margin."""
     rim = [(a, b, left or right) for (a, b), (left, right) in sketch.sides.items()
            if bool(left) != bool(right)]
@@ -190,7 +215,7 @@ def frame_apron(sketch, plan, kit, size):
                      for v, first, last, (a, b) in zip(p, lo, hi, outside))
 
     apron = []
-    surface = Surface('backdrop', 'park', kit, ground_texture=plan.ground)
+    surfaces = {b.surface.id: b.surface for b in plan.blocks if b.surface is not None}
     for a, b, face in rim:
         # A rim side must lie on the perimeter of the bounding rectangle.
         normal = next((i for i, (u, v, bounds) in enumerate(zip(a, b, zip(lo, hi)))
@@ -200,7 +225,7 @@ def frame_apron(sketch, plan, kit, size):
         a, b = tuple(map(float, a)), tuple(map(float, b))
         aa, bb = extend(a), extend(b)
         if aa[normal] != a[normal]:
-            apron.append(Block((a, b, bb, aa), sketch.blocks[face]['height'], surface=surface))
+            apron.append(Block((a, b, bb, aa), sketch.blocks[face]['height'], surface=surfaces[face]))
     cliffs = []
     for cliff in plan.cliffs:
         a, b = cliff.start, cliff.end
@@ -241,8 +266,8 @@ def from_design(sketch, plan, kit):
                          surface=Surface(name, spec['use'], spec.get('kit', kit), sketch.block_seed(name),
                                          spec.get('ground_texture')))
                    for name, points in faces.items() if (spec := sketch.blocks[name]).get('kind') != 'water')
-    water = plan.water or _design_water(sketch)
-    cliffs, ramps, quays, closed_edges = {}, [], [], []
+    water = _design_water(sketch)
+    cliffs, ramps, quays, closed_edges, sealed_shores = {}, [], [], [], []
     for border in sketch.borders:
         for (a, b), _, _ in sketch.border_edges[border]:
             left, right = sketch.sides[a, b]
@@ -254,18 +279,27 @@ def from_design(sketch, plan, kit):
             if not left or not right or any(sketch.medium(f) != LAND for f in (left, right)):
                 continue
             diff = sketch.blocks[left]['height'] - sketch.blocks[right]['height']
-            if diff and not plan.cliffs:
+            if diff:
                 points = tuple(tuple(map(float, p)) for p in ((a, b) if diff > 0 else (b, a)))
                 high = left if diff > 0 else right
                 grades = tuple(sorted((sketch.blocks[left]['height'], sketch.blocks[right]['height'])))
                 cliffs.setdefault(grades, []).append(Cliff(*points, sketch.blocks[high].get('kit', kit)))
         sections = []
         for a, b, left, right, name in sketch.border_sections(border):
-            if left and right and sketch.medium(left) == sketch.medium(right) == LAND:
-                diff = sketch.blocks[left]['height'] - sketch.blocks[right]['height']
-                if not diff and sketch.base_pass.get(name) == frozenset():
+            if not left or not right:
+                continue
+            allowed = sketch.base_pass.get(name)
+            if sketch.medium(left) != sketch.medium(right):
+                if allowed is not None and 'amphibian' not in allowed and not sketch.borders[border].get('shore'):
+                    if allowed:
+                        raise DesignError(name, 'shore', 'a land/water crossing can open only to amphibians')
+                    sealed_shores.append((a, b))
                     closed_edges.append((a, b))
-                if not plan.ramps and diff and sketch.base_pass.get(name):
+            elif sketch.medium(left) == LAND:
+                diff = sketch.blocks[left]['height'] - sketch.blocks[right]['height']
+                if not diff and allowed == frozenset():
+                    closed_edges.append((a, b))
+                if diff and allowed:
                     if not sections or sections[-1][0] != name or sections[-1][1][-1][1] != a:
                         sections.append((name, []))
                     sections[-1][1].append((a, b, diff))
@@ -286,10 +320,54 @@ def from_design(sketch, plan, kit):
             uphill = np.array((-tangent[1], tangent[0])) * (1 if diff > 0 else -1)
             low = (np.add(a, b) / 2) - uphill * (RAMP_LENGTH * abs(diff) / 2)
             ramps.append(Ramp(tuple(low), tuple(uphill), abs(diff), width))
-    return replace(plan, blocks=(*plan.blocks, *blocks), water=water, quays=(*plan.quays, *quays),
-                   cliffs=plan.cliffs or tuple(c for group in cliffs.values() for c in _join_cliffs(group)),
-                   ramps=plan.ramps or tuple(ramps),
-                   closed_edges=(*plan.closed_edges, *closed_edges))
+    inferred = [c for group in cliffs.values() for c in _join_cliffs(group)]
+    for cliff in plan.cliffs:
+        for i, other in enumerate(inferred):
+            if (cliff.start, cliff.end) == (other.start, other.end):
+                inferred[i] = cliff  # A complete design run may name a different measured wall kit.
+                break
+            if cliff.kit == other.kit and on_segment(other.start, cliff.start, cliff.end) and on_segment(
+                    other.end, other.start, cliff.end):
+                # A camera-side run can continue the same wall past either end.
+                if not any(_enters_design(sketch, a, b) for a, b in
+                           ((cliff.start, other.start), (other.end, cliff.end)) if a != b):
+                    inferred[i] = cliff
+                    break
+            if cliff.kit == other.kit and on_segment(cliff.start, other.start, other.end) and on_segment(
+                    cliff.end, cliff.start, other.end):
+                break
+        else:
+            if _enters_design(sketch, cliff.start, cliff.end):
+                raise DesignError('$', 'cliff', f'{cliff.start} → {cliff.end} conflicts with a design cliff')
+            inferred.append(cliff)
+    for ramp in plan.ramps:
+        if ramp not in ramps:
+            high = np.add(ramp.low, unit_direction(ramp.uphill) * RAMP_LENGTH * ramp.steps)
+            if _enters_design(sketch, ramp.low, high):
+                raise DesignError('$', 'ramp', f'{ramp.low} must match a design ramp or lie outside the playable frame')
+            ramps.append(ramp)
+    return replace(plan, blocks=(*plan.blocks, *blocks), water=plan.water or water, quays=(*plan.quays, *quays),
+                   cliffs=tuple(inferred), ramps=tuple(ramps),
+                   closed_edges=(*plan.closed_edges, *closed_edges), sealed_shores=tuple(sealed_shores),
+                   design_water=water if plan.water else None, design_land_count=len(blocks))
+
+
+def _enters_design(sketch, a, b):
+    rim = [(p, q) for (p, q), faces in sketch.sides.items() if None in faces]
+    if any(sketch.face_at(p) is not None for p in (a, b, tuple((u + v) / 2 for u, v in zip(a, b)))):
+        return True
+    # A line with both ends outside can still pass through the playable frame.
+    dx, dy = np.subtract(b, a)
+    for p, q in rim:
+        ux, uy = np.subtract(q, p)
+        vx, vy = np.subtract(p, a)
+        cross = dx * uy - dy * ux
+        if cross:
+            t = (vx * uy - vy * ux) / cross
+            u = (vx * dy - vy * dx) / cross
+            if 0 < t < 1 and 0 < u < 1:
+                return True
+    return False
 
 
 def polygon_mask(points, x, y, distances=False):
@@ -321,6 +399,11 @@ def strip_coordinates(x, y, start, direction):
     dx, dy = x - start[0], y - start[1]
     tx, ty = direction
     return dx * tx + dy * ty, dy * tx - dx * ty
+
+
+def strip_mask(x, y, a, b, half, ends=0.):
+    along, across = strip_coordinates(x, y, a, unit_direction(np.subtract(b, a)))
+    return (along >= -ends) & (along <= math.dist(a, b) + ends) & (abs(across) <= half)
 
 
 def _step(value):
@@ -369,7 +452,7 @@ def _straight(library, kit, steps):
 
 
 def _cliffs(plan, library, base, at, x, y, ramps):
-    pieces, issues = [], []
+    pieces, issues, errors = [], [], []
     cover = np.zeros(x.shape, bool)
     for cliff in plan.cliffs:
         a, b = np.asarray(cliff.start), np.asarray(cliff.end)
@@ -387,15 +470,6 @@ def _cliffs(plan, library, base, at, x, y, ramps):
             issues.append(f'{label}: expected constant whole steps, high ground on the left')
             continue
         steps = int((hi[0] - lo[0]) / CLIFF_STEP_RAW)
-        spec = _straight(library, cliff.kit, steps)
-        if spec is None:
-            issues.append(f'{label}: no measured {steps}-step straight piece')
-            continue
-        template, spacing, offset = spec
-        if template.endswith('_GRID') and (
-                not np.isclose(tangent.prod(), 0) or np.any(np.mod([a, b], 30))):
-            issues.append(f'{label}: GRID runs need cardinal edges on the 30-unit grid')
-            continue
         # Subtract the ordered ramp openings before fitting straight pieces.
         spans = [(0., length)]
         for ramp, uphill, run in ramps:
@@ -405,6 +479,17 @@ def _cliffs(plan, library, base, at, x, y, ramps):
             lo, hi = cut
             spans = [(p, q) for start, end in spans
                      for p, q in ((start, min(end, lo)), (max(start, hi), end)) if p < q]
+        if not spans:
+            continue
+        spec = _straight(library, cliff.kit, steps)
+        if spec is None:
+            errors.append(f'{label}: no measured {steps}-step straight piece')
+            continue
+        template, spacing, offset = spec
+        if template.endswith('_GRID') and (
+                not np.isclose(tangent.prod(), 0) or np.any(np.mod([a, b], 30))):
+            issues.append(f'{label}: GRID runs need cardinal edges on the 30-unit grid')
+            continue
         along_grid, across_grid = strip_coordinates(x, y, a, tangent)
         for start, end in spans:
             count = math.floor((end - start + 1e-7) / spacing)
@@ -434,7 +519,7 @@ def _cliffs(plan, library, base, at, x, y, ramps):
                 issues.append(f'cliff end at {(px, py)}: no measured end fitting')
         elif len(legs) != 2 or not np.allclose(legs[0], -legs[1]):
             issues.append(f'cliff corner at {(px, py)}: straight pieces meet without a measured corner fitting')
-    return tuple(pieces), tuple(issues), cover
+    return tuple(pieces), tuple(errors + issues), tuple(errors), cover
 
 
 # The Leningrad straight piece is 100 units tip-to-tip and the front lip
@@ -442,11 +527,11 @@ def _cliffs(plan, library, base, at, x, y, ramps):
 _QUAY_PIECES = {'StPetersburg_ST': ('ST_SeaWallPiece01', 100, 7)}
 
 
-def _quay_edges(plan, x, y):
-    for quay in plan.quays:
-        length = math.dist(quay.start, quay.end)
-        tangent = unit_direction(np.subtract(quay.end, quay.start))
-        along, across = strip_coordinates(x, y, quay.start, tangent)
+def _sheer_edges(plan, x, y):
+    for a, b in (*plan.sealed_shores, *((q.start, q.end) for q in plan.quays)):
+        length = math.dist(a, b)
+        tangent = unit_direction(np.subtract(b, a))
+        along, across = strip_coordinates(x, y, a, tangent)
         yield np.hypot(along - np.clip(along, 0, length), across)
 
 
@@ -528,26 +613,46 @@ def expand(plan, library, width, height, border):
         ramp_edges |= (edge <= CELL) & (along >= -CELL) & (along <= run + CELL)
         ramps.append((ramp, uphill, run))
 
-    if len({water.level for water in plan.water}) > 1:
-        raise ValueError('terrain water footprints need one common global level')
-    waterline = np.full(x.shape, -np.inf)
-    sheer = np.zeros(x.shape, bool)
-    for water in plan.water:
-        if type(water.level) is not int or water.level < SUB_DEPTH:
-            raise ValueError('water level must be a whole world height at least 70 above zero')
+    def wet(water):
         area, edge = polygon_mask(water.points, x, y, distances=True)
         for island in water.islands:
             dry, distance = polygon_mask(island, x, y, distances=True)
             area &= ~dry
             np.minimum(edge, distance, out=edge)
+        return water, area, edge
+
+    basins = list(map(wet, plan.water))
+    if plan.design_water is not None:
+        dry = (owners >= len(plan.blocks) - plan.design_land_count
+               if plan.design_land_count else np.zeros(x.shape, bool))
+        intended = list(map(wet, plan.design_water))
+        wet_design = np.zeros(x.shape, bool)
+        for _, area, _ in intended:
+            wet_design |= area
+        for water, area, _ in basins:
+            if np.any(area & dry & ~wet_design):
+                raise DesignError('$', 'water', 'handwritten water covers playable land')
+            for original, expected, _ in intended:
+                if np.any(area & expected) and (water.level != original.level or np.any(expected & ~area)):
+                    raise DesignError('$', 'water', 'handwritten water must preserve the entire design basin and level')
+        basins.extend((water, area, edge) for water, area, edge in intended
+                      if not any(np.any(area & other) for _, other, _ in basins))
+    waters = tuple(water for water, _, _ in basins)
+    if len({water.level for water in waters}) > 1:
+        raise ValueError('terrain water footprints need one common global level')
+    waterline = np.full(x.shape, -np.inf)
+    sheer = np.zeros(x.shape, bool)
+    for water, area, edge in basins:
+        if type(water.level) is not int or water.level < SUB_DEPTH:
+            raise ValueError('water level must be a whole world height at least 70 above zero')
         if np.any(np.isfinite(waterline[area])):
             raise ValueError('standing water footprints overlap')
         floor = math.floor((water.level - SUB_DEPTH) * rules.RAW_PER_WORLD)
         bank = np.maximum(floor, base - edge * SHORE_RISE / CELL * rules.RAW_PER_WORLD)
         if np.any(area & ramp_shoulders):
             raise ValueError('water footprint overlaps a ramp')
-        for distance in _quay_edges(plan, x, y):
-            # Only the bank whose nearest shoreline is the quay becomes vertical.
+        for distance in _sheer_edges(plan, x, y):
+            # Only the bank whose nearest shoreline is sealed becomes vertical.
             cut = area & (distance <= edge + 1e-8) & (bank > floor)
             bank[cut] = floor
             sheer |= cut
@@ -566,7 +671,7 @@ def expand(plan, library, width, height, border):
     quay_bank = rules.edit_region(sheer)
     if np.any((slope > RAMP_MAX) & np.isfinite(waterline) & ~quay_bank):
         raise ValueError('water footprint crosses ground too steep for a gentle shore')
-    if plan.water and np.any(np.isneginf(waterline) & (raw <= plan.water[0].level * rules.RAW_PER_WORLD)):
+    if waters and np.any(np.isneginf(waterline) & (raw <= waters[0].level * rules.RAW_PER_WORLD)):
         raise ValueError('ground outside the water footprints reaches the global water level')
     blocked = rules.impassable_bits(raw / rules.RAW_PER_OURS, waterline / rules.RAW_PER_OURS)
     # The field-0 lip stops amphibians from using the face as a beach.
@@ -580,14 +685,14 @@ def expand(plan, library, width, height, border):
         beyond_end = along - np.clip(along, 0, math.dist(a, b))
         # Cover the diagonal of a cell so a diagonal boundary cannot leak.
         blocked |= across**2 + beyond_end**2 <= CELL**2 / 2
-    pieces, issues, cover = _cliffs(plan, library, base, at, x, y, ramps)
+    pieces, issues, errors, cover = _cliffs(plan, library, base, at, x, y, ramps)
     pieces += _quay_pieces(plan, library, raw, border)
     cover |= lip
     if np.any(blocked & ramp_shoulders & ~ramp_mask & ~cover):
         issues += ('ramp sides: exposed steep cells outside the travel lane have no measured edge fitting',)
     shore = np.abs(raw - waterline) <= ON_SHORE * rules.RAW_PER_WORLD
     return Ground(raw, blocked, textures, cover & blocked, pieces, issues, owners, ramp_shoulders, shore,
-                  waterline, ramp_edges)
+                  waterline, ramp_edges, errors=errors, water=waters)
 
 
 def apply(m, plan, ground):
@@ -618,14 +723,14 @@ def apply(m, plan, ground):
     tiles.arrays[3] = [0] * tiles.n
     rank = ground.rank or [plan.cliff, plan.shore, *dict.fromkeys(b.texture for b in plan.blocks), plan.ground]
     newmap.paint_grid(tiles, {(i, j): texture for (j, i), texture in np.ndenumerate(ground.textures)},
-                      rank, ground.edge_texture)
+                      rank, ground.edge_texture if ground.blend is not None else None)
     tiles.store()
     points, level = (), 0
-    if plan.water:
-        points, level = plan.water[0].points, plan.water[0].level
-    if len(plan.water) > 1:
+    if ground.water:
+        points, level = ground.water[0].points, ground.water[0].level
+    if len(ground.water) > 1:
         # A common plane covers the basins. The dry grid between them clips the surface.
-        x, y = zip(*(point for water in plan.water for point in water.points))
+        x, y = zip(*(point for water in ground.water for point in water.points))
         points = ((min(x), min(y)), (max(x), min(y)), (max(x), max(y)), (min(x), max(y)))
     newmap.set_water_area(m, points, level)
     return {key: newmap.preview_tga(hm, tiles, size, depth)

@@ -61,6 +61,13 @@ class Shape:
         dx, dy = abs(u) - self.half_x, abs(v) - self.half_y
         return math.hypot(max(0., dx), max(0., dy)) + min(0., max(dx, dy))
 
+    def contains(self, x, y, pad=0.):
+        dx, dy = x - self.center[0], y - self.center[1]
+        if self.kind != 'BOX':
+            return np.hypot(dx, dy) <= self.half_x + pad
+        u, v = _rotate(dx, dy, math.cos(self.angle), -math.sin(self.angle))
+        return (abs(u) <= self.half_x + pad) & (abs(v) <= self.half_y + pad)
+
     def edges(self):
         x, y = self.center[:2]
         c, s = math.cos(self.angle), math.sin(self.angle)
@@ -106,6 +113,17 @@ def geometry_shapes(entries):
         minor = entry['MinorRadius'] if kind == 'BOX' else radius
         shapes.append(Shape(kind, offset, radius, minor, entry.get('Height', 0.)))
     return tuple(shapes)
+
+
+NO_PATH_BLOCK = {'none', 'none?', 'topple', 'foot_topple_noshape'}
+FOOT_ONLY_BLOCK = {'foot', 'foot_topple'}
+
+
+@dataclass(frozen=True)
+class Footprint:
+    blocking: str
+    placement: tuple[Shape, ...]
+    collision: tuple[Shape, ...]
 
 
 @dataclass(frozen=True)
@@ -181,11 +199,11 @@ class BuildingPlanner:
     rotation published here are the ones to give to the map writer (zero Z offset).
     """
 
-    def __init__(self, design, ground, library, kits, fronts, sage, border):
+    def __init__(self, design, ground, library, kits, fronts, sage, border, obstacles=()):
         self.design, self.ground, self.library = design, ground, library
         self.kits = kits
         self.fronts = {name.casefold(): angle for name, angle in fronts.items()}
-        self.sage, self.border = sage, border
+        self.sage, self.border, self.obstacles = sage, border, obstacles
         self._sdk = {}
         self._garrisons = {}
         self.rings = {name: tuple((float(x), float(y)) for x, y in ring)
@@ -339,6 +357,8 @@ class BuildingPlanner:
             for road in self.roads:
                 gap = s.segment_gap(road.a, road.b)
                 worst = max(worst, (road.half_width + SETBACK - gap, f'road {road.name} setback'))
+            for other in self.obstacles:
+                worst = max(worst, (-s.gap(other), 'fixed object footprint'))
             for building in placed:
                 for other in building.placement + building.collision:
                     worst = max(worst, (GAP - s.gap(other), f'{building.template} clearance'))
