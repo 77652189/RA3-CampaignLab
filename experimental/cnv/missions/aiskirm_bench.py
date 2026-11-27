@@ -437,6 +437,12 @@ AIDATA_RUNS = {'aiskad': {'Optimization_NumTeamsToRecruit': '0'},
                'aiskocm': {'Optimization_TimeToCacheCanReachMobileTarget': '3600s'},
                'aiskoci': {'Optimization_TimeToCacheCanReachImmobileTarget': '3600s'},
                'aiskock': {'Optimization_TacticsEmergencyKickPeriod': '3600s'},
+               # aiskrd / aiskru: the read fields not yet benched at extremes, the AI / group layer and the unit layer
+               'aiskrd': {'ForceSkirmishAI': 'true', 'WaitForOthers': 'true', 'HordesWaitForHordes': 'false',
+                          'AttackMoveUsesFormations': 'false', 'FormationRowDepth': '600.0', 'NarrowPassageScale': '5.0',
+                          'CastleSiegeStandBackDistance': '5000.0', 'AIDozerBoredRadiusModifier': '20.0'},
+               'aiskru': {'RepulsedDistance': '2000.0', 'EnableRepulsors': 'false', 'WadeWaterDepth': '30.0',
+                          'DeepWaterDepth': '1.0', 'AttackUsesLineOfSight': 'false'},
                'aiskgf': {'SkirmishGroupFudgeValue': '200.0'},   # stock 4: x5 units = a 1000 waypoint radius
                # aiskn1 / aiskn10: the poll's per-pass cap at 1 against 10 (stock), both with the teams host
                'aiskn1': {'Optimization_NumTeamsToRecruit': '1'},

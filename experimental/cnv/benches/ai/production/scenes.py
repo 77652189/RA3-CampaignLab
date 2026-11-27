@@ -1953,6 +1953,8 @@ def aiskirm_bench():
         'aiskocm': lambda: mission('CampAISkOCM', aidata=AIDATA_RUNS['aiskocm']),   # check fm: aiskoc one at a time
         'aiskoci': lambda: mission('CampAISkOCI', aidata=AIDATA_RUNS['aiskoci']),   # check fm: aiskoc one at a time
         'aiskock': lambda: mission('CampAISkOCK', aidata=AIDATA_RUNS['aiskock']),   # check fm: aiskoc one at a time
+        'aiskrd': lambda: mission('CampAISkRD', aidata=AIDATA_RUNS['aiskrd']),      # check fm: AI-layer readers
+        'aiskru': lambda: mission('CampAISkRU', aidata=AIDATA_RUNS['aiskru']),      # check fm: unit-layer readers
         'aiskga': lambda: mission('CampAISkGA', armydef=GATHERER_RUN),              # check fm: Gatherer canary
         'aiskew': lambda: mission('CampAISkEW', armydef=ENERGY_WALL_RUN),           # check fm: EnergyProducer + WallPiece
     }

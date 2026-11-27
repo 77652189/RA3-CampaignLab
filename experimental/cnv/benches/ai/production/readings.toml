@@ -892,6 +892,44 @@ expect = ["146 <= times[first] <= 176", "15 <= times[three] - times[first] <= 35
 
 [[reading]]
 bench_id = "engine_aiskirm"
+id = "the_ai_layer_constants_leave_the_skirmish_team_as_stock"
+item = ["AI 全局常量/AIData.ForceSkirmishAI", "AI 全局常量/AIData.WaitForOthers", "AI 全局常量/AIData.HordesWaitForHordes",
+        "AI 全局常量/AIData.AttackMoveUsesFormations", "AI 全局常量/AIData.FormationRowDepth",
+        "AI 全局常量/AIData.NarrowPassageScale", "AI 全局常量/AIData.CastleSiegeStandBackDistance",
+        "AI 全局常量/AIData.AIDozerBoredRadiusModifier"]
+scene = {build = "aiskrd", check = "fm", until = 250}
+bench = """\
+B 11-27 aiskrd (CampAISkRDFm_mcp_1127_142500, PASS; ForceSkirmishAI true, WaitForOthers true, HordesWaitForHordes \
+false, AttackMoveUsesFormations false, FormationRowDepth 600, NarrowPassageScale 5, CastleSiegeStandBackDistance 5000, \
+AIDozerBoredRadiusModifier 20 spliced into the global stream -- the .big differs from aiskfon's in that one global.bin \
+span) reads as aiskfon run beside it (CampAISkFOnFm_mcp_1127_142909) to a second: 激流到 1 at s156 / s156, 3 at s185 / \
+s186, 6 at s215-s229 / s215-s229, home again by s238 / s238, the next wave home from s249 / s250. The program reads \
+them on Generals' AIPlayer-or-AISkirmishPlayer pick at player setup, the formation move of a group and its waiting, \
+horde path cells, standing back from a castle and a dozer's bored radius (work/re l4_aidata_readers.md)"""
+proves = "simai: the skirmish attack team takes none of these: no other AI player class, no formation spacing or waiting"
+let = {first = "next(i for i, r in enumerate(rows) if r['激流到'] >= 1)", three = "next(i for i, r in enumerate(rows) if r['激流到'] >= 3)"}
+expect = ["146 <= times[first] <= 176", "15 <= times[three] - times[first] <= 35", "rows[-1]['激流到'] == 0"]
+
+[[reading]]
+bench_id = "engine_aiskirm"
+id = "the_unit_layer_constants_leave_the_skirmish_team_as_stock"
+item = ["AI 全局常量/AIData.RepulsedDistance", "AI 全局常量/AIData.EnableRepulsors", "AI 全局常量/AIData.WadeWaterDepth",
+        "AI 全局常量/AIData.DeepWaterDepth", "AI 全局常量/AIData.AttackUsesLineOfSight"]
+scene = {build = "aiskru", check = "fm", until = 250}
+bench = """\
+B 11-27 aiskru (CampAISkRUFm_mcp_1127_142624, PASS; RepulsedDistance 2000, EnableRepulsors false, WadeWaterDepth 30, \
+DeepWaterDepth 1, AttackUsesLineOfSight false spliced into the global stream, the .big off aiskfon's in that one \
+global.bin span) reads as aiskfon run beside it to a second up to the next wave: 激流到 1 at s156 / s156, 3 at s185 / \
+s186, 6 at s216-s226 / s215-s229, home again by s237 / s238, the next wave home from s248 / s250 (s252-s268 within 2 s, \
+the start jitter). The program reads them on a repulsed unit's flight, water depth for wading, and the attack's line \
+of sight through buildings (work/re l4_aidata_readers.md); this march fires past no building (buildings in the line \
+of fire are engine_seal's), whether it wades was not read"""
+proves = "simai: the skirmish attack's march and fight take no repulsor flight and no wading depth"
+let = {first = "next(i for i, r in enumerate(rows) if r['激流到'] >= 1)", three = "next(i for i, r in enumerate(rows) if r['激流到'] >= 3)"}
+expect = ["146 <= times[first] <= 176", "15 <= times[three] - times[first] <= 35", "rows[-1]['激流到'] == 0"]
+
+[[reading]]
+bench_id = "engine_aiskirm"
 id = "a_transport_entry_cache_of_an_hour_leaves_the_skirmish_team_as_stock"
 item = "AI 全局常量/AIData.Optimization_TimeToCacheCanEnterTransport"
 scene = {build = "aiskot", check = "fm", until = 250}
