@@ -1647,11 +1647,12 @@ class _ModuleTemplates:
         key = ('module_blocks', name, sources)
         if key not in _reads:
             _reads[key] = cls._blocks(cls._effective(name, sources))
-        return list(_reads[key].get(tag, ()))
+        return list(_reads[key].get(tag, ())) if tag else list(_reads[key])
 
 
 def module_blocks(template, tag, own=None):
-    """[(attribute text, inner XML)] for this tag in the merged GameObject, in effective module order."""
+    """[(attribute text, inner XML)] for this tag in the merged GameObject, in effective module order (tag None: the
+    module tags, in the order they first come)."""
     return _ModuleTemplates.blocks(template, tag, own)
 
 

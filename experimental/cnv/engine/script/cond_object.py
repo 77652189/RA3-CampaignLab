@@ -125,10 +125,12 @@ def unit_has_object_status(sim, name, a):
     # script set reads at once, cleared at once, and a killed unit reads false from the kill
     b = sim.body(a[0])
     st = a[1][2] if isinstance(a[1], tuple) else a[1]
-    bits = module.status_now(b) if b else set()     # AIRBORNE_TARGET in the air (engine_acts_wing: the Sea-Wing)
+    bits, now = module.status_now(b) if b else set(), sim.frame_now()     # AIRBORNE_TARGET in the air (the Sea-Wing)
+    if b and getattr(b, 'script_airborne', None) == now:    # or a script set it this frame (act_object)
+        bits.add(module.AIRBORNE)
     if st not in ACTED_STATUS and st not in sim.attachment_known_status and st not in bits:
         sim.gap(GAP_CONDITION, name, f'状态位 {st}：模拟器只知道脚本设的和 {"、".join(sorted(ACTED_STATUS))}')
-    if b and not b.alive and b.read_until == sim.frame_now():     # engine_sell e: a damage kill still reads
+    if b and not b.alive and b.read_until == now:                 # engine_sell e: a damage kill still reads
         return st in bits                                          # its bits in that frame
     return bool(b and b.alive and st in bits)
 

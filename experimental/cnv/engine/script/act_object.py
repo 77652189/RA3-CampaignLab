@@ -225,8 +225,12 @@ def unit_change_object_status(sim, name, a, script, unit=None):
     st = a[1][2] if isinstance(a[1], tuple) else a[1]
     # bits the engine keeps itself, a script's does not stay: NEXT_MOVE_IS_REVERSE (A310 engine_hull pace: set at s0, a
     # script never reads it, INFERRED) and AIRBORNE_TARGET (C engine_aivital: set on three ground tanks at s0, read 0
-    # from the first sample; module.status_now has it in the air; a script's clear in the air not benched)
-    if b and st not in ('NEXT_MOVE_IS_REVERSE', module.AIRBORNE):
+    # from the first sample; module.status_now has it in the air; a script's clear in the air not benched). But a
+    # script's AIRBORNE_TARGET reads in its own frame (C engine_attachmine b: a later script of the same pass latches
+    # it): kept for that frame only (INFERRED: the engine's next update of the thing drops it)
+    if b and st == module.AIRBORNE:
+        b.script_airborne = sim.frame_now() if a[2] else None
+    elif b and st != 'NEXT_MOVE_IS_REVERSE':
         (b.script_status.add if a[2] else b.script_status.discard)(st)
         simmodifier.modify(sim, b)
     if st not in ACTED_STATUS | AI_ONLY_STATUS | {module.AIRBORNE}:

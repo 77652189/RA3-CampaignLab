@@ -239,10 +239,10 @@ def script_cast(sim, name, a, unit=None):
         # reload, set by that cast, not over) is seen as triggered but hurts nobody; the first cast of a
         # collider never cast went though its power was not charged (engine_super p / q). INFERRED: a cast
         # in the reload a cast started brings no blast
-        cooling = bool(b and b.alive and b.ready_at.get(a[1], 0) > sim.frame_now())
+        now = sim.frame_now()
+        cooling = bool(b and b.alive and b.ready_at.get(a[1], 0) > now)
         if rules and rules['reload']:       # every cast starts the reload anew (RA3 1.13, read, work/re/l2_ability.md;
-            start_reload(sim, b, a[1],                                                  # SDK GlobalData)
-                         sim.frame_now() + rules['reload'] + RELOAD_LAG.get(a[1], 0))
+            start_reload(sim, b, a[1], now + rules['reload'] + RELOAD_LAG.get(a[1], 0))     # SDK GlobalData)
         hits = SUPERWEAPON_HITS.get(a[1]) if b and b.alive else None
         if hits and q is not None:
             sim.used.add('superweapon')

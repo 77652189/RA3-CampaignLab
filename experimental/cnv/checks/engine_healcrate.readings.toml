@@ -134,3 +134,14 @@ After 30 script damage, the collector reads 84%, witness bit 1 confirms 84% for 
 confirms 80% for the scripted walker. Replay checks states without fixing pickup time or the exact radius boundary."""
 expect = """(any(r['箱位'] == 3 and r['过点'] == 1 and r['旁证'] == 0 for r in rows) and
 (rows[-1]['箱位'], rows[-1]['过点'], rows[-1]['拾取血量'], rows[-1]['旁证']) == (2, 1, 84, 3))"""
+
+[[reading]]
+id = "a_pickup_runs_the_crate_module_written_first"
+scene = {build = "engine_secretfile_s", check = "b", until = 18, script = "2 拾取 File mover switch 去 File switch"}
+item = "物体模块 Behaviors/AttributeCrateCollide"
+bench = """CampSecretSwapB_mcp_1127_071224, counters (存活, 兵血, 盖): s2.9–s26.8 7 50 0; s40.5–s61.5 6 100 0. Frame 8 \
+(s38.1) the right click on secret file 1, its HealCrateCollide written before its AttributeCrateCollide."""
+proves = """engine_secretfile_e b with file 1's two pickup modules swapped: the file goes (存活 6), the collector is \
+filled (兵血 50 -> 100) and wears no USER_1 (盖 0) -- one pickup runs the pickup module first in the XML, not the \
+attribute crate always (b: written first, the attribute crate acts and the heal does not)"""
+expect = "rows[-1]['存活'] == 6 and rows[-1]['兵血'] == 100 and all(r['盖'] == 0 for r in rows)"

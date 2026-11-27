@@ -186,10 +186,11 @@ def collect_crate_due(world, kernel, b, crate):
         def allied(recipient):
             return _relation(world, b, recipient) == 'ALLIES'
 
-        # One pickup, one effect (engine_secretfile_e b: the file's AttributeCrateCollide acts, its HealCrateCollide
-        # after it in the XML heals none). INFERRED: an attribute crate before a heal crate, not XML order
-        collected = False
-        for effect in sorted(crate.find(interfaces.CrateCollect), key=lambda e: not e.worn()):
+        # One pickup, one effect: the pickup module written first in the XML (engine_secretfile_e b: the file's
+        # AttributeCrateCollide acts, its HealCrateCollide after it heals none; engine_secretfile_s b, the two swapped:
+        # the heal fills him and no modifier)
+        collected, tags = False, kernel.blocks_of(crate.template, None)
+        for effect in sorted(crate.find(interfaces.CrateCollect), key=lambda e: tags.index(e.TAGS[0])):
             if effect.collect(b, allied):
                 collected = True
                 if effect.worn():

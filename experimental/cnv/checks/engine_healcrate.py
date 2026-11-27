@@ -178,12 +178,13 @@ SECRET_FILES = (('CNVSecretFile1', 'switch'), ('CNVSecretFile2', 'low'), ('HealC
 FILE_TEAM = 'PlyrNeutral/teamCNVSecretFiles'
 
 
-def secret_file(k):
+def secret_file(k, heal_first=False):
     """Uprising's SS_SecretFile<k> (Y01 / Y02; in no RA3 stream or map) with the HealCrate's art and RA3's schema:
     RA3's CrateCollide has no KillOnPickup, its AttributeCrateCollide no ApplyToSelf (the build stops on them), so
     both go -- what is left is RA3's crate: modifier to the collector, crate gone on pickup. Its modifier (Uprising's
     static stream: ModelConditionsSet USER_1, nothing else -- a400_ocl_attack.md) comes along under a new id; the
-    client sound, portraits and collapse OCL (Uprising-only assets) go."""
+    client sound, portraits and collapse OCL (Uprising-only assets) go. heal_first: HealCrateCollide written before
+    AttributeCrateCollide (does a pickup run the first module in the XML, or the attribute crate always?)."""
     new = f'CNVSecretFile{k}'
     u = clone(f'Civilian/Shiro_Sanitarium_SS/Buildings/SS_SecretFile{k}.xml', f'SS_SecretFile{k}', new)
     heal = clone('Neutral/Crates/HealCrate.xml', 'HealCrate', new).xml
@@ -196,13 +197,18 @@ def secret_file(k):
     x = re.sub(r'(SelectPortrait|ButtonImage)="\w+"', lambda g: re.search(g.group(1) + '="\\w+"', heal).group(), x)
     x = x.replace('"AttributeModifier_SecretFile"', f'"{new}Mod"').replace(
         '</AssetDeclaration>', f'<AttributeModifier id="{new}Mod" ModelConditionsSet="USER_1" /></AssetDeclaration>')
+    if heal_first:
+        h = re.search(r'<HealCrateCollide\b.*?</HealCrateCollide>', x, re.S).group()
+        x = x.replace(h, '').replace('<AttributeCrateCollide', h + '<AttributeCrateCollide', 1)
     u.xml = x
     return u
 
 
-def secret_files_mission():
-    """E270 (A400 ②): the two secret-file clones and the retail HealCrate, created by one script action."""
-    m = Mission(name='CampSecretFile', map=probe_range, units=[secret_file(1), secret_file(2)])
+def secret_files_mission(heal_first=False):
+    """E270 (A400 ②): the two secret-file clones and the retail HealCrate, created by one script action.
+    heal_first (engine_secretfile_s): file 1's two crate modules swapped."""
+    m = Mission(name='CampSecretSwap' if heal_first else 'CampSecretFile', map=probe_range,
+                units=[secret_file(1, heal_first), secret_file(2)])
     m.ext = True
     m.teams['secretFiles'] = FILE_TEAM
     for template, lane in SECRET_FILES:
@@ -358,11 +364,21 @@ def veterancy_pickup(m):
     return t
 
 
+def swapped_file(m):
+    """engine_secretfile_s b: b with file 1's HealCrateCollide written before its AttributeCrateCollide. H1 (the
+    module first in the XML acts): 兵血 100, 盖 0; H2 (the attribute crate always): b again. Measured
+    (CampSecretSwapB_mcp_1127_071224): 6, 0, 100 from s40.5 -- H1."""
+    t = collect_file(m)
+    t.expect = [('存活', 0, 'ever==', 6), ('盖', 0, '==', 0), ('兵血', 0, 'ever==', 100)]
+    return t
+
+
 MISSION = {'engine_healcrate': mission, 'engine_healcrate_r': lambda: mission(True), 'engine_healcrate_h': hypotheses,
            'engine_healcrate_v': lambda: hypotheses(True), 'engine_secretfile_e': secret_files_mission,
-           'engine_moneycrate_e': pickup_mission, 'engine_vetcrate_e': lambda: pickup_mission(True)}
+           'engine_moneycrate_e': pickup_mission, 'engine_vetcrate_e': lambda: pickup_mission(True),
+           'engine_secretfile_s': lambda: secret_files_mission(True)}
 CHECKS = {'engine_healcrate': {'a': check, 'b': passed, 'c': ordered}, 'engine_healcrate_r': {'a': check, 'b': collect, 'c': recalled},
           'engine_healcrate_h': {'a': hyp_check}, 'engine_healcrate_v': {'a': hyp_check},
           'engine_secretfile_e': {'a': secret_files, 'b': collect_file}, 'engine_moneycrate_e': {'a': money_pickup},
-          'engine_vetcrate_e': {'a': veterancy_pickup}}
+          'engine_vetcrate_e': {'a': veterancy_pickup}, 'engine_secretfile_s': {'b': swapped_file}}
 CONTROL_ARMS = {'engine_healcrate': ('On', 'Off')}
