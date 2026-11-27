@@ -456,14 +456,64 @@ def check_v(m, controlled=False):
     return t
 
 
+def mission_y():
+    m = Mission(name='CampSlaughterY', map=infiltrator_batch, units=[carrier('CNVE170Off', strip=True)], ext=True)
+    for tag, template, x in [('On', 'AlliedAntiStructureShip', -2510), ('Off', 'CNVE170Off', -1110)]:
+        m.put(template, 'ship', x, 400, role=tag + ' host', name='E291 ' + tag + ' host')
+        m.put('SovietAntiAirShip', 'ship', x, 900, side='s1', role=tag + ' target', name='E291 ' + tag + ' target')
+        m.waypoint(tag, 'E291 ' + tag, 'ship', x, 650)
+    m.spawns.add('AlliedAttackDrone')
+    return m
+
+
+def check_y(m):
+    """W's water lanes without the yard. Predict both launch after f600 (INFERRED).
+
+    Gate records each first aircraft (1/2) and paired deletion of live targets (4).
+    RETURN_TO_SOURCE predicts the retail arm clears and the stripped arm retains
+    aircraft (INFERRED); regional AIRCRAFT counts do not identify individual drones.
+    """
+    t, p1 = Test(), m.player('p1')
+    frame, gate = 'E291Frame', 'E291Gate'
+    t.counters = [(frame, '完成帧'), (gate, '出机位')]
+    quiet, orders, delete, both_out = [], [], [], []
+    for tag, label, bit in [('On', '原版机', 1), ('Off', '删模块机', 2)]:
+        host, target = m.role(tag + ' host').name, m.role(tag + ' target').name
+        area, meter = 'E291 ' + tag, 'E291Air' + tag
+        t.areas[area] = square(*m.point(tag), 690)
+        t.counters.append((meter, label))
+        quiet.extend(('UNIT_CHANGE_OBJECT_STATUS', unit, 'NO_ATTACK', 1) for unit in (host, target))
+        orders.extend([('UNIT_CHANGE_OBJECT_STATUS', host, 'NO_ATTACK', 0), ('NAMED_ATTACK_NAMED', host, target)])
+        delete.append(('NAMED_DELETE', target))
+        air = ('PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA', p1, 3, 1, kindof('AIRCRAFT'), area)
+        both_out.extend([air, ('NAMED_NOT_DESTROYED', target)])
+        t.scripts += [Script('Test - sortie ' + tag, [('COUNTER', frame, 3, 600), air],
+                             [('INCREMENT_COUNTER', bit, gate)]),
+                      Script('Test - reset meter ' + tag, [], [('SET_COUNTER', meter, 0)], once=False)]
+        for n in range(1, 11):
+            t.scripts.append(Script(f'Test - {tag} live {n}', [(*air[:3], n, *air[4:])],
+                                    [('SET_COUNTER', meter, n)], once=False))
+    t.scripts[:0] = [
+        Script('Test - frame', [('COUNTER', frame, 0, 1050)], [('INCREMENT_COUNTER', 1, frame)], once=False),
+        Script('Test - quiet', [], [('MAP_REVEAL_ALL_PERM', p1), *quiet]),
+        Script('Test - attack', [('COUNTER', frame, 2, 600)], orders),
+        Script('Test - remove both targets', [('COUNTER', frame, 3, 600), *both_out],
+               [*delete, ('INCREMENT_COUNTER', 4, gate)]),
+    ]
+    t.expect = [('完成帧', 0, 'ever==', 1050), ('出机位', 0, 'ever==', 7)]
+    s8.watch(t, 77., .5)
+    return t
+
+
 MISSION = {'engine_slaughter_e': mission, 'engine_slaughter_p': lambda: mission('CampSlaughterP', ('p1', 'p1')),
            'engine_slaughter_q': mission_q, 'engine_slaughter_r': mission_r, 'engine_slaughter_s': mission_s,
-           'engine_slaughter_u': mission_u, 'engine_slaughter_v': mission_v}
+           'engine_slaughter_u': mission_u, 'engine_slaughter_v': mission_v, 'engine_slaughter_y': mission_y}
 CHECKS = {'engine_slaughter_e': {'a': check, 'b': lambda m: check(m, corrected=True)},
           'engine_slaughter_p': {'p': check_p}, 'engine_slaughter_q': {'q': check_q},
           'engine_slaughter_r': {'r': check_r}, 'engine_slaughter_s': {'s': check_s, 't': lambda m: check_s(m, True)},
           'engine_slaughter_u': {'u': check_u},
-          'engine_slaughter_v': {'v': check_v, 'w': lambda m: check_v(m, controlled=True)}}
+          'engine_slaughter_v': {'v': check_v, 'w': lambda m: check_v(m, controlled=True)},
+          'engine_slaughter_y': {'y': check_y}}
 # Each arm's drones are counted by its own player, so the hosts (and targets) swap sides: a confound, held here
 # as the one freedom; both arms read 0 (a negative baseline). Put both on p1 and count by area when E170 reopens.
 CONTROL_ARMS = {'engine_slaughter_e': ('On', 'Off', 'side'), 'engine_slaughter_p': ('On', 'Off')}

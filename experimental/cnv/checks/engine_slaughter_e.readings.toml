@@ -109,3 +109,14 @@ mismatch = "sim matches the production/order gate and the yard's three-aircraft 
 expect = ["rows[-1]['预摆'] == 5000 and rows[-1]['现造'] == 8000",
           "44 <= first('预摆', lambda v: v % 1000 < 100) <= 45",
           "46 <= first('现造', lambda v: v % 1000 < 100) <= 47"]
+
+[[reading]]
+id = "the_carrier_with_contain_clears_its_lane_after_paired_target_deletion"
+scene = {build = "engine_slaughter_y", check = "y", until = 72}
+bench = "CampSlaughterYY_mcp_1127_071449: both lanes start at 0 AIRCRAFT. At f621 the sortie/deletion gate is 7 and the current counts are 1/1. At f643 counts become 0/1 and stay there through f1204 (script frame capped at 1050)."
+proves = "After both carriers launch and the script removes both live targets together, only the retail lane clears. There is no yard or other player aircraft source in the setup. Actual containment and individual drone identity remain unobserved. See work/re/e291_slaughter_return.md."
+mismatch = "sim reaches f1050 with gate 0 and counts 0/0 throughout; the carrier sortie is still missing. The bench reaches gate 7 and late counts 0/1."
+expect = ["counter('E291Frame') == 1050 and rows[-1]['出机位'] == 7",
+          "any(r['出机位'] == 7 and r['原版机'] == r['删模块机'] == 1 for r in rows if 610 <= r['完成帧'] <= 635)",
+          "rows[-1]['原版机'] == 0 and rows[-1]['删模块机'] == 1",
+          "all(r['原版机'] == 0 and r['删模块机'] == 1 for r in rows if r['完成帧'] >= 650)"]
