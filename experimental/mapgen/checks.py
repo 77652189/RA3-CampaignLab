@@ -9,9 +9,9 @@ from pathlib import Path
 import numpy as np
 from scipy.ndimage import label
 
-from experimental.mapgen.buildings import Shape
+from experimental.mapgen.buildings import Shape, TOWN
 from experimental.mapgen.campaign_writer import rules
-from experimental.mapgen.roads import ROAD_WIDTH
+from experimental.mapgen.roads import ROAD_WIDTH, crosses_water
 from experimental.mapgen.terrain import CELL, polygon_mask, strip_coordinates, unit_direction
 
 
@@ -302,7 +302,7 @@ class _Grid:
                 and all(square.gap(s) >= 0 for group in self.buildings.values() for b in group for s in b.placement))
 
 
-def _answer(grid, rel, held):
+def _answer(grid, rel, held, pending):
     kind = rel['type']
     who = rel.get('who')
     unit = UNITS.get(who)
@@ -322,6 +322,8 @@ def _answer(grid, rel, held):
             sentence = f'{order} 航令：{sentence}' if who == 'ship' else f'{order} 行动命令：{sentence}'
         if held:
             return not expected, sentence, places, f'在 {rel["state"]} 状态放行 {order}。'
+        if pending:
+            return False, sentence, places, ''
         without = (avoid,) if avoid else ()
         connected = grid.reachable(who, a, b, without)
         if connected != expected:
@@ -338,58 +340,93 @@ def _answer(grid, rel, held):
         return not bypass, sentence, places, f'封住绕开 {only} 的口子，让{unit}只能从那里通过。'
     if kind == '谁先到':
         a, b, goal, lead = rel['a'], rel['b'], rel['to'], rel['min_lead']
-        left, right = (grid.length(who, start, goal) for start in (a, b))
+        left, right = (inf, inf) if pending else (grid.length(who, start, goal) for start in (a, b))
         return (isfinite(left) and isfinite(right) and right - left >= lead,
                 f'{unit}从 {a} 去 {goal} 比从 {b} 至少近 {lead:g}', (a, b, goal),
                 f'让两边都能到 {goal}，再把 {a} 的入口移近或让 {b} 的来路绕过一段界。')
     if kind == '绕多远':
         via, extra = rel['via'], rel['max_extra']
-        best = grid.length(who, a, b)
-        detour = grid.length(who, a, b, via)
+        best = inf if pending else grid.length(who, a, b)
+        detour = inf if pending else grid.length(who, a, b, via)
         return (isfinite(detour) and detour - best <= extra,
                 f'{unit}从 {a} 经 {via} 到 {b} 多走不超过 {extra:g}', (a, via, b),
                 f'把 {via} 的出入口移向 {a} 到 {b} 的主通路，或移开绕路上的阻挡。')
     if kind == '罩住':
         road, by, fraction = rel['road'], rel['by'], rel['fraction']
         sense = '射程' if by == 'range' else '视野'
-        return (grid.cover(point, road, by, fraction), f'{point} 的驻军楼{sense}罩住 {road} 的 {fraction:.0%}',
+        return (not pending and grid.cover(point, road, by, fraction),
+                f'{point} 的驻军楼{sense}罩住 {road} 的 {fraction:.0%}',
                 (point, road), f'在 {point} 设可驻军的主角楼并朝 {road} 放近，或移开两者之间的遮挡。')
     if kind == '看得见':
         visible = rel['visible']
         start, end = grid.point(a), grid.point(b)
-        return (grid.inside(start) and grid.inside(end) and grid.sight(start, end) == visible,
+        return (not pending and grid.inside(start) and grid.inside(end) and grid.sight(start, end) == visible,
                 f'从 {a} {"看得见" if visible else "看不见"} {b}', (a, b),
                 f'调整 {a} 到 {b} 之间的高度档，或{"移开" if visible else "加入"}遮挡物。')
     side = rel['side']
-    return (grid.room(point, side), f'{point} 有边长 {side:g} 的净平地', (point,),
+    return (not pending and grid.room(point, side), f'{point} 有边长 {side:g} 的净平地', (point,),
             f'在 {point} 留一块同高的空地，移开侵入的主角，或把集结点移离岸线和坡肩。')
 
 
-def evaluate(sketch, ground, roadbed, layout, border, frame, flank_shapes=()):
+def _layout_dependencies(sketch, has_road_kit):
+    road_edges = [edge for road in sketch.roads for edge in sketch.edges[road]]
+    frontage = {block for edge in road_edges for block in sketch.sides[edge]}
+    buildings = any('protagonist' in spec or (name in frontage and spec['use'] in TOWN)
+                    for name, spec in sketch.blocks.items() if spec.get('kind') != 'water')
+    bridges = has_road_kit and any(crosses_water(sketch, edge) for edge in road_edges)
+    flanks = any('footpath' in cut for spec in sketch.borders.values() for cut in spec.get('segments', {}).values())
+    return buildings, bridges, flanks
+
+
+def _requires_layout(grid, rel, dependencies, has_road_kit):
+    buildings, bridges, flanks = dependencies
+    kind = rel['type']
+    if kind == '罩住':
+        return '需要布局：核对驻军楼和实路。'
+    if kind == '看得见':
+        # Buildings can obscure a clear ray, but cannot clear one blocked by terrain.
+        if buildings and grid.sight(grid.point(rel['from']), grid.point(rel['to'])):
+            return '需要布局：核对楼房对视线的遮挡。'
+    elif kind == '放得下':
+        if buildings:
+            return '需要布局：核对楼房是否占用净地。'
+    elif has_road_kit and any(rel.get(key) in grid.sketch.roads for key in ('via', 'only_via', 'without')):
+        return '需要布局：核对实际道路所占的通行格。'
+    elif rel['who'] != 'ship' and (buildings or bridges or flanks):
+        return '需要布局：核对楼房、桥面或小径侧挡对通行的影响。'
+    return ''
+
+
+def evaluate(sketch, ground, roadbed, layout, border, frame, flank_shapes=(), *, sketch_only=False,
+             has_road_kit=False):
     """Answer named orders and check open routes on the exported geometry."""
     if not sketch.relations:
         return {}
     grid = _Grid(sketch, ground, roadbed, layout, border, frame, flank_shapes)
+    dependencies = _layout_dependencies(sketch, has_road_kit) if sketch_only else None
     answers = {}
     for name, relation in sketch.relations.items():
         state = relation.get('state', 'base')
         held = sketch.order_held(state, relation.get('order'))
-        ok, sentence, places, decision = _answer(grid, relation, held)
-        pending = not held and any(table[state] != table['base'] for table in
-                                   (sketch.state_pass, sketch.state_heights, sketch.playable))
+        pending = ''
+        if not held:
+            if any(table[state] != table['base'] for table in (sketch.state_pass, sketch.state_heights, sketch.playable)):
+                pending = f'先把 {state} 的过口、水位或可玩区变动展开成可检查的地图。'
+            elif dependencies is not None:
+                pending = _requires_layout(grid, relation, dependencies, has_road_kit)
+        ok, sentence, places, decision = _answer(grid, relation, held, pending)
         if state != 'base':
             sentence = f'{state} 状态下，{sentence}'
         witness = None
-        if pending:
-            ok, decision = False, f'先把 {state} 的过口、水位或可玩区变动展开成可检查的地图。'
-        elif not held and not ok and relation['type'] == '通不通' and relation.get('reachable', True):
+        if not pending and not held and not ok and relation['type'] == '通不通' and relation.get('reachable', True):
             witness = grid.route_witness(relation)
             if witness is None and relation.get('only_via'):
                 witness = grid.bypass_witness(relation)
             if witness:
                 x, y = witness.at
                 decision = f'{witness.place}（{x:g}, {y:g}）{witness.reason}。{decision}'
-        answers[name] = Answer('pass' if ok else 'fail', sentence, places, '' if ok else decision, witness)
+        status = 'pending' if pending else 'pass' if ok else 'fail'
+        answers[name] = Answer(status, sentence, places, pending or ('' if ok else decision), witness)
     return answers
 
 

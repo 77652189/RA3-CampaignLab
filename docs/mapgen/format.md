@@ -116,7 +116,11 @@
 
 从仓库根运行 `python -X utf8 -m experimental.mapgen.design design.json`。结构错误给出对象 ID 和规则，文件级错误用 `$` 定位。通行关系按块、过口和实交道路图返回 `pass` 或 `fail`。其余关系返回 `needs the grid`，留给展开后的格子检查。坡长、地表素材和楼的净空也要在展开后核对。
 
-草图阶段用 `checks.draw_failures(design.load("design.json"), {}, "sketch.svg")` 生成查看图（两个模块均在 `experimental.mapgen` 下），在浏览器打开本地 SVG。北向上，蓝线是路，黄线表示显式通行的界或一段过口，文字用 ID，悬停可看用途。该函数的第二个参数可接展开后 `built.check_relations()`。每次保存成图，`MapBuild.write()` 会同时保存 `*-relations.svg` 和 `*-checks.md`。失败关系有定位分图，能定位到格子时会画红圈。
+展开用 `build(..., level="sketch")` 铺出真实的高度、水深、过口与可玩边框。路在查看页上是线。航令以及只用这些格子就能确定的关系直接判定。若楼房、实路、桥或小径侧挡有可能改变结果，清单标「待展开」并指向布局。
+
+`level="layout"` 按选定的 `road_kit` 铺实路，锁定楼房并放置小径的实体侧挡，再检查同一批关系。改变通行格的命名态仍需展开对应状态的地图。`level="full"` 是默认层级，继续刷材质、装扮、加载氛围，供双格式地图导出。
+
+用 `experimental.mappage.viewer.write_preview(directory, built, title=...)` 写查看页和红绿清单。页面从当前地形格绘制，北向上，可点击关系定位到图上。`MapBuild.write()` 保存成图时另外写 `*-relations.svg` 和 `*-checks.md`。在同一 Python 会话重跑可复用素材库（含原厂氛围块）和布局、装扮读取的 SDK XML。
 
 ## 战役接口与导出
 

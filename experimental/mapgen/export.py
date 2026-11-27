@@ -192,6 +192,7 @@ def export(built, container, stem):
     The input is the normal CNV campaign container, with its player and waypoint
     property templates. The exported maps contain the map part, ready for missions.
     """
+    built.require_full()
     from experimental.cnv import build as cnv
     from experimental.mapgen.campaign_writer import MapFile, mapterrain
     from package import write_map

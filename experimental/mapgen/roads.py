@@ -501,6 +501,12 @@ def _frame_streets(sketch, links, layout, border):
             _straight_run(layout, road, point, end, Port(point, heading), Port(end, heading + math.pi), tier, {})
 
 
+def crosses_water(sketch, edge):
+    """Whether this split road edge needs the bridge fitting pass."""
+    sides = set(filter(None, sketch.sides[edge]))
+    return bool(sides) and all(sketch.medium(block) == design.WATER for block in sides)
+
+
 def expand(sketch, ground, border, kit):
     """Return native object placements and two ground masks for a validated v2 design."""
     if not sketch.roads:
@@ -523,8 +529,7 @@ def expand(sketch, ground, border, kit):
     for name in sketch.roads:
         run = []
         for edge in [*sketch.edges[name], None]:
-            sides = set(filter(None, sketch.sides[edge])) if edge else ()
-            if sides and all(sketch.medium(block) == design.WATER for block in sides):
+            if edge is not None and crosses_water(sketch, edge):
                 run.append(edge)
                 continue
             if run:

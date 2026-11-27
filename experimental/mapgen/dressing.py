@@ -10,7 +10,7 @@ import numpy as np
 
 from experimental.mapgen.buildings import Shape, TOWN, geometry_shapes
 from experimental.mapgen.design import DesignError, ROUTING_CELL, point_in_ring
-from experimental.mapgen.library import read_shape, read_xml
+from experimental.mapgen.library import read_shape, sdk_xml
 from experimental.mapgen.paint import KIT_ALIASES
 from experimental.mapgen.roads import ROAD_WIDTH
 from experimental.mapgen.terrain import CELL, Ground, Piece, strip_coordinates
@@ -132,7 +132,7 @@ class _Assets:
         data = entry.get('geometry')
         if data is None:
             src = self.sage / entry['source'].removeprefix('sdk/SageXML/')
-            obj = next(o for o in read_xml(src).iter('GameObject') if o.attrib['id'].casefold() == key)
+            obj = next(o for o in sdk_xml(src).iter('GameObject') if o.attrib['id'].casefold() == key)
             data = {'shapes': [read_shape(node) for node in obj.findall('Geometry/Shape')]}
         shapes = geometry_shapes(data['shapes'])
         if not shapes and kind not in NO_PATH_BLOCK:

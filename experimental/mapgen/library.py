@@ -10,6 +10,7 @@ import json
 import math
 import re
 from collections import defaultdict
+from functools import lru_cache
 from pathlib import Path
 from statistics import median
 from xml.etree import ElementTree as ET
@@ -44,6 +45,32 @@ def read_xml(path):
     for node in root.iter():
         node.tag = node.tag.removeprefix(ASSET_NS)
     return root
+
+
+def _revision(path):
+    info = path.stat()
+    return info.st_mtime_ns, info.st_size
+
+
+@lru_cache(maxsize=4)
+def _load_library(path, revision):
+    return json.loads(path.read_text(encoding='utf-8'))
+
+
+def load_library(path):
+    """Reuse the read-only catalogue, including its original retail mood chunks."""
+    path = Path(path).resolve()
+    return _load_library(path, _revision(path))
+
+
+@lru_cache(maxsize=256)
+def _sdk_xml(path, revision):
+    return read_xml(path)
+
+
+def sdk_xml(path):
+    """Reuse the read-only SDK document across layout and dressing passes."""
+    return _sdk_xml(path, _revision(path))
 
 
 def read_shape(node):

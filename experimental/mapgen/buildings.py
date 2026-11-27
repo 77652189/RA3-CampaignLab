@@ -11,7 +11,7 @@ import numpy as np
 
 from experimental.mapgen.campaign_writer import rules
 from experimental.mapgen.design import DesignError, point_in_ring, signed_area_twice
-from experimental.mapgen.library import read_xml
+from experimental.mapgen.library import sdk_xml
 from experimental.mapgen.roads import ROAD_WIDTH
 from experimental.mapgen.terrain import CELL
 
@@ -204,7 +204,7 @@ class BuildingPlanner:
 
     def _document(self, path):
         if path not in self._sdk:
-            root = read_xml(path)
+            root = sdk_xml(path)
             objects = {obj.attrib['id'].casefold(): obj for obj in root.iter('GameObject')}
             includes = [node.attrib['source'][5:] for node in root.findall('Includes/Include')
                         if node.get('source', '').startswith('DATA:')]

@@ -6,8 +6,12 @@ from pathlib import Path
 from shutil import copyfile
 from string import Template
 
+import numpy as np
+from PIL import Image
+
 from experimental.campaign import maprender, mapstudy
-from experimental.campaign.terrain_rules import WORLD_PER_OURS
+from experimental.campaign.platmap import CONTAINER
+from experimental.campaign.terrain_rules import CELL, WORLD_PER_OURS
 
 
 PAGE = Template("""<!doctype html>
@@ -32,6 +36,7 @@ PAGE = Template("""<!doctype html>
   .comparison { overflow-x: auto; }
   .pair, .gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .pair { min-width: 530px; }
+  .pair.single { grid-template-columns: 1fr; min-width: 0; }
   figcaption { margin: 6px 0 0; color: #dce2df; overflow-wrap: anywhere; }
   .map { position: relative; background: #0b1012; }
   .map img, .gallery img { display: block; width: 100%; height: auto; }
@@ -55,6 +60,8 @@ PAGE = Template("""<!doctype html>
   .road { stroke: #ffe197; } .border { stroke: #fbad84; stroke-dasharray: 4 3; }
   .passage { stroke: #edb3ff; stroke-width: 3; }
   .point { fill: #f5f8ff; stroke: #182325; stroke-width: 1.5; }
+  .building { fill: #e4c49a; stroke: #29251f; stroke-width: 2; }
+  .protagonist { fill: #ffd680; }
   .highlight { fill: currentColor; fill-opacity: .19; stroke: currentColor; stroke-width: 4;
                pointer-events: none; filter: drop-shadow(0 1px 2px #080d10); }
   [hidden] { display: none; }
@@ -90,25 +97,19 @@ PAGE = Template("""<!doctype html>
         <span class="key passage-key">过口</span><span class="key point-key">点</span>
       </div>
       <div class="comparison">
-        <div class="pair">
+        <div class="pair$pair_class">
           <figure>
             <div class="map" id="built-map">
               <img src="built.png" alt="生成图俯视">
               <svg viewBox="0 0 $width $height" stroke-linecap="round" stroke-linejoin="round"
                    aria-label="设计和关系位置">
-                <defs>$definitions</defs><g class="design-layer">$design_layer</g>$highlights
+                <defs>$definitions</defs>$buildings<g class="design-layer">$design_layer</g>$highlights
               </svg>
               <span class="scale" style="width:$scale_percent%">↑ 北 · $scale 世界单位</span>
             </div>
-            <figcaption>生成图</figcaption>
+            <figcaption>$built_label</figcaption>
           </figure>
-          <figure>
-            <div class="map">
-              <img src="retail.png" alt="原厂地图俯视">
-              <span class="scale" style="width:$scale_percent%">↑ 北 · $scale 世界单位</span>
-            </div>
-            <figcaption>原厂对照 · $retail</figcaption>
-          </figure>
+          $retail_panel
         </div>
       </div>
     </div>
@@ -195,15 +196,44 @@ def _overlay(sketch, bounds):
     return definitions, ''.join(layer)
 
 
+def write_preview(directory, built, *, title):
+    """Write a review from the live terrain grid and layout, without a native map."""
+    if built.sketch is None:
+        raise ValueError('Map preview requires a design')
+    directory = Path(directory)
+    directory.mkdir(parents=True, exist_ok=True)
+    border = CONTAINER[2]
+    x0, y0, x1, y1 = built.frame.map_borders(border)[-1]
+    area = np.s_[y0 + border:y1 + border, x0 + border:x1 + border]
+    ground = built.ground
+    depth = ground.waterline[area] - ground.raw[area]
+    height = np.minimum(ground.raw[area] / 80, 100)[..., None]
+    land = np.array([45, 67, 37]) + height
+    water = np.array([67, 134, 160]) - np.clip(depth / 45, 0, 47)[..., None]
+    pixels = np.where(depth[..., None] >= 0, water, land)
+    pixels[ground.blocked[area]] *= .68
+    if built.roadbed is not None:
+        pixels[built.roadbed.paved[area]] = (139, 133, 120)
+    Image.fromarray(pixels[::-1].astype(np.uint8)).save(directory / 'built.png')
+    bounds = tuple(n * CELL for n in (x0, y0, x1, y1))
+    _write_viewer(directory, title, built.sketch, built.check_relations(), bounds, built=built)
+
+
 def write_viewer(directory, *, title, sketch, answers, bounds, retail_label, screenshots=()):
     """Write index.html and summary.md next to built.png and retail.png of equal world extent."""
+    _write_viewer(directory, title, sketch, answers, bounds, retail_label, screenshots)
+
+
+def _write_viewer(directory, title, sketch, answers, bounds, retail_label=None, screenshots=(), *, built=None):
     directory = Path(directory)
     west, south, east, north = bounds
     width, height = east - west, north - south
     definitions, layer = _overlay(sketch, bounds)
     ordered = sorted(answers.items(), key=lambda item: item[1].status != 'fail')
     rows, highlights = [], []
-    report = [f'# {title}', '', f'原厂对照：{retail_label}', '']
+    report = [f'# {title}', '']
+    if retail_label is not None:
+        report += [f'原厂对照：{retail_label}', '']
     for index, (name, answer) in enumerate(ordered):
         active = index == 0
         verdict = {'fail': '未通过', 'pending': '待展开', 'pass': '通过'}[answer.status]
@@ -215,6 +245,10 @@ def write_viewer(directory, *, title, sketch, answers, bounds, retail_label, scr
             + (f'<p>建议　{escape(answer.decision)}</p>' if answer.decision else '') + '</div></details>'
         )
         marks = ''.join(f'<use href="#place-{escape(place)}"/>' for place in answer.place)
+        if answer.witness is not None:
+            x, y = maprender.north_up(*answer.witness.at, north)
+            marks += (f'<circle cx="{x - west:g}" cy="{y:g}" r="{width / 95:g}">'
+                      f'<title>{escape(answer.witness.reason)}</title></circle>')
         highlights.append(f'<g class="highlight {answer.status}" data-highlight="{index}"'
                           f'{"" if active else " hidden"}>{marks}</g>')
         report.append(f'- {answer.status.upper()} `{name}` · {answer.sentence}')
@@ -225,6 +259,8 @@ def write_viewer(directory, *, title, sketch, answers, bounds, retail_label, scr
                 at = f' ({point["at"][0]:g}, {point["at"][1]:g})' if point else ''
                 locations.append(f'`{place}`{at}')
             report.append(f'  - 位置：{"、".join(locations)}。建议：{answer.decision}')
+        elif answer.status == 'pending':
+            report.append(f'  - {answer.decision}')
 
     gallery = []
     for index, (caption, source) in enumerate(screenshots, start=1):
@@ -234,10 +270,29 @@ def write_viewer(directory, *, title, sketch, answers, bounds, retail_label, scr
                        f'<figcaption>{escape(caption)}</figcaption></figure>')
 
     scale = 100 if width < 2000 else 500
+    scale_percent = 100 * scale / width
+    retail_panel = ''
+    if retail_label is not None:
+        retail_panel = (
+            '<figure><div class="map"><img src="retail.png" alt="原厂地图俯视">'
+            f'<span class="scale" style="width:{scale_percent:g}%">↑ 北 · {scale} 世界单位</span></div>'
+            f'<figcaption>原厂对照 · {escape(retail_label)}</figcaption></figure>'
+        )
+    buildings = []
+    built_label = '生成图'
+    if built is not None:
+        built_label = {'sketch': '地形草图', 'layout': '布局', 'full': '成图布局'}[built.level]
+        for _, group in built.layout.blocks:
+            for b in group:
+                x, y = maprender.north_up(b.x, b.y, north)
+                kind = 'building protagonist' if b.protagonist else 'building'
+                buildings.append(f'<circle class="{kind}" cx="{x - west:g}" cy="{y:g}" r="{CELL}">'
+                                 f'<title>{escape(b.template)}</title></circle>')
     page = PAGE.substitute(
-        title=escape(title), retail=escape(retail_label),
+        title=escape(title), built_label=built_label, retail_panel=retail_panel,
+        pair_class='' if retail_panel else ' single', buildings=''.join(buildings),
         ice_key='<span class="key ice-key">河冰</span>' if any(b['use'] == 'ice' for b in sketch.blocks.values()) else '',
-        width=f'{width:g}', height=f'{height:g}', scale=scale, scale_percent=f'{100 * scale / width:g}',
+        width=f'{width:g}', height=f'{height:g}', scale=scale, scale_percent=f'{scale_percent:g}',
         definitions=definitions, design_layer=layer, highlights=''.join(highlights),
         relations=''.join(rows) or '<p>这张设计没有声明关系。</p>',
         bench=('<section><h2>实机截图</h2><div class="gallery">' + ''.join(gallery) + '</div></section>')

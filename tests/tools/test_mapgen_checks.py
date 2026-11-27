@@ -1,13 +1,102 @@
 from dataclasses import replace
+import json
 from xml.etree import ElementTree
 
-from experimental.mapgen import terrain
+import pytest
+
+from experimental.campaign.mapscript import Node
+from experimental.mapgen import build as builder, paint, terrain
 from experimental.mapgen.build import MapBuild
 from experimental.mapgen.buildings import Layout
 from experimental.mapgen.checks import draw_failures
 from experimental.mapgen.campaign_writer import rules
 from experimental.mapgen.design import Design
 from experimental.mapgen.dressing import footpath_flanks
+from experimental.mapgen.export import export
+from experimental.mappage import viewer
+from test_mapgen_terrain import _container
+
+
+def test_sketch_relations_survive_layout_and_native_build(tmp_path, monkeypatch):
+    size = (111, 111, 0)
+    monkeypatch.setattr(builder, 'CONTAINER', size)
+    monkeypatch.setattr(viewer, 'CONTAINER', size)
+    monkeypatch.setattr(paint, 'ART', tmp_path)
+    monkeypatch.setattr(builder.labpaths, 'SDK3', tmp_path)
+    sage = tmp_path / 'SageXML'
+    sage.mkdir()
+    (sage / 'House.xml').write_text('<AssetDeclaration><GameObject id="T_House"/></AssetDeclaration>')
+    (tmp_path / 'surface.tga').touch()
+    shape = {'Type': 'BOX', 'MajorRadius': 24, 'MinorRadius': 24, 'Height': 30}
+
+    def material(name):
+        return [{'id': name, 'Texture': 'surface.tga', 'BumpTexture': 'surface.tga'}]
+
+    library = tmp_path / 'library.json'
+    library.write_text(json.dumps({
+        'kits': {'Test_T': {'buildings': [{'template': 'T_House', 'source': 'House.xml',
+                                         'geometry': {'footprint': [shape], 'shapes': [shape]}}],
+                            'props': [], 'destructibles': []}},
+        'blocking': {'t_house': {'cls': 'all'}},
+        'texture_kits': {'Test': {'Grass': material('Grass_Heidelberg01'),
+                                  'Sand': material('Sand_SantaMonica01')}},
+    }))
+    source = tmp_path / 'design.json'
+    source.write_text(json.dumps({
+        'version': 2,
+        'borders': {
+            'rim': {'line': [[0, 0], [1000, 0], [1000, 800], [0, 800], [0, 0]]},
+            'coast': {'line': [[0, 550], [1000, 550]]},
+            'mouth': {'line': [[500, 0], [500, 550]], 'pass': ['ship']},
+        },
+        'blocks': {
+            'bay': {'at': [250, 200], 'height': 3, 'use': 'water', 'kind': 'water'},
+            'port': {'at': [750, 200], 'height': 3, 'use': 'water', 'kind': 'water'},
+            'yard': {'at': [250, 680], 'height': 3, 'use': 'park', 'protagonist': 'T_House'},
+        },
+        'points': {'muster': {'at': [250, 680], 'block': 'yard'}},
+        'relations': {
+            'channel': {'type': '通不通', 'from': 'bay', 'to': 'port', 'who': 'ship', 'only_via': 'mouth'},
+            'room': {'type': '放得下', 'point': 'muster', 'side': 40},
+        },
+    }), encoding='utf-8')
+
+    def expand(level):
+        return builder.build(source, library, kit='Test_T', level=level)
+
+    sketch = expand('sketch')
+    answers = sketch.check_relations()
+    assert answers['channel'].status == 'pass'
+    assert answers['room'].status == 'pending' and '需要布局' in answers['room'].decision
+    assert sketch.roadbed is None and not sketch.layout.blocks and not sketch.scenery
+    page = tmp_path / 'preview'
+    viewer.write_preview(page, sketch, title='港口')
+    assert '需要布局' in (page / 'index.html').read_text(encoding='utf-8')
+    assert 'PASS `channel`' in (page / 'summary.md').read_text(encoding='utf-8')
+    assert {p.name for p in page.iterdir()} == {'index.html', 'summary.md', 'built.png'}
+    with pytest.raises(ValueError, match='requires a full build'):
+        export(sketch, None, None)
+
+    layout = expand('layout')
+    assert layout.check_relations()['room'].status == 'fail'  # House overlaps the meeting point.
+    full = expand('full')
+    assert full.check_relations() == layout.check_relations()
+    assert full.check_relations()['channel'] == answers['channel']
+
+    container = _container(*size)
+    container.name_id('Object')
+    container.name_id('ObjectsList')
+    container.nodes.append(Node('ObjectsList', 1, b'', []))
+    prepared = tmp_path / 'container.map'
+    prepared.write_bytes(container.map_file())
+
+    def encoded(built, name):
+        stem = tmp_path / name
+        built.write(prepared, stem)
+        return tuple((tmp_path / f'{name}-{suffix}').read_bytes()
+                     for suffix in ('game.map', 'editor.map', 'locked.json'))
+
+    assert encoded(full, 'first') == encoded(expand('full'), 'second')
 
 
 def test_harbor_order_checks_each_state_on_the_same_continuous_water():

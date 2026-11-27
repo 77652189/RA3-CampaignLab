@@ -115,8 +115,8 @@
 | 0 | 一句话变成卡，写下戏、剧情事实、硬约束和关型 | — | agent | 未指定的地点、小队规模和摆法由设计决定 |
 | 1 | 卡上写地点、时限、风格理由，设计 JSON 写 `commitments.mood`，套件交给 `build(..., kit=...)` | ① | agent | 从原厂库选实际存在的 ID |
 | 2 | 写成能检查的关系，给出生、交战、抵达等动作各取一个地点 ID | ② | agent | [关系参数](format.md#关系与修补) |
-| 3 | 草图写路、块、界、点 | ② | agent | 跑 `python -X utf8 -m experimental.mapgen.design design.json`，再按[格式页](format.md#关系与修补)输出并打开草图 SVG → **闸门一** |
-| 4 | 布局加子块、定主角和坡口 | ② | agent | 用下方入口展开，核对 `built.layout`、`built.ground.issues` 和 `built.check_relations()` → **闸门二** |
+| 3 | 草图写路、块、界、点 | ② | agent | 用 `preview("sketch")` 刷新查看页，核对地形和已经可判的关系 → **闸门一** |
+| 4 | 布局加子块、定主角和坡口 | ② | agent | 用 `preview("layout")` 展开实路、主角和碰撞，再看关系清单 → **闸门二** |
 | 5 | 装扮调块的用途、套件、种子和确有必要的修补 | ② | agent | 在同一份 JSON 上重跑。检查路线后再看图，确认地图仍表现原来的选择 |
 | 6 | 贴图和固定光照按套件及原版来源展开 | ③ | 展开器 | `check_relations()` 和俯视图分别核路线与构图 |
 | 7 | 从准备好的容器写出两种 `.map`、布局锁和关系报告。要加载剧情，再接任务层 | ④ | 现有工具 | `--show` 检查摆位和脚本引用 |
@@ -124,7 +124,25 @@
 
 锁定之后要改布局，就退回第 4 步重来。装扮阶段改出的玩法变化会被玩法比对拦下来。
 
-从仓库根用 Python 调用现有入口。第 4 步先输入简化布局，第 5 步带装扮重跑同一个入口。一次 `build()` 会铺地、锁楼并自动装扮。
+从仓库根打开 Python 会话。在第 3、4 步每次保存设计后，在同一会话调用对应层级，再刷新 `output/review/index.html`。清单里「待展开」会提示要补验的几何。
+
+```python
+from pathlib import Path
+from experimental.campaign import labpaths
+from experimental.mapgen.build import build
+from experimental.mappage.viewer import write_preview
+
+library = Path(labpaths.WORK) / "mapgen" / "library.json"
+
+def preview(level):
+    built = build("design.json", library, kit="Heidelberg_HB", road_kit="Heidelberg_HB", level=level)
+    write_preview("output/review", built, title="地图设计")
+    print(built.ground.issues)
+
+preview("sketch")
+```
+
+第 5 步起用默认的 `full` 层铺地、锁楼、刷地表、装扮并选取固定光照。准备好的容器可以反复用于这一层的导出。
 
 ```python
 from pathlib import Path
@@ -134,7 +152,7 @@ from experimental.mapgen.campaign_writer import MapFile, newmap
 import make_campnew18
 
 library = Path(labpaths.WORK) / "mapgen" / "library.json"
-built = build("design.json", library, kit="Heidelberg_HB")
+built = build("design.json", library, kit="Heidelberg_HB", road_kit="Heidelberg_HB")
 print(built.ground.issues)
 print({name: result.status for name, result in built.check_relations().items()})
 
@@ -166,7 +184,7 @@ built.write(prepared, out / "my-map")
 
 ### agent 的循环
 
-在第 3、4、5 步里，agent 按"写决定 → 展开 → 读诊断 → 改决定"转，直到检查全过。诊断给的是 agent 读得懂的东西（逐块的数、玩法比对、标了问题的图），不给几千个物件。每种毛病对应一个可以调的决定：
+在第 3、4、5 步里，agent 按“写决定 → 展开 → 读诊断 → 改决定”转。当前层已经可判的关系通过后，把待展开项带到相应阶段复核。每种毛病对应一个可以调的决定：
 
 - 太空：换大一号的主角或加院子；
 - 太挤：缩小主角或拆块；
