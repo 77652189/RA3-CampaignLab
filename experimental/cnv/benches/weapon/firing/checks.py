@@ -45,7 +45,7 @@ def engine_acquire():
 
     VARIANTS = ('idle180', 'idle260', 'idle400', 'guard260', 'guard400', 'am260', 'am400', 'idle200', 'idle220', 'idle240',
                 'hold180', 'hold220', 'agg220', 'agg240', 'agg260', 'gst450', 'gsc450', 'gch450', 'grt400', 'grs400',
-                'gri400', 'grj400', 'idi220', 'idm220')
+                'gri400', 'grj400', 'idi220', 'idm220', 'gsm450', 'gsn450')
     ATK, TANK = 'UNIT - CNV Aq Atk', 'UNIT - CNV Aq Tank'
     RUN = 25.0
     INF = ('gri', 'grj', 'idi', 'idm')  # a conscript (vision 200, AK 150, walks 50, cannot fire on the move)

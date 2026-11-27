@@ -429,6 +429,13 @@ AIDATA_RUNS = {'aiskad': {'Optimization_NumTeamsToRecruit': '0'},
                # aiskwp: the five read only by Generals' AIPlayer team building (select / build-specific / afford)
                'aiskwp': {'ResourcesWealthy': '0', 'ResourcesPoor': '100000', 'TeamWealthyMod': '100.0',
                           'TeamPoorMod': '100.0', 'TeamResourcesToBuild': '100.0'},
+               # aiskot / aiskoe / aiskoc: the five Optimization_ cache times / per-frame counts at extremes, split
+               # (readers: work/re l4_aidata_readers; all five at once read as aiskoe, B 11-27)
+               'aiskot': {'Optimization_TimeToCacheCanEnterTransport': '3600s'},
+               'aiskoe': {'Optimization_NumEfficiencyUpdates': '0'},
+               'aiskoc': {'Optimization_TimeToCacheCanReachMobileTarget': '3600s',
+                          'Optimization_TimeToCacheCanReachImmobileTarget': '3600s',
+                          'Optimization_TacticsEmergencyKickPeriod': '3600s'},
                'aiskgf': {'SkirmishGroupFudgeValue': '200.0'},   # stock 4: x5 units = a 1000 waypoint radius
                # aiskn1 / aiskn10: the poll's per-pass cap at 1 against 10 (stock), both with the teams host
                'aiskn1': {'Optimization_NumTeamsToRecruit': '1'},

@@ -101,6 +101,19 @@ expect = ["[r['远'] for r in st] == [r['远'] for r in ch]", "st[-1]['坦克血
 
 [[reading]]
 bench_id = "engine_acquire"
+id = "max_retaliate_distance_5000_or_1_leaves_the_guard_as_stock"
+item = "AI 全局常量/AIData.MaxRetaliateDistance"
+scenes = {st = {build = "acquire_gst450", check = "frames", until = 33}, sm = {build = "acquire_gsm450", check = "frames", until = 33}, sn = {build = "acquire_gsn450", check = "frames", until = 33}}
+bench = """\
+11-27 (CampAqG24/25/15Frames_mcp_1127_112913 / 113035 / 113152): MaxRetaliateDistance 5000 and 1 (stock 410; read as \
+the guard's chase leash and x 0.3 as the guard-return scan radius, work/re l4_aidata_readers.md) read second for \
+second as stock: 远 0, 近敌 1 all along, the tank 87 s6 ... 50 from s12. So the leash is not what stops the guard \
+firing at s12 (guard_does_not_follow_a_target_driving_off); this shows the field changes nothing here, not where it bites"""
+proves = "sim: MaxRetaliateDistance is not read -- a guard's run is the same with the leash at 5000 or 1"
+expect = ["[list(r.values()) for r in st] == [list(r.values()) for r in sm] == [list(r.values()) for r in sn]"]
+
+[[reading]]
+bench_id = "engine_acquire"
 id = "guard_does_not_follow_a_target_driving_off"
 scene = {build = "acquire_gst450", check = "frames", until = 33}
 bench = "远 0 all along (never within 180 of F), the tank's health 50 from s12 to s33: no shot after s12 though the tank stood at N to s14"

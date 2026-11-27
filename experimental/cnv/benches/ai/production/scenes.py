@@ -1948,6 +1948,9 @@ def aiskirm_bench():
         'aiskts': lambda: mission('CampAISkTS', aidata=AIDATA_RUNS['aiskts']),      # check fm: TeamSeconds 600
         'aiskgf': lambda: mission('CampAISkGF', aidata=AIDATA_RUNS['aiskgf']),      # check fm: GroupFudge 200
         'aiskwp': lambda: mission('CampAISkWP', aidata=AIDATA_RUNS['aiskwp']),      # check fm: wealth five
+        'aiskot': lambda: mission('CampAISkOT', aidata=AIDATA_RUNS['aiskot']),      # check fm: Optimization split
+        'aiskoe': lambda: mission('CampAISkOE', aidata=AIDATA_RUNS['aiskoe']),      # check fm: Optimization split
+        'aiskoc': lambda: mission('CampAISkOC', aidata=AIDATA_RUNS['aiskoc']),      # check fm: Optimization split
         'aiskga': lambda: mission('CampAISkGA', armydef=GATHERER_RUN),              # check fm: Gatherer canary
         'aiskew': lambda: mission('CampAISkEW', armydef=ENERGY_WALL_RUN),           # check fm: EnergyProducer + WallPiece
     }

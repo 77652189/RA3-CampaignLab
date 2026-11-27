@@ -892,6 +892,50 @@ expect = ["146 <= times[first] <= 176", "15 <= times[three] - times[first] <= 35
 
 [[reading]]
 bench_id = "engine_aiskirm"
+id = "a_transport_entry_cache_of_an_hour_leaves_the_skirmish_team_as_stock"
+item = "AI 全局常量/AIData.Optimization_TimeToCacheCanEnterTransport"
+scene = {build = "aiskot", check = "fm", until = 250}
+bench = """\
+B 11-27 aiskot (CampAISkOTFm_mcp_1127_113716, PASS; Optimization_TimeToCacheCanEnterTransport 3600s, stock 2s, \
+spliced into the global stream) reads as aiskfon run beside it (CampAISkFOnFm_mcp_1127_112626) to a second: 激流到 1 \
+at s156 / s157, 3 at s185 / s185, 6 at s215-s229 / s216-s228, 维和到 1 at s172 / s172, home again by s238 / s237, the \
+next wave from s250 / s249. The field is how long a can-this-unit-enter-that-transport answer is kept (work/re \
+l4_aidata_readers.md); the Peacekeepers board the Riptides all the same"""
+proves = "simai: the Cleanup riders board their transports without a cached can-enter answer holding them back"
+let = {first = "next(i for i, r in enumerate(rows) if r['激流到'] >= 1)", three = "next(i for i, r in enumerate(rows) if r['激流到'] >= 3)"}
+expect = ["146 <= times[first] <= 176", "15 <= times[three] - times[first] <= 35", "rows[-1]['激流到'] == 0"]
+
+[[reading]]
+bench_id = "engine_aiskirm"
+id = "no_efficiency_updates_leave_the_attack_team_at_the_player_s_base"
+scene = {build = "aiskoe", check = "fm", until = 268}
+bench = """\
+B 11-27 aiskoe (CampAISkOEFm_mcp_1127_113552, FAIL; Optimization_NumEfficiencyUpdates 0, stock 2) and the five \
+Optimization_ fields at once (CampAISkOPFm_mcp_1127_112749) read the same and off aiskfon: 3 Riptides reach the \
+player's base (1 at s149, 3 from s203), no Peacekeeper ever does, and the three stay there to the end -- none home \
+again, no second wave (aiskfon: 6 there, the riders too, home by s237, the next wave from s249). The field is how many \
+pending efficiency entries the AI works off a frame (work/re l4_aidata_readers.md); at 0 none is ever filled in"""
+proves = "simai: with no efficiency updates the attack team goes without its riders and never comes home"
+mismatch = "the simulator does not read NumEfficiencyUpdates: its aiskoe is stock -- the riders come, the team goes home"
+expect = ["rows[-1]['激流到'] >= 3", "all(r['维和到'] == 0 for r in rows)"]
+
+[[reading]]
+bench_id = "engine_aiskirm"
+id = "reach_caches_and_kick_of_an_hour_bring_the_riders_in_with_the_riptides"
+scene = {build = "aiskoc", check = "fm", until = 268}
+bench = """\
+B 11-27 aiskoc (CampAISkOCFm_mcp_1127_113944 and _114630 read second for second the same, as do the two aiskfon \
+beside them, _112626 / _114507; Optimization_TimeToCacheCanReachMobileTarget / ImmobileTarget and \
+TacticsEmergencyKickPeriod 3600s): 激流到 1 at s154-155, 维和到 3 by s162-163 (with the Riptides; aiskfon 15 s \
+behind), at most 5 there, all home by s205-206 (aiskfon s237), and the next wave stays home, 8 Riptides from s238 to \
+the end (aiskfon's leaves from s249). Which of the three does it not split"""
+proves = "simai: the reach caches and the emergency kick period hold the attack team as aiskfon (riders 15 s behind)"
+mismatch = "the simulator reads none of the three: its aiskoc is stock -- the riders come 15 s behind, the next wave leaves"
+let = {riptide = "next(i for i, r in enumerate(rows) if r['激流到'] >= 1)", pk = "next(i for i, r in enumerate(rows) if r['维和到'] >= 1)"}
+expect = ["pk - riptide <= 10", "all(r['激流在家'] >= 8 for r in rows[-20:])"]
+
+[[reading]]
+bench_id = "engine_aiskirm"
 id = "use_formations_false_leaves_the_skirmish_team_as_stock"
 item = "AI 全局常量/AIData.UseFormations"
 scene = {build = "aiskfof", check = "fm", until = 250}
