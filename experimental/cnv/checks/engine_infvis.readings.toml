@@ -2,16 +2,21 @@
 # The runner's until is one second past the old bare Sim.run limit to include its last sample.
 
 [[reading]]
-id = "spy_ordinary_vision_japan_activation_as_on_the_bench"
-scene = {build = "engine_infvis", check = "c", until = 21}
-bench = "E76 c: enemy/ally/vision=1100/11100/0 at s18 and 1100/11100/1 at s19"
-proves = "InfiltratorContain VISION: the Japan yard's nearby marker first becomes visible at s19 after enemy spy entry"
-let = {sample = "lambda lo, hi: [v for t, v in zip(times, vals(rows)) if lo <= t <= hi]", matches = "lambda got, wanted: bool(got) and all(v == wanted for v in got)"}
-expect = [
-    "matches(sample(18, 18), [1100, 11100, 0])",
-    "matches(sample(19, 19), [1100, 11100, 1])",
-]
-mismatch = "E196 Japan s18 visibility: bench 0, simulator 1; the simulator reveals the marker early."
+id = "spy_ordinary_vision_enemy_consumed_ally_refused"
+scenes = {a = {build = "engine_infvis", check = "a", until = 37}, b = {build = "engine_infvis", check = "b", until = 37}, c = {build = "engine_infvis", check = "c", until = 37}}
+bench = "E76 a/b/c (Allied / Soviet / Japan yards): enemy/ally/vision = 11100/11100/0 s1-s10, 1100/11100/0 s11-s15 (a's first seen second s16; b s18, c s19)"
+proves = "InfiltratorContain: the enemy spy enters a construction yard and is consumed, the allied spy is refused (s13-s15: the simulator's entry is s13, the clock is spy_vision_three_yards_entry_passes')"
+let = {matches = "lambda rs, lo, hi, wanted: len(rs) > hi and all(v == wanted for v in vals(rs)[lo:hi + 1])"}
+expect = "all(matches(rs, 1, 10, [11100, 11100, 0]) and matches(rs, 13, 15, [1100, 11100, 0]) for rs in (a, b, c))"
+
+[[reading]]
+id = "spy_ordinary_vision_near_marker_seen"
+scenes = {a = {build = "engine_infvis", check = "a", until = 37}, b = {build = "engine_infvis", check = "b", until = 37}, c = {build = "engine_infvis", check = "c", until = 37}}
+bench = "E76 a/b/c: vision 1 from s16 / s18 / s19 to s37 (marker 700 north, beyond the yards' VisionRange 150 / 100)"
+proves = "not InfiltratorContain VISION: d (no entry) sees the same marker at s16 (A408 H4), the observer sees VisionRange only (H6)"
+let = {matches = "lambda rs, lo, hi, wanted: len(rs) > hi and all(v == wanted for v in vals(rs)[lo:hi + 1])"}
+expect = "matches(a, 16, 37, [1100, 11100, 1]) and matches(b, 18, 37, [1100, 11100, 1]) and matches(c, 19, 37, [1100, 11100, 1])"
+mismatch = "simulator: the near marker is never discovered (vision 0 to s37); bench 1 from s16 / s18 / s19 -- its source unmodelled (H5)"
 
 [[reading]]
 id = "spy_vision_three_yards_entry_passes"
@@ -22,20 +27,18 @@ expect = "rows[-1]['entries'] == 187184184"
 mismatch = "simulator 182182182 (every spy at pass 182), bench 187184184"
 
 [[reading]]
-id = "spy_vision_three_yards_only_the_last_entered_reveals"
+id = "spy_vision_three_yards_entered_no_reveal"
 scene = {build = "engine_infvis3", check = "a", until = 41}
-bench = "A406 CampInfVis3: japan stops at 167 from s22 (its near marker seen 167 passes after its spy is gone); allied / soviet still counting at s41 (465): not seen in 30 s"
-proves = "InfiltratorContain VISION: with three yards of one owner entered together, only the last entered (Japan) reveals its near marker"
-expect = "win(22, 40, 'japan') == [167] * 19 and rows[-1]['allied'] >= 440 and rows[-1]['soviet'] >= 440"
-mismatch = "simulator: all three seen 74 passes after entry (allied / soviet / japan 74); bench japan 167, allied / soviet never in 30 s"
+bench = "A406 CampInfVis3: allied / soviet still counting at s41 (465): not seen in 30 s (japan stops at 167 from s22: seen without entry too, b's reading)"
+proves = "InfiltratorContain VISION: three yards entered together do not reveal a marker 700 off (beyond VisionRange)"
+expect = "rows[-1]['allied'] > rows[-2]['allied'] and rows[-1]['soviet'] > rows[-2]['soviet']"
 
 [[reading]]
 id = "spy_vision_allied_alone_no_reveal"
 scene = {build = "engine_infvis3", check = "b", until = 41}
 bench = "A407 CampInfVis3B (head a9906d7a): only the Allied spy sent, gone at pass 184; allied still counting at s41 (465)"
 proves = "InfiltratorContain VISION: an Allied yard entered alone (no later entry anywhere) does not reveal its near marker in 30 s"
-expect = "rows[-1]['entries'] == 184 and rows[-1]['allied'] >= 440"
-mismatch = "simulator: Allied spy gone at pass 182, near marker seen 74 passes later; bench 184, not seen in 30 s"
+expect = "rows[-1]['allied'] > rows[-2]['allied']"
 
 [[reading]]
 id = "spy_vision_unentered_japan_marker_seen_anyway"

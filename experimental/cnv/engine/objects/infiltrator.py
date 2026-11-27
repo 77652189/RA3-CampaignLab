@@ -3,10 +3,10 @@
 One retail Allied plant: 20 seconds of zero supply, spy consumed, owner unchanged.
 Travel/entry reach is INFERRED; the blackout lasts Amount x the entered plant's EnergyProduction
 seconds (engine_infilpow h / i / j, one plant on the grid).
-engine_infvis:a/b/c measure Allied/Soviet/Japan yards' local vision.
-VISION activation delay of five seconds is INFERRED from second-spaced samples;
-Soviet/Japan first discovery is later; only stable windows replay, exact timing is a gap.
-mapping the whole local radius to yard XML and parent-death cleanup are INFERRED.
+VISION's observer sees the yard's own VisionRange (150 / Japan 100), not its 1000 shroud (A408 H6):
+engine_infvis:a/b/c's s16-s19 discovery recurs with no entry (d), so it was never VISION;
+engine_infvis3 a/b see nothing within 30 s of entry. A reveal inside VisionRange and
+parent-death cleanup are INFERRED (no bench shows the observer seeing anything).
 Observer lifetime, other templates/players/spies and repeated entry remain gaps.
 E138/E205 KILL removes the hostile Allied spy and credits the crane owner;
 fling distance, exact entry clock and death-module dispatch remain gaps.
@@ -240,10 +240,10 @@ class Infiltrators:
         return world.frame_now() < self.attack_until.get(body.serial, 0)
 
     def sees(self, side, x, y, air=False):
-        """Measured local yard shroud. Parent-death cleanup is INFERRED."""
+        """The entered host's VisionRange (sight; its shroud range sees nothing, A408). Parent-death cleanup INFERRED."""
         world, peers = self.world, self.peers
         return any(owner == side and target.alive and world.frame_now() >= start
-                   and peers.looks(target, x, y, air)
+                   and math.hypot(target.x - x, target.y - y) <= target.sight and peers.looks(target, x, y, air)
                    for owner, target, start in self.observers)
 
     def unit_discovered(self, side, body):
@@ -496,9 +496,7 @@ class Infiltrators:
                 world.change()
                 continue
             if self.vision_rule(target, rule):
-                # INFERRED: sampled consumption at s11, first local discovery at s16.
-                # No engine mechanism or exact first-frame claim follows from this fit.
-                self.observers.append((spy.owner, target, world.frame_now() + 5 * simunits.LIFE_FPS))
+                self.observers.append((spy.owner, target, world.frame_now()))   # INFERRED: sees from entry
                 world.world.remove(spy, '进楼渗透')
                 world.change()
                 continue
