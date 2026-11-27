@@ -1,0 +1,6 @@
+[[reading]]
+id = "script_created_wall_segment_starts_with_the_secondary_status"
+scene = {build = "engine_wallinit", check = "b", until = 12}
+bench = "E295 CampWallInitB_mcp_1127_084212: hub / segment / no module 10 / 11 / 10 at s1-s13"
+proves = "For walls created by CREATE_NAMED_ON_TEAM_AT_WAYPOINT, all three templates survive and only StartInSecondaryModel=true sets WALL_SEGMENT."
+expect = "all((r['hub'], r['segment'], r['none']) == (10, 11, 10) for r in rows[2:])"
