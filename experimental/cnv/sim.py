@@ -828,11 +828,11 @@ class Sim:
         proxy_hp = simbridge.proxy_health(self, template)   # the Body module's health is made below, once the modules are
         wall_start = simunits.wall_builder_start(template, self.own)
         if wall_start:
-            if not by and wall_start['secondary'] and wall_start['status'] == 'WALL_SEGMENT':
+            if wall_start['secondary'] and wall_start['status'] == 'WALL_SEGMENT':
                 b.script_status.add('WALL_SEGMENT')
                 b.status.add('WALL_SEGMENT')
             self.gap('WallBuilderBehavior', template,
-                     '仅预摆墙默认WALL_SEGMENT初始状态已量；运行时生成/建墙/连接/段数上限/生死联动、自定义状态与模型条件未建模；其他继承覆盖默认值INFERRED，脚本改位交互未测')
+                     '预摆与脚本具名生成的默认WALL_SEGMENT初始状态已量；其他生成入口及继承覆盖默认值INFERRED；建墙/连接/段数上限/生死联动、自定义状态与模型条件未建模；脚本改位交互未测')
         b.armor, weapons = f['armor'], f['weapons']     # held by its WeaponSet module (step W2), armed below
         if template not in self.__dict__.setdefault('_wsets', {}):
             self._wsets[template] = simunits.weapon_sets(template, self.own)

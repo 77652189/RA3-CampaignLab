@@ -1401,7 +1401,7 @@ def manager_proxy_health(template, own=None):
 
 
 def wall_builder_start(template, own=None):
-    """Startup only: engine_wallinit:a measured the default WALL_SEGMENT bit.
+    """Startup only: engine_wallinit:a/b measured the default WALL_SEGMENT bit for preplaced and script-created walls.
 
     Construction, connections, limits and nondefault status/model flags are gaps.
     Nearest declaration supplies StartInSecondaryModel (retail segments write it).

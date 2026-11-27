@@ -156,3 +156,11 @@ scene = {build = "engine_visclear", check = "a", until = 21}
 bench = "Bench 11-26 (E257, CampVisClrA_mcp_1126_061450): towers 115 of our units (72 world) above the cannons; ShroudClearingHeight 90 discovers the W tower, 65 not the E one, both ENEMY_SIGHTED: 看见 1101 s1-s21"
 proves = "sim Sim.looks / the fog grid: ShroudClearingHeight is world units, set against our heights / 0.625 (comparing it raw read 1100)"
 expect = "vals(rows)[-1][0] == 1101"
+
+[[reading]]
+bench_id = "engine_wallinit"
+id = "script_created_wall_segment_starts_with_the_secondary_status"
+scene = {build = "engine_wallinit", check = "b", until = 12}
+bench = "E295 CampWallInitB_mcp_1127_084212: hub / segment / no module 10 / 11 / 10 at s1-s13"
+proves = "For walls created by CREATE_NAMED_ON_TEAM_AT_WAYPOINT, all three templates survive and only StartInSecondaryModel=true sets WALL_SEGMENT."
+expect = "all((r['hub'], r['segment'], r['none']) == (10, 11, 10) for r in rows[2:])"

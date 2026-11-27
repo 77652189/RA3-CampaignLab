@@ -1,4 +1,4 @@
-"""WallBuilderBehavior startup, not a construction or connection acceptance.
+"""WallBuilderBehavior startup for preplaced walls (a) and script-created walls (b).
 
 Data prediction: StartInSecondaryModel=true sets WALL_SEGMENT; false and the
 identical no-module control do not. Rows encode alive*10 + WALL_SEGMENT.
@@ -8,12 +8,17 @@ no WallBuilderBehavior. Custom names are outside the retail ConnectingObjectFilt
 from parts import Script, Test, status
 
 
-def check(m):
+def check(m, spawn=False):
     t = Test()
     t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
     for role in ('hub', 'segment', 'none'):
         counter = 'Wall ' + role
-        name = m.role(role).name
+        wall = m.role(role)
+        name = wall.name
+        if spawn:
+            name += ' spawned'
+            t.scripts.append(Script('Test - spawn ' + role, [], [
+                ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', name, wall.template, m.team('p1'), m.mark('spawn ' + role))]))
         t.counters.append((counter, role))
         t.scripts += [
             Script('Test - reset ' + role, [], [('SET_COUNTER', counter, 0)], once=False),
@@ -26,4 +31,4 @@ def check(m):
     return t
 
 
-CHECKS = {'engine_wallinit': {'a': check}}
+CHECKS = {'engine_wallinit': {'a': check, 'b': lambda m: check(m, spawn=True)}}

@@ -30,8 +30,10 @@ def mission():
     units = [wall(mode) for mode in ('hub', 'segment', 'none')]
     m = Mission(name='CampWallInit', map=festival, units=units, facts={})
     for i, unit in enumerate(units):
-        m.put(unit.id, 'west field', 0, (i - 1) * 300, role=('hub', 'segment', 'none')[i],
-              name='UNIT - Wall ' + ('hub', 'segment', 'none')[i])
+        role = ('hub', 'segment', 'none')[i]
+        dy = (i - 1) * 300
+        m.put(unit.id, 'west field', 0, dy, role=role, name='UNIT - Wall ' + role)
+        m.waypoint('spawn ' + role, 'Test Wall Spawn ' + role, 'west field', 300, dy)
     return m
 
 
