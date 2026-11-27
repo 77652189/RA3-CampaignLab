@@ -1870,6 +1870,59 @@ def engine_propbody():
     return dict(MISSION=MISSION, CHECKS=CHECKS)
 
 
+def engine_highlander():
+    """Compare full and wounded HighlanderBody with ActiveBody under lethal NAMED_DAMAGE.
+
+    The rewind bench suggested a full Highlander might survive. Without the belt
+    or movement, the bench measured all three destroyed after the lethal hit.
+    """
+    from pathlib import Path
+
+    import labpaths
+    from maps import festival
+    from parts import Mission, Script, Test, Unit
+
+    arms = ('Full', 'Wounded', 'Active')
+    labels = ('满血', '伤血', '普通')
+    host = 'AlliedPowerPlant'
+
+    def mission():
+        m = Mission(name='CampHighlander', map=festival, units=[])
+        source = (Path(labpaths.SDK3) / 'SageXML/Allied/Structures/AlliedPowerPlant.xml').read_text(encoding='utf-8-sig')
+        for i, arm in enumerate(arms):
+            ident = 'CNVHighlander' + arm
+            xml = source.replace(f'id="{host}"', f'id="{ident}"', 1).replace('MaxHealth="1000.0"', 'MaxHealth="100"')
+            if arm != 'Active':
+                xml = xml.replace('<ActiveBody', '<HighlanderBody', 1)
+            m.units.append(Unit(ident, xml))
+            m.put(ident, 'west field', 0, 220 * (i - 1), role=arm, name='Highlander ' + arm)
+        return m
+
+    def check(m):
+        t = Test()
+        names = [m.role(arm).name for arm in arms]
+        t.scripts = [
+            Script('Highlander start', [], [('SET_MILLISECOND_TIMER', 'Wound at', 4.0),
+                                            ('SET_MILLISECOND_TIMER', 'Lethal at', 8.0)]),
+            Script('Highlander wound', [('TIMER_EXPIRED', 'Wound at')], [('NAMED_DAMAGE', names[1], 40)]),
+            Script('Highlander lethal', [('TIMER_EXPIRED', 'Lethal at')],
+                   [('NAMED_DAMAGE', name, 200) for name in names]),
+            Script('Highlander reset reads', [], [('SET_COUNTER', arm, -1) for arm in arms], once=False),
+        ]
+        for arm, name in zip(arms, names):
+            t.scripts.append(Script('Highlander read ' + arm, [('NAMED_NOT_DESTROYED', name)],
+                                    [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', name, arm)], once=False))
+        t.counters = list(zip(arms, labels))
+        t.expect = [(label, start, '==', hp, end)
+                    for start, end, values in ((1, 2, (100, 100, 100)), (5, 6, (100, 60, 100)),
+                                               (9, 11, (-1, -1, -1)))
+                    for label, hp in zip(labels, values)]
+        t.bench = [('bench_watch', dict(seconds=12, every=1, sheet=False, lines=3))]
+        return t
+
+    return dict(MISSION={'engine_highlander': mission}, CHECKS={'engine_highlander': {'a': check}})
+
+
 def engine_rewind():
     """A8's Liberty rewind (engine line D, user 11-11; benches/body_death/state/scenes.py#engine_rewind has the rules, units/rewind.py the
     carrier). Counters: 血 = the carrier's health %, 回溯 = presses of its belt, 原处 = 1 while it is within 150 of
@@ -2254,6 +2307,6 @@ def engine_topple():
 
 BENCHES = (
     engine_crash_fall, engine_crush, engine_drain, engine_immortal, engine_invuln,
-    engine_kill, engine_levelup, engine_life, engine_managerbody, engine_maxhealth,
+    engine_highlander, engine_kill, engine_levelup, engine_life, engine_managerbody, engine_maxhealth,
     engine_playerkill, engine_propbody, engine_rewind, engine_storestate_e, engine_topple,
 )

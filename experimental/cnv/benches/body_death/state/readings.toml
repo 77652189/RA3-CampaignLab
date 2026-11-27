@@ -231,6 +231,19 @@ expect = [
   "[c[-1]['行1'], c[-1]['行2'], c[-1]['行3']] == [c[-1]['帧数']] * 3",
 ]
 
+[[reading]]
+bench_id = "engine_highlander"
+id = "lethal_script_damage_kills_full_and_wounded_highlanders"
+item = "物体模块 Body/HighlanderBody"
+scene = {build = "engine_highlander", check = "a", until = 12}
+bench = "E305 (CampHighlanderA_mcp_1127_143606): full Highlander / wounded Highlander / ActiveBody read 100/100/100 at s1-s2, 100/60/100 at s3-s6, and -1/-1/-1 at s7-s13. -1 marks a destroyed object, independently of its health read."
+proves = "In the controlled 100-HP power plant clones, the 40-point NAMED_DAMAGE leaves 60 HP. The 200-point NAMED_DAMAGE kills both HighlanderBody clones and the ActiveBody control. Weapon damage and NAMED_KILL remain gaps."
+expect = [
+    "vals(rows)[1:3] == [[100, 100, 100]] * 2",
+    "vals(rows)[5:7] == [[100, 60, 100]] * 2",
+    "vals(rows)[9:12] == [[-1, -1, -1]] * 3",
+]
+
 # Bench readings of engine_rewind in checks.py (format: experimental/cnv/readings.py; runner: tests/conformance).
 # Engine line D round 45, A8's Liberty rewind.
 
