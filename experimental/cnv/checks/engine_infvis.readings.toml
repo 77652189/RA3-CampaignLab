@@ -56,3 +56,18 @@ proves = "a/b/c's near-marker discovery (s16-s19) is not InfiltratorContain VISI
 expect = "matches(sample(1, 15), [11100, 11100, 0]) and matches(sample(16, 36), [11100, 11100, 1])"
 let = {sample = "lambda lo, hi: [v for t, v in zip(times, vals(rows)) if lo <= t <= hi]", matches = "lambda got, wanted: bool(got) and all(v == wanted for v in got)"}
 mismatch = "simulator: the near marker is never discovered without an entry (vision 0 to s36); bench 1 from s16"
+
+[[reading]]
+id = "spy_vision_markers_walk_off_unentered"
+scene = {build = "engine_infvis3", check = "c", until = 41}
+bench = "A410 CampInfVis3C (head ee15a009): no spy sent; moved 48050049 from s2 (each near marker off its 60-square after 48 / 50 / 49 passes); japan seen at pass 352 (s22), allied / soviet still counting at s41 (649)"
+proves = "the unentered Japan discovery comes with markers that walk off where they were placed within 3 s, not with VISION"
+expect = "rows[-1]['moved'] == 48050049 and win(22, 40, 'japan') == [352] * 19 and rows[-1]['allied'] > rows[-2]['allied']"
+mismatch = "simulator: the markers stand where placed (moved keeps counting) and the Japan marker is never discovered; bench walks them off by pass 50"
+
+[[reading]]
+id = "spy_vision_spare_owner_markers_stay_unseen"
+scene = {build = "engine_infvis3", check = "d", until = 41}
+bench = "A410 CampInfVis3D (head ee15a009): c with the markers owned by the idle Soviet_4; moved = allied x 1001001 every second to s41 (651651651): none leaves its square, none is discovered"
+proves = "c's walk-off (and so the Japan marker's s22 discovery) is Soviet_1 moving its own engineers, not the engineer's idle behaviour"
+expect = "all(v[3] == v[0] * 1001001 for v in vals(rows)) and all(rows[-1][k] > rows[-2][k] for k in ('allied', 'soviet', 'japan'))"

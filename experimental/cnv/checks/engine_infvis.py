@@ -11,7 +11,7 @@ Bench 2026-11-11: s1-s10 11100/11100/0; s11-s15 1100/11100/0;
 s16-s37 1100/11100/1. Only local near marker is discovered. Five-second
 activation delay is a sampled fit (INFERRED), not a measured engine mechanism.
 """
-from parts import NOT, Script, Test, counted
+from parts import NOT, Script, Test, counted, square
 
 
 def check(m, send=('enemy', 'ally')):
@@ -128,5 +128,30 @@ def trio_allied(m):
     return trio(m, send=('allied',))
 
 
+def trio_still(m):
+    """c (A410 H5): no spy is sent; the entries row instead counts the passes before each near marker leaves the
+    60-square it was placed on (allied + 1000 soviet + 1000000 japan). b's minimap showed a red dot walking south
+    onto the Japan yard (its spy is 180 south) before the s22 discovery.
+    Prediction (H5, the marker walks into an idle spy's sight): a lane is discovered only after its marker left."""
+    t = trio(m, send=())
+    t.counters[-1] = ('Vision3 entries', 'moved')
+    t.scripts = [s for s in t.scripts if not s.name.startswith('Vision3 count')]
+    for k, unit in zip(('allied', 'soviet', 'japan'), (1, 1000, 1000000)):
+        near = m.find(m.role(k + ' near').name)
+        t.areas['Vision3 home ' + k] = square(near.x, near.y, 60.0)
+        t.scripts.append(Script('Vision3 home ' + k, [('NAMED_INSIDE_AREA', near.name, 'Vision3 home ' + k)],
+                                [('INCREMENT_COUNTER', unit, 'Vision3 entries')], once=False))
+    t.expect = [('moved', 1, 'ever>=', 1, 40)]
+    return t
+
+
+def trio_still_s4(m):
+    """d (A410 H7): c with the near markers handed to the idle spare Soviet_4 (the yards stay s1's). Walks on:
+    the engineer's own idle behaviour; stays (moved keeps counting): Soviet_1 moves them (its yards / its AI)."""
+    for k in ('allied', 'soviet', 'japan'):
+        m.role(k + ' near').side = m.find(m.role(k + ' near').name).side = 's4'
+    return trio_still(m)
+
+
 CHECKS = {'engine_infvis': {'a': check, 'b': check_soviet, 'c': check_japan, 'd': check_unentered},
-          'engine_infvis3': {'a': trio, 'b': trio_allied}}
+          'engine_infvis3': {'a': trio, 'b': trio_allied, 'c': trio_still, 'd': trio_still_s4}}
