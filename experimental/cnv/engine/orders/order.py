@@ -386,11 +386,13 @@ def fight(world, peers):
                 world.note('绕位', f'{world.label(a)} 打不着 {world.label(g)}（中间有建筑），绕到 ({p[0]:.0f},{p[1]:.0f})')
                 simlocomotion.go_to(world, a, p)
         chase_step(world, peers, a, fired, [(d[j], targets[idx[j]]) for j in np.argsort(d, kind='stable')])
-    if peers.firing or peers.volleys:
+    aimed = peers.firing + peers.volleys
+    if aimed:
         world.used.add('combat')
         assist(world, peers, live)
     if peers.chilling:
         world.used.add('freeze')
+    return aimed                            # the tick's aimed fire: a house's passengers change seat by it (garrison)
 
 
 def assist(world, peers, live):

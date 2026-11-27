@@ -1700,7 +1700,7 @@ class Sim:
         Twinblade over the player's row the same as with no row)."""
         if not w.get('los') or t.surface == 'air':
             return False
-        return self.line_blocked(a.x, a.y, t, a)
+        return self.line_blocked(a.x, a.y, t, self.garrison.where.get(a.serial, a))   # a seat on its edge
 
     def line_blocked(self, x, y, t, a=None):
         """A structure's footprint on the line from (x, y) to t (shot_blocked's test from any point)."""

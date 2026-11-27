@@ -170,14 +170,15 @@ def aura_tick(world):
             if m is None or not aura.pulse(now):
                 continue
             until = now + (m['frames'] or a['refresh'])
-            for t in live:
+            inside = [p for c in e.find(interfaces.Contain) for p in c.passengers()] if a.get('contained') else None
+            for t in live if inside is None else inside:      # AffectContainedOnly: its passengers, at any seat
                 if t is e and not a['self']:
                     continue
                 if t.scenery or (a['include'] and not a['include'] & t.kinds) or a['exclude'] & t.kinds:
                     continue
                 if world.relation(e.owner, t.owner) not in a['relation']:
                     continue
-                if math.hypot(t.x - e.x, t.y - e.y) <= a['range']:
+                if inside is not None or math.hypot(t.x - e.x, t.y - e.y) <= a['range']:
                     t.auras_on[a['mod']] = (until, world.xml_of(e.template))
     for b in live:
         if b.auras_on or b.base is not None:

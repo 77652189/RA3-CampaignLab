@@ -224,6 +224,21 @@ def drawn_seat_check(m):
     return t
 
 
+# n j with the base / removed / high / switch engineers moved 150 east / west / north / south of their house first
+# (every bone reaches): a passenger aiming moves to the free bone nearest its target (j: high's con 0 to 08) -> each
+# pair on the two bones nearest, whatever it drew: base 08 05 (digits 3 5), removed 04 12 (8 7), high 01 03 (4 4),
+# switch 09 07 (2 8); order / low as j. No move: k's draws (88 87 25 28).
+N_NEAR = {'base': (150, 0), 'removed': (-150, 0), 'high': (0, 150), 'switch': (0, -150)}
+
+
+def near_seat_check(m):
+    t = seat_check(m)
+    for lane, (dx, dy) in N_NEAR.items():
+        t.waypoints['Test Near ' + lane] = m.site(lane + ' gun', dx, dy)
+    t.scripts[0].do[2:2] = [('UNIT_TELEPORT_TO_WAYPOINT', 'Man ' + lane, 'Test Near ' + lane) for lane in N_NEAR]
+    return t
+
+
 # f javelin (item 4 of 3): the player's javelin 'south' of s1's plant in each lane, ordered to attack it at 4 s;
 # lock lanes toggle SpecialPower_RadarLock at 1 s. 锁远 = base plant's health % (lock, 240 off: past the plain 175),
 # 锁近 = high (lock, 150 off), 平射 = order (no toggle, 150 off). Lock: 3.5 s on, then 40 a shot every 0.2-0.3 s
@@ -403,6 +418,6 @@ def land_check(m):
 
 MISSION = {'engine_a1land': land_mission, 'engine_a1gate': gate_mission, 'engine_a1cd': countdown_mission, 'engine_a1gar': garrison_mission, 'engine_a1jav': javelin_mission,
            'engine_a1coil': mission, 'engine_a1near': lambda: mission(NEAR, 'CampA1Near'), 'engine_a1cap': captured_mission, 'engine_a1pow': power_mission}
-CHECKS = {'engine_a1land': {'i': land_check}, 'engine_a1gate': {'h': gate_check}, 'engine_a1cd': {'g': countdown_check}, 'engine_a1gar': {'e': garrison_check, 'j': seat_check, 'k': bare_seat_check, 'l': reversed_seat_check, 'm': drawn_seat_check}, 'engine_a1jav': {'f': javelin_check},
+CHECKS = {'engine_a1land': {'i': land_check}, 'engine_a1gate': {'h': gate_check}, 'engine_a1cd': {'g': countdown_check}, 'engine_a1gar': {'e': garrison_check, 'j': seat_check, 'k': bare_seat_check, 'l': reversed_seat_check, 'm': drawn_seat_check, 'n': near_seat_check}, 'engine_a1jav': {'f': javelin_check},
           'engine_a1coil': {'a': range_check}, 'engine_a1near': {'d': lambda m: range_check(m, FORCED)}, 'engine_a1cap': {'b': captured_check},
           'engine_a1pow': {'c': power_check}}

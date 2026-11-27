@@ -34,7 +34,8 @@ class AuraData(module.ModuleData):
                     'exclude': set((templates.attr(f, 'Exclude') or '').split()),
                     'active': (templates.attr(head, 'InitiallyActive', 'true') or 'true').lower() != 'false',
                     'needs': set((templates.attr(head, 'RequiredObjectStatusFlags') or '').split()),
-                    'self': (templates.attr(head, 'AllowSelf', 'false') or '').lower() == 'true'})
+                    'self': (templates.attr(head, 'AllowSelf', 'false') or '').lower() == 'true',
+                    'contained': (templates.attr(head, 'AffectContainedOnly', 'false') or '').lower() == 'true'})
 
 
 @factory.module('AttributeModifierAuraUpdate')

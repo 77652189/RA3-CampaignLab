@@ -24,10 +24,10 @@ CHILD = '<GameObject id="CNV_TestAuraChild" inheritFrom="CNV_TestAura" KindOf="S
 def test_the_block_is_read_in_the_shape_the_old_reader_gave():
     assert aura.AuraData.parse(HEAD, INNER).rule == {
         'mod': 'Slow', 'range': 150.0, 'refresh': 8, 'relation': {'ENEMIES'}, 'include': {'INFANTRY', 'VEHICLE'},
-        'exclude': {'AIRCRAFT'}, 'active': False, 'needs': {'GENERIC_TOGGLE_STATE'}, 'self': True}
+        'exclude': {'AIRCRAFT'}, 'active': False, 'needs': {'GENERIC_TOGGLE_STATE'}, 'self': True, 'contained': False}
     assert aura.AuraData.parse('', '').rule == {
         'mod': None, 'range': 0.0, 'refresh': 15, 'relation': {'ALLIES', 'ENEMIES', 'NEUTRAL'}, 'include': set(),
-        'exclude': set(), 'active': True, 'needs': set(), 'self': False}
+        'exclude': set(), 'active': True, 'needs': set(), 'self': False, 'contained': False}
 
 
 def test_the_beat_first_at_once_then_every_refresh_from_the_first():

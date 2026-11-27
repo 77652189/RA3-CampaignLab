@@ -38,8 +38,8 @@ Transports (TransportContain: the Bullfrog, the Riptide, the bomber; bench 11-10
   the end      KillPassengersOnDeath (every retail transport): a killed transport kills them (NAMED_KILL too)
   not          the REALLYDAMAGED walk-out (a house's only), the passengers' fire, the parachute (untargeted) eject
 Not modelled: a turret's weapon set by its passenger, clearing weapons, the exit point (they come out where the
-building stands), EjectSpeed, a passenger's change of seat (j: one with a target in reach moved to the free bone
-nearest it). A passenger's seat is a free bone drawn from the game's logic random stream, a draw an entry in entry
+building stands), EjectSpeed. A passenger aiming moves to the free bone nearest its target (track: j,
+n). A passenger's seat is a free bone drawn from the game's logic random stream, a draw an entry in entry
 order (engine_a1gar l: the twelve put in back to front read k's seats back to front; m: three script draws first,
 other seats); the simulator cannot replay the stream: its n-th entry draws its own n-th draw (the same every run).
 L2 (ADR 0029, docs/engine/sim-layers.md): the world is reached only through simworld.WORLD_API (`world`); a body's end is
@@ -77,8 +77,8 @@ with open(BONES, encoding='utf-8') as _f:
 
 
 def seats(template):
-    """A house's garrison seats: its model's PassengerData BonePrefix bones (BONEGARRISON01..) as (x, y) off its centre
-    at angle 0 (x east, y north), in their names' hash order. GE_TownHouse01 and the houses our 9 levels place (data/garrison_bones.json, from the static stream: work/re/scripts/garrison_bones.py); () else."""
+    """A house's garrison seats: its model's PassengerData BonePrefix bones (BONEGARRISON01..) as (x, y, z) off its
+    centre at angle 0 (x east, y north, z up), in their names' hash order. GE_TownHouse01 and the houses our 9 levels place (data/garrison_bones.json, from the static stream: work/re/scripts/garrison_bones.py); () else."""
     return _BONES.get(template.lower(), ())
 
 
@@ -115,6 +115,12 @@ def contain(b, tags=TAGS):
 def ejects(command, own=None):
     """The button fires an eject-the-passengers power (SpecialPower_EjectPassengers*: the man cannon, the paradrop)."""
     return str(simunits.command_power(command, own) or '').startswith('SpecialPower_EjectPassengers')
+
+
+def _at(g, seat):
+    """The seat (x, y) off g's centre at angle 0, turned with g: where it is in the world."""
+    c, s = math.cos(g.angle), math.sin(g.angle)
+    return g.x + seat[0] * c - seat[1] * s, g.y + seat[0] * s + seat[1] * c
 
 
 class Garrisons:
@@ -319,11 +325,22 @@ class Garrisons:
         world.change()
         return True
 
+    def track(self, aimed):
+        """The tick's aimed fire (order.fight: (target, _, shooter)): a house's passenger aiming moves to the free bone
+        nearest its target, the bone's height counted, when nearer than its own (j: high's con 0 east to bone 08; base,
+        nothing in reach, stays; n: 150 north, 03 and 06 at 10 up, not 01 at 50 up the nearer on the map)."""
+        for t, _, u in aimed:
+            g = self.where.get(u.serial) if t.alive else None
+            bones = seats(g.template) if g is not None else ()
+            if bones:
+                taken = [self.seat.get(p.serial) for p in self.boxes[g.serial].passengers()]
+                self.seat[u.serial] = min([self.seat[u.serial]] + [s for s in bones if s not in taken],
+                                          key=lambda s: math.hypot(*(a - b for a, b in zip(_at(g, s), (t.x, t.y))),
+                                                                   *s[2:]))
+
     def spot(self, u, g):
         """Where the passenger u of g stands: its seat turned with g (a transport's riders, g's spot)."""
-        dx, dy = self.seat.get(u.serial, (0.0, 0.0))
-        c, s = math.cos(g.angle), math.sin(g.angle)
-        return g.x + dx * c - dy * s, g.y + dx * s + dy * c
+        return _at(g, self.seat.get(u.serial, (0.0, 0.0)))
 
     def _set_down(self, u, x, y):
         """u put at (x, y) with no way left (its Locomotor's) and no goal (its AIUpdate's: dropped alone)."""
@@ -457,10 +474,11 @@ class Garrisons:
                     simmodifier.modify(world, u)
                     world.change()
 
-    def due(self):
-        """Once a frame: the ones sent in that have got there; a building at or under its REALLYDAMAGED line empties;
+    def due(self, aimed=()):
+        """Once a frame: the tick's aimed passengers to their seats (track); the ones sent in that have got there; a building at or under its REALLYDAMAGED line empties;
         the dead inside are let go of."""
         world = self.world
+        self.track(aimed)
         for key, (u, g) in list(self.going.items()):
             if not u.alive or not g.alive or world.bodies.get(u.name) is not u:     # dead, or out of the world
                 del self.going[key]

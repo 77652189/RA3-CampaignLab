@@ -73,7 +73,7 @@ id = "e_two_conscripts_reach_310_east_and_280_north_but_not_255_east"
 scene = {build = "engine_a1gar", check = "e", until = 31}
 bench = "CampA1GarE (11-25, A382, head 3f93950d): 驻甲 100, 驻乙 10 at s1-s31 -- only high (310 east) and order (280 north) hit; j (11-26, head f1df41ba) the same"
 proves = "engine/objects/garrison.Garrisons.spot: a passenger shoots from its seat (a BONEGARRISON bone), not the house's centre -- j: the high house's con 0 sat east (bone 08, 252.6 from 310 east), the order house's at 01 (242.4 from 280 north)"
-mismatch = "sim 驻甲 0, 驻乙 0: its seats are its own draws (k), not the game's logic random stream's"
+mismatch = "sim 驻甲 11, 驻乙 10: its seats are its own draws (k), not the game's logic random stream's"
 expect = ["win(1, 30, '驻甲') == [100] * 30", "win(1, 30, '驻乙') == [10] * 30"]
 
 [[reading]]
@@ -106,3 +106,11 @@ bench = "CampA1GarM (11-26, head 92f15360; k with three SET_RANDOM_COUNTER 1..10
 proves = "the seats come from the game's logic random stream (shared with SET_RANDOM_COUNTER)"
 mismatch = "sim 位甲 825855, 位乙 437557 in both: its seat draws are its own, the script's another stream"
 expect = ["m[-1]['位甲'] != k[-1]['位甲']", "m[-1]['位乙'] != k[-1]['位乙']"]
+
+[[reading]]
+id = "n_a_passenger_aiming_moves_to_the_free_bone_nearest_its_target"
+scenes = {n = {build = "engine_a1gar", check = "n", until = 31}}
+bench = "CampA1GarN (11-26, head 111b2f84; j with the base / removed / high / switch engineers 150 east / west / north / south, every bone in reach): 驻 111 11, 位甲 478735, 位乙 788428 at s1-s31 -- base 3 5 (08 10), removed 8 7 (04 12), high 4 7 (03 06, both 10 up: not 01 / 02, 50 up, the nearer on the map), switch 2 8 (09 07); with no move k's 88 87 25 28"
+proves = "engine/objects/garrison.Garrisons.track: a house's passenger aiming moves to the free bone nearest its target, the bone's height counted (data/garrison_bones.json z); engine/objects/modifier.aura_tick AffectContainedOnly: the garrison's RANGE 175 % on a passenger at any seat; sim.line_blocked: not its own house"
+let = {a = "str(n[-1]['位甲']).zfill(6)", b = "str(n[-1]['位乙']).zfill(6)"}
+expect = ["sorted(a[4:6]) == ['3', '5']", "sorted(a[2:4]) == ['7', '8']", "sorted(a[0:2]) == ['4', '7']", "sorted(b[4:6]) == ['2', '8']", "n[-1]['驻甲'] == 111"]
