@@ -108,3 +108,11 @@ bench = "CampA1TollZZ (11-26 E269): 穿心 11; lanes 1–5 arrive in 139, 139, 1
 proves = "a conscript can cross the staggered Cape Cod fence seam at the tested alignment"
 expect = "rows[-1]['穿心'] == 11"
 mismatch = "sim 穿心 1, bench 11: sim misses the staggered seam. SDK box trials break the straight control; see work/re/handoff-e-archive.md E269."
+
+[[reading]]
+id = "yz_all_five_conscripts_reach_their_goals"
+scenes = {y = {build = "engine_a1tolly", check = "y", until = 20}, z = {build = "engine_a1tollz", check = "z", until = 20}}
+bench = "CampA1TollYY / ZZ (11-26 E269): all five arrival timers settle at 139, 141, 140, 141, 174 / 139, 139, 140, 141, 174 frames."
+proves = "each conscript reaches its goal area; each lane's timer is positive and stops advancing once there"
+expect = ["all(run[-2][key] == run[-1][key] for run in (y, z) for key in ('到时甲', '到时乙'))",
+          "all(run[-1][key] // place % 1000 > 0 for run in (y, z) for key, places in (('到时甲', (1, 1000, 1000000)), ('到时乙', (1, 1000))) for place in places)"]
