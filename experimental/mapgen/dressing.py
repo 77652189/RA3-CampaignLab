@@ -526,9 +526,9 @@ def expand(sketch, ground, roadbed, layout, library, kits, sage, border, frame=N
         if spec['use'] in TOWN | {'square', 'park'} or finish.locked.get(block):
             _front(finish, block, groups, cover, rng)
         _edges(finish, block, edges[block], groups, cover, rocks, trees, rng)
-        if spec['use'] == 'snow_woodland':
+        if spec['use'] in {'woodland', 'snow_woodland'}:
             _woodland(finish, block, trees, rng)
-        if spec['use'] in NATURAL and 'at' in spec:
+        elif spec['use'] in NATURAL and 'at' in spec:
             at = spec['at']
             angle = rng.uniform(-math.pi, math.pi)
             # One side of an open lot gains a silhouette. Its centre stays available for manoeuvres.

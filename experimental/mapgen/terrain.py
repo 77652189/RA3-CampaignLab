@@ -26,6 +26,8 @@ ON_SHORE = 2 * SHORE_RISE   # two bank cells' rise on each side of the waterline
 _BENCHED = {'HB_CliffWall01': (100, -15), 'RM_CliffWall01_GRID': (120, -30)}
 # Russian Village places this irregular wall as close as 56.9 units on near-straight runs.
 _MIN_CLIFF_PITCH = {'VL_CliffWall02': 57}
+# Retail Fuji joins 01 to 08 on the same axis every 90 units: half of 120 plus half of 60.
+_SHORT_STRAIGHTS = {'MJ_CliffWall01': 'MJ_CliffWall08'}
 
 
 @dataclass(frozen=True)
@@ -141,10 +143,10 @@ class Ground:
             return name
         if self.blocked[j, i] or self.blocked[nj, ni]:
             return name if self.ramp_edges[j, i] or self.ramp_edges[nj, ni] else None
-        if self.ramp[j, i] and self.ramp[nj, ni]:
-            return blend.ramp
         if self.owners[j, i] in blend.authored or self.owners[nj, ni] in blend.authored:
             return name
+        if self.ramp[j, i] and self.ramp[nj, ni]:
+            return blend.ramp
         return blend.backdrop
 
 
@@ -460,6 +462,8 @@ def _straight(library, kit, steps):
         if entry['height_steps'] != steps:
             continue
         editor_name = editor_names.get(name, '')
+        if 'Corner' in editor_name or 'Curve' in editor_name:
+            continue
         if name.endswith('_GRID') and name not in _BENCHED and not editor_name.endswith('Straight'):
             continue
         length, offset = _BENCHED.get(name, (entry['length'], entry['offset_y']))
@@ -512,30 +516,39 @@ def _cliffs(plan, library, base, at, x, y, ramps):
                 not np.isclose(tangent.prod(), 0) or np.any(np.mod([a, b], 30))):
             issues.append(f'{label}: GRID runs need cardinal edges on the 30-unit grid')
             continue
+        filler = _SHORT_STRAIGHTS.get(template)
+        short = next((entry['length'] for entry in library['kits'][cliff.kit]['cliffs']
+                      if entry['template'] == filler and entry['height_steps'] == steps), 0)
+        minimum = _MIN_CLIFF_PITCH.get(template, spacing)
         along_grid, across_grid = strip_coordinates(x, y, a, tangent)
         for start, end in spans:
             span = end - start
             count = math.floor((span + 1e-7) / spacing)
             unused = span - count * spacing
-            pitch = spacing
-            minimum = _MIN_CLIFF_PITCH.get(template, spacing)
-            # Fit an additional piece only if both ends can meet and the overlap was observed in retail.
-            if count and unused > 1e-7 and (span - spacing) / count >= minimum:
+            pitch, tail = spacing, 0
+            if 0 < short < spacing and short <= unused + 1e-7:
+                tail = short
+                unused -= short
+            elif count and unused > 1e-7 and (span - spacing) / count >= minimum:
+                # The extra full piece reaches both ends without exceeding the measured overlap.
                 pitch = (span - spacing) / count
                 count += 1
                 unused = 0
             if unused > 1e-7:
                 issues.append(f'{label}: {unused:g} units uncovered at ends of [{start:g}, {end:g}]')
-            first = start + unused / 2 + spacing / 2
-            stop = first + (count - 1) * pitch + spacing / 2
+            covered_start = start + unused / 2
+            first = covered_start + spacing / 2
             if template.endswith('_GRID') and count and np.any(np.mod(a + tangent * first - normal * offset, 30)):
                 issues.append(f'{label}: piece origins at [{start:g}, {end:g}] would leave the 30-unit grid')
                 continue
-            for k in range(count):
-                px, py = a + tangent * (first + k * pitch) - normal * offset
-                pieces.append(Piece(template, float(px), float(py), math.atan2(tangent[1], tangent[0])))
-            if count:
-                cover |= ((along_grid >= first - spacing / 2) & (along_grid < stop)
+            modules = [(template, first + k * pitch) for k in range(count)]
+            if tail:
+                modules.append((filler, covered_start + count * spacing + tail / 2))
+            for model, center in modules:
+                px, py = a + tangent * center - normal * offset
+                pieces.append(Piece(model, float(px), float(py), math.atan2(tangent[1], tangent[0])))
+            if modules:
+                cover |= ((along_grid >= covered_start) & (along_grid < end - unused / 2)
                           & (across_grid >= -CELL) & (across_grid < 0))
     joints = {}
     for cliff in plan.cliffs:

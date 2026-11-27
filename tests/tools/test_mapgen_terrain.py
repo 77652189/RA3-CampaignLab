@@ -141,6 +141,47 @@ def test_vladivostok_wall_fits_the_run_up_to_the_ramp_shoulders():
     assert ground.hidden[19, :14].all() and not ground.hidden[19, 14:36].any()
 
 
+def test_measured_short_cliff_fills_a_straight_run_on_the_same_axis():
+    long, short, curve = ('MJ_CliffWall' + suffix for suffix in ('01', '08', '10'))
+    library = {'kits': {'Fuji': {
+        'props': [{'template': name, 'editor_name': role} for name, role in
+                  ((long, 'CliffStraight'), (short, 'CliffStraightShorter2'), (curve, 'CliffSCurveLeft2'))],
+        'cliffs': [
+            {'template': name, 'height_steps': 1, 'length': length, 'offset_y': offset, 'samples': samples}
+            for name, length, offset, samples in ((long, 120, -28, 91), (short, 60, -10, 79), (curve, 157, -13, 100))
+        ],
+    }}}
+    plan = TerrainPlan(blocks=(Block(((0, 100), (190, 100), (190, 200), (0, 200)), 4),),
+                       cliffs=(Cliff((0, 100), (190, 100), 'Fuji'),))
+    ground = expand(plan, library, 20, 21, 0)
+    # 120 + 60 centred in 190. The paired originals are 90 apart with no cross-axis offset.
+    assert [(p.template, p.x, p.y) for p in ground.pieces] == [(long, 65, 128), (short, 155, 128)]
+    assert any('10 units uncovered' in issue for issue in ground.issues)
+
+
+def test_authored_dirt_track_keeps_its_material_across_the_ramp_join(tmp_path, monkeypatch):
+    monkeypatch.setattr(paint, 'ART', tmp_path)
+    (tmp_path / 'tile').touch()
+
+    def tiles(name):
+        return [dict(id=name, Texture='tile', BumpTexture='tile')]
+
+    kit = 'Heidelberg_HB'
+    library = {'kits': {kit: {}}, 'texture_kits': {
+        'Heidelberg': {'Grass': tiles('BaseGrass'), 'Dirt': tiles('BaseDirt')},
+        'Cape_Cod': {'Dirt': tiles('TrackDirt')},
+        'Gibraltar': {'Cliff': tiles('RockFace')},
+    }}
+    plan = TerrainPlan(ground='BaseGrass', blocks=(
+        Block(((0, 0), (200, 0), (200, 150), (0, 150)), 3, surface=Surface('low', 'wildland', kit, 0, 'TrackDirt')),
+        Block(((0, 150), (200, 150), (200, 300), (0, 300)), 4, surface=Surface('high', 'wildland', kit, 0, 'TrackDirt')),
+    ), ramps=(Ramp((100, 60), (0, 1), 1, 100),))
+    ground = paint.paint(plan, library, expand(plan, library, 21, 31, 0))
+    assert ground.owners[14, 10] != ground.owners[16, 10]
+    assert list(ground.textures[14:17, 10]) == ['TrackDirt'] * 3
+    assert ground.edge_texture(10, 14, 10, 15, 'TrackDirt') == 'TrackDirt'
+
+
 def _container(w, h, border):
     # Minimal independent input for the existing v6 height and v27 tile readers.
     cells = w * h

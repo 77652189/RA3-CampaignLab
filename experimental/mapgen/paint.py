@@ -116,7 +116,9 @@ def paint(plan, library, ground, roadbed=None):
                 role_class = {'cliff': 'Cliff', 'shore': 'Snow' if ground_class == 'Snow' else 'Sand',
                               'ramp': ramp_class}[role]
                 packed = catalogue.get('Snow_Iceland04') if role == 'ramp' and kind == 'Snow' else None
-                if packed:
+                if role == 'ramp' and named_texture is not None and catalogue[named_texture][1] == role_class:
+                    name = named_texture
+                elif packed:
                     name = _asset(label, packed[2])
                 else:
                     rng = Random(f'{label}:{surface.seed if surface else 0}:{role}')

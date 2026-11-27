@@ -133,6 +133,20 @@ def test_bluff_corners_and_camera_margin_get_kit_planting(slice_inputs):
     assert result.ground.blocked[50, 18]  # dressing does not open the visible backdrop
 
 
+def test_woodland_places_stands_beyond_the_open_lot(slice_inputs):
+    _, _, _, _, library, _, sage, _ = slice_inputs
+    sketch = Design({
+        'version': 2,
+        'blocks': {'grove': {'at': [450, 450], 'height': 3, 'use': 'woodland'}},
+        'borders': {'frame': {'line': [[0, 0], [900, 0], [900, 900], [0, 900], [0, 0]]}},
+        'points': {'clearing': {'block': 'grove', 'at': [450, 450]}},
+    })
+    ground = expand(TerrainPlan(), library, 91, 91, 0)
+    result = dressing.expand(sketch, ground, None, Layout(()), library, {'grove': 'Town_T'}, sage, 0)
+    # Trees follow the woodland outline, including its far edge beyond any centre clump.
+    assert any(p.template == 't_tree' and p.x < 150 for p in result.pieces)
+
+
 def test_ramp_scrub_follows_steep_shoulders_outside_opening(slice_inputs):
     _, _, _, _, library, _, sage, _ = slice_inputs
     sketch = Design({
@@ -238,13 +252,14 @@ def test_snow_ramp_keeps_its_snow_and_exposed_rock_after_dressing(slice_inputs, 
     def tiles(*names):
         return [dict(id=name, Texture='tile', BumpTexture='tile') for name in names]
 
-    library['texture_kits'] = {'Town': {
-        'Snow': tiles(*paint.WINTER_SURFACES['snow']),
-        'Dirt': tiles('BareDirt'), 'Grass': tiles('GreenGrass'), 'Cliff': tiles('ExposedRock'),
-    }}
+    library['texture_kits'] = {
+        'Town': {'Snow': tiles('Snow_Solvang01', 'Snow_Solvang08'),
+                 'Dirt': tiles('BareDirt'), 'Grass': tiles('GreenGrass'), 'Cliff': tiles('ExposedRock')},
+        'Iceland': {'Snow': tiles('Snow_Iceland04')},  # Outside the local palette.
+    }
     sketch = Design({'version': 2, 'blocks': {
         'low': {'at': [450, 200], 'height': 3, 'use': 'snow'},
-        'high': {'at': [450, 600], 'height': 4, 'use': 'snow'},
+        'high': {'at': [450, 600], 'height': 4, 'use': 'snow', 'ground_texture': 'Snow_Solvang01'},
     }, 'borders': {
         'frame': {'line': [[0, 0], [900, 0], [900, 800], [0, 800], [0, 0]]},
         'cliff': {'line': [[0, 400], [900, 400]], 'segments': {
@@ -256,7 +271,8 @@ def test_snow_ramp_keeps_its_snow_and_exposed_rock_after_dressing(slice_inputs, 
     surface = paint.paint(plan, library, native)
     ground = dressing.expand(sketch, surface, None, Layout(()), library,
                              dict.fromkeys(sketch.blocks, 'Town_T'), sage, 0).ground
-    assert not native.blocked[37, 45] and ground.textures[37, 45] == 'Snow_Iceland04'
+    assert native.ramp[37, 45] and not native.blocked[37, 45] and ground.textures[37, 45] == 'Snow_Iceland04'
+    assert native.ramp[42, 45] and not native.blocked[42, 45] and ground.textures[42, 45] == 'Snow_Solvang01'
     assert native.blocked[37, 35] and ground.textures[37, 35] == 'ExposedRock'
     assert not {'BareDirt', 'GreenGrass'} & set(ground.textures.flat)
     assert ground.raw is native.raw and ground.blocked is native.blocked
