@@ -224,11 +224,14 @@ def build_library(sage, work):
         setpieces = {"units": setpieces["units"], "groups": [
             {**group, "source": source, "evidence": "measured_from_maps"} for group in setpieces["groups"]]}
     blocking, source = probe("logs/e266_prop_blocking.json")
+    mood_path = "mapgen_probe/atmosphere.json"
+    moods = probe(mood_path)[0] if (work / mood_path).is_file() else None
     return {
         "schema_version": SCHEMA_VERSION,
         "cliff_step_raw": CLIFF_STEP_RAW,
         "kits": kits,
         "texture_kits": textures,
+        "retail_moods": moods or {},
         "setpieces": setpieces,
         "blocking": _blocking(blocking, source, issues) if blocking is not None else {},
         "issues": [{"kind": kind, "source": source, "detail": detail} for kind, source, detail in sorted(issues)],

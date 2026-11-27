@@ -91,6 +91,11 @@ def paint(plan, library, ground, roadbed=None):
                 noise = noise_field(rng.getrandbits(32), 12, i, j)
                 for accent, patch in zip(accents, (noise > 0.82, noise < 0.18)):
                     textures[j[patch], i[patch]] = accent
+            if surface.ground_texture is not None:
+                entry = catalogue.get(surface.ground_texture)
+                if entry is None:
+                    raise ValueError(f'block {label}: missing texture {surface.ground_texture}')
+                textures[mask] = _asset(label, entry[2])
         for role_mask, role in roles:
             cells = mask & role_mask
             if cells.any() or (surface is None and role == 'ramp' and ground.ramp.any()):

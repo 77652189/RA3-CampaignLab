@@ -47,6 +47,12 @@
 - 可用界把同一片水分成外锚地、港口等命名块。内部界参与关系检查，展开时相邻水块共用连续的水面和水底，岸坡沿陆水外缘生成。水块之间的过口状态可用于草图推演；脚本航令等动态限制须在实机验证。
 - 路宽档用 `alley`、`street`、`avenue`。路的折线实交处接成路口，整个路网必须连成一片，每段须在块内或沿块边。接到路或界的端点自动接合。只有 `ends` 明列的 `start`、`end` 可以悬空。
 
+## 氛围和地表
+
+- 顶层可写 `"commitments": {"mood": "像原版列宁格勒的冷岸"}`。从本地库的 `retail_moods` 按地点 `place`、气候 `climate` 和原版时段 `time_label` 选图。可填条目名称 `name`、原版图 ID，或带原版时段的 ID，例如 `camp_a03_heidelberg_smith@evening` 或 `camp_a03_heidelberg_smith@3`。时段用于选源，和源图对不上时构建报错。省略承诺时沿用容器设置。
+- 游戏图和编辑器图共用同一份氛围。它来自原版图的 `GlobalLighting`（含时段）、`WorldInfo.weather`、`FogSettings`、`EnvironmentData` 和 `PostEffectsChunk`。库从本机 `work/mapgen_probe/atmosphere.json` 导入条目及原始数据。
+- 想要积雪或湿地时，在指定的陆地块加 `"ground_texture": "Snow_Iceland03"`，即可用库中的这张贴图打底。氛围条目的 `ground_options` 可列出该来源的建议贴图。坡口、崖面、岸坡、路面和装扮继续按各自规则铺设。选了冷岸或雨天来源，普通地面仍按块的套件和用途刷。
+
 ## 过口与状态
 
 - 从渔屋一侧上到山径：在高差界的 `segments` 里写 `"serviceRamp": {"from": "fishingHouses", "to": "hillPath", "pass": ["foot"]}`。两端引用已有点，分别在相邻的低地和高地。连线与这道界的唯一交点定坡口中心，开口须在高差一致的直段上。草图将 `foot` 记作仅步兵通行，展开会生成窄坡。实测守护者坦克也能穿过当前的窄坡，成图检查按实际地形判通行。列出 `foot`、`vehicle`、`amphibian` 则展开成街坡。

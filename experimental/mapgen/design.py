@@ -244,10 +244,15 @@ class Design:
     """A validated design. Geometry is indexed once and shared by all states."""
 
     def __init__(self, data):
-        _fields(data, "$", "version blocks", "seed roads borders points states relations patches")
+        _fields(data, "$", "version blocks", "seed roads borders points states relations patches commitments")
         _need(type(data["version"]) is int and data["version"] == 2,
               "$", "version", "expected format version 2")
         _int(data.get("seed", 0), "$", "seed")
+        commitments = data.get("commitments", {})
+        _fields(commitments, "$.commitments", optional="mood")
+        self.mood = commitments.get("mood")
+        if "mood" in commitments:
+            _text(self.mood, "$.commitments", "mood")
         self.data = data
         all_ids = {"base"}
         for section in ("blocks", "roads", "borders", "points", "states", "relations", "patches"):
@@ -294,7 +299,7 @@ class Design:
 
         names = {}
         for item, block in self.blocks.items():
-            _fields(block, item, "at height use", "parent kind seed protagonist kit")
+            _fields(block, item, "at height use", "parent kind seed protagonist kit ground_texture")
             at = _xy(block["at"], item)
             _need(not any(on_segment(at, a, b) for a, b in edges), item, "enclosure", "at lies on a line")
             face = containing(at)
@@ -310,6 +315,9 @@ class Design:
                 _text(block["protagonist"], item, "protagonist")
             if "kit" in block:
                 _text(block["kit"], item, "kit")
+            if "ground_texture" in block:
+                _text(block["ground_texture"], item, "ground_texture")
+                _need(block.get("kind") != "water", item, "ground_texture", "requires a land face")
             if "parent" in block:
                 _ref(block["parent"], self.blocks, item, "parent")
         _need(rings, "$", "enclosure", "no enclosed faces")

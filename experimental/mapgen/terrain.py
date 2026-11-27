@@ -32,6 +32,7 @@ class Surface:
     use: str
     kit: str
     seed: int = 0
+    ground_texture: str | None = None
 
 
 @dataclass(frozen=True)
@@ -175,7 +176,8 @@ def from_design(sketch, plan, kit):
     faces = {name: tuple(tuple(map(float, p)) for p in sketch.rings[name][:-1])
              for name in sorted(sketch.blocks, key=depth)}
     blocks = tuple(Block(points, spec['height'],
-                         surface=Surface(name, spec['use'], spec.get('kit', kit), sketch.block_seed(name)))
+                         surface=Surface(name, spec['use'], spec.get('kit', kit), sketch.block_seed(name),
+                                         spec.get('ground_texture')))
                    for name, points in faces.items() if (spec := sketch.blocks[name]).get('kind') != 'water')
     water = plan.water or _design_water(sketch)
     cliffs, ramps, quays = [], [], []

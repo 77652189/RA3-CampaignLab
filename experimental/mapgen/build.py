@@ -17,6 +17,7 @@ class MapBuild:
     sketch: design.Design | None
     frame: terrain.DesignFrame | None
     scenery: tuple[terrain.Piece, ...]
+    atmosphere: dict | None = None
 
     @property
     def border_index(self):
@@ -40,6 +41,7 @@ class MapBuild:
             yield roads.Placement(piece.template, piece.x, piece.y, piece.angle)
 
     def apply_terrain(self, m):
+        """Fill the ground and atmosphere for the shared game/editor map."""
         previews = terrain.apply(m, self.plan, self.ground)
         if self.frame is not None:
             hm = mapterrain.HeightMap(m)
@@ -47,6 +49,8 @@ class MapBuild:
             if hm.borders() != borders:
                 hm.set_borders(borders)
                 hm.store()
+        if self.atmosphere is not None:
+            newmap.apply_atmosphere(m, self.atmosphere)
         return previews
 
     def outputs(self, m):
@@ -74,6 +78,24 @@ class MapBuild:
             checks.draw_failures(self.sketch, self.check_relations(), f'{stem}-relations.svg')
 
 
+def retail_atmosphere(mood, library):
+    """Resolve the catalogue's designer name or retail map ID and recorded time of day."""
+    if mood is None:
+        return None
+    selector = mood.strip().casefold()
+    matches = []
+    for key, entry in library.get('retail_moods', {}).items():
+        key = key.casefold()
+        aliases = (entry['name'].casefold(), key, f"{key}@{entry['time_of_day']}",
+                   f"{key}@{entry['time_label'].casefold()}")
+        if selector in aliases:
+            matches.append(entry)
+    if len(matches) != 1:
+        raise design.DesignError('$.commitments', 'mood',
+                                 f'{mood!r}: expected one retail mood in the library, found {len(matches)}')
+    return matches[0]['atmosphere']
+
+
 def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, road_kit=None, fronts=None):
     """Expand a v2 design, with an optional terrain plan for the surrounding context.
 
@@ -85,6 +107,7 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
     """
     library = json.loads(Path(library_file).read_text(encoding='utf-8'))
     sketch = design.load(design_file) if design_file is not None else None
+    atmosphere = retail_atmosphere(sketch.mood, library) if sketch is not None else None
     background_count = len(plan.blocks)
     border = CONTAINER[2]
     if sketch is not None:
@@ -107,4 +130,4 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
         frame = terrain.design_frame(sketch, ground, background_count, border)
         dressed = dressing.expand(sketch, frame.close(ground), roadbed, layout, library, kits, sage, border)
         ground, scenery = dressed.ground, dressed.pieces
-    return MapBuild(plan, ground, roadbed, layout, sketch, frame, scenery)
+    return MapBuild(plan, ground, roadbed, layout, sketch, frame, scenery, atmosphere)

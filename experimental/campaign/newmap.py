@@ -19,6 +19,29 @@ import mapxml
 from mapscript import Node
 
 WATERLINE = 285.7
+ATMOSPHERE_CHUNKS = ('GlobalLighting', 'FogSettings', 'EnvironmentData', 'PostEffectsChunk')
+
+
+def read_atmosphere(m):
+    """Extract the map's atmosphere for a local library, keeping float and texture bytes intact."""
+    nodes = {n.name: n for n in m.nodes}
+    world = mapxml._typed_props(m, nodes['WorldInfo'].head, 0)
+    return {
+        'chunks': {name: (nodes[name].ver, nodes[name].head.hex()) for name in ATMOSPHERE_CHUNKS},
+        'weather': world['weather'],
+    }
+
+
+def apply_atmosphere(m, atmosphere):
+    """Transfer atmosphere leaves and remap the weather property's name into this map's table."""
+    nodes = {n.name: n for n in m.nodes}
+    for name in ATMOSPHERE_CHUNKS:
+        version, raw = atmosphere['chunks'][name]
+        nodes[name].ver, nodes[name].head = version, bytes.fromhex(raw)
+    world = nodes['WorldInfo']
+    props = mapxml._typed_props(m, world.head, 0)
+    props['weather'] = atmosphere['weather']
+    world.head = mapxml.encode_props(m, props)
 
 
 def value_noise(seed, cells):

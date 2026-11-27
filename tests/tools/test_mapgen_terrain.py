@@ -1,5 +1,6 @@
 """Terrain expansion and the two map wrappers on a small generated container."""
 from dataclasses import replace
+import json
 import struct
 
 import numpy as np
@@ -7,9 +8,13 @@ import numpy as np
 from experimental.campaign.mapscript import MapFile
 from experimental.mapgen.design import Design
 from experimental.mapgen.terrain import Block, Cliff, Ramp, TerrainPlan, Water, apply, expand, from_design
+from experimental.mapgen.build import build
+from experimental.mapgen import paint
 from experimental.mappage import sketch2map
 
 import mapterrain
+import mapxml
+from mapscript import Node
 from ra3voice import refpack
 import terrain_rules
 
@@ -117,3 +122,58 @@ def test_quay_connects_the_deck_to_deep_water_with_a_closed_lip():
     apply(m, plan, ground)
     tiles = mapterrain.Tiles(m, 41)
     assert tiles.extra[31 * tiles.row_bytes + 20 // 8] & 1 << (20 % 8)
+
+def test_named_atmosphere_reaches_both_mapgen_outputs(tmp_path, monkeypatch):
+    size = (61, 61, 0)
+    monkeypatch.setattr('experimental.mapgen.build.CONTAINER', size)
+    monkeypatch.setattr(paint, 'ART', tmp_path)
+    (tmp_path / 'surface.tga').touch()
+    kit = 'Heidelberg_HB'
+    asset = {'id': 'Grass_Heidelberg01', 'Texture': 'surface.tga', 'BumpTexture': 'surface.tga'}
+    donor = {'GlobalLighting': (11, b'\x03\0\0\0' + bytes(448)), 'FogSettings': (1, b'donor fog'),
+             'EnvironmentData': (5, b'donor environment'), 'PostEffectsChunk': (2, b'donor effects')}
+    chunks = {name: (ver, raw.hex()) for name, (ver, raw) in donor.items()}
+    kit_assets = dict(buildings=[], destructibles=[], props=[])
+    moods = {
+        'other_town': {'name': '另一座城', 'time_of_day': 1, 'time_label': 'MORNING',
+                       'atmosphere': {'chunks': chunks | {'GlobalLighting': (11, bytes(452).hex())},
+                                      'weather': (1, 0)}},
+        'retail_town': {'name': '旧城斜阳', 'time_of_day': 3, 'time_label': 'EVENING',
+                        'atmosphere': {'chunks': chunks, 'weather': (1, 5)}},
+    }
+    library = {'kits': {kit: kit_assets}, 'blocking': {}, 'texture_kits': {'Heidelberg': {'Grass': [asset]}},
+               'retail_moods': moods}
+    sketch = {'version': 2, 'commitments': {'mood': '旧城斜阳'},
+              'blocks': {'town': {'at': [200, 200], 'height': 3, 'use': 'park'}},
+              'borders': {'rim': {'line': [[0, 0], [600, 0], [600, 600], [0, 600], [0, 0]]}}}
+    design_file, library_file, container = (tmp_path / name for name in ('design.json', 'library.json', 'base.map'))
+    design_file.write_text(json.dumps(sketch), encoding='utf-8')
+    library_file.write_text(json.dumps(library), encoding='utf-8')
+
+    base = _container(*size)
+    world = mapxml.encode_props(base, {'cameraMaxHeight': (2, 450.), 'weather': (1, 0)})
+    for name, ver, raw in [('ObjectsList', 3, b''), ('WorldInfo', 1, world),
+                           *((name, ver, b'container') for name, (ver, _) in donor.items())]:
+        base.name_id(name)
+        base.nodes.append(Node(name, ver, raw, []))
+    for name in ('PlayerScriptsList', 'ScriptList', 'Script', 'OrCondition', 'Condition', 'ScriptAction'):
+        base.name_id(name)
+    script = Node('Script', 4, bytes(1), [Node('OrCondition', 1, b'', [Node('Condition', 1, b'', [])]),
+                                         Node('ScriptAction', 1, b'', [])])
+    base.nodes.append(Node('PlayerScriptsList', 1, b'', [
+        Node('ScriptList', 1, b'', kids) for kids in ([], [], [script])]))
+    container.write_bytes(base.chunk_file())
+
+    def export(stem):
+        build(design_file, library_file, kit=kit).write(container, tmp_path / stem)
+        return tuple((tmp_path / f'{stem}-{kind}').read_bytes()
+                     for kind in ('game.map', 'editor.map', 'locked.json'))
+
+    first = export('first')
+    assert first == export('repeat')
+    for raw in first[:2]:
+        output = MapFile(raw)
+        nodes = {node.name: node for node in output.nodes}
+        assert {name: (nodes[name].ver, nodes[name].head) for name in donor} == donor
+        assert mapxml._typed_props(output, nodes['WorldInfo'].head, 0) == {
+            'cameraMaxHeight': (2, 450.), 'weather': (1, 5)}
