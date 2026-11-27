@@ -69,5 +69,15 @@ scene = {build = "engine_slaughter_s", check = "t", until = 132}
 bench = "CampSlaughterST_mcp_1126_001943: f600, 出机位 0, 命中位 0, 雅典娜 0 (its plant unhealed: never attacked by p1, never under 100 %); frame s23.8 (f386, 86 after the order) shows the Athena 350 south of the plant still facing away, the turret not turned"
 proves = """the control fails on its own: an OCL-only weapon (Athena, carrier) takes no NAMED_ATTACK_NAMED at a plant on this \
 map, while engine_shield's V4s take the same NO_ATTACK-clear-then-order and hit; the carrier runs (e p q r s) measure \
-that, not SlaughterHordeContain (inventory TODO stays)"""
+that, not SlaughterHordeContain (inventory TODO stays); not reproduced: u (A400) ordered the same Athena the same way \nand it hit, so this run's dark Athena stays unexplained and says nothing about OCL weapons"""
 expect = ["counter('E170Frame') == 600", "all(r['出机位'] == 0 and r['命中位'] == 0 and r['雅典娜'] == 0 for r in rows)"]
+
+[[reading]]
+id = "an_ordered_athena_hits_its_plant_and_an_unordered_one_never_picks_it"
+scene = {build = "engine_slaughter_u", check = "u", until = 62}
+bench = "CampSlaughterUU_mcp_1127_051621 (A400): f900; 打到 / 掉血 0 to s20 (f332), 30 from s21 (f347, 47 after the f300 order) to the end; 早打 0 throughout"
+proves = """the attack order takes an OCL-only weapon: the retail Athena cleared of NO_ATTACK and told NAMED_ATTACK_NAMED hits \
+its SovietPowerPlant on infiltrator_batch (c), as does the Damage=1 clone (b), the one never quieted (d) and the one \
+at an AlliedBaseDefense (e) -- t's dark Athena does not come back, so E251's H6 / H7 / H8 / H9 are out and the carriers' \
+darkness is the carrier's own; left alone (a after its clear, d before f300) an Athena picks no plant 350 off"""
+expect = ["counter('A400Frame') == 900", "rows[-1]['打到'] == 30 and rows[-1]['掉血'] == 30", "all(r['早打'] == 0 for r in rows)"]

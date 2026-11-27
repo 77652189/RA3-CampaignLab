@@ -321,11 +321,75 @@ def check_s(m, probe=False):
     return t
 
 
+# Build u (A400, after t's dark Athena: the program's attack gate takes an OCL-only weapon, engine_see's Athena hit its
+# tower on order). t's geometry, five Athenas 1000 apart, each 350 from its s1 target: a quieted at f0 and cleared at
+# f300, no order (H10: does it pick the plant by itself); b the clone with a Damage=1 DamageNugget beside the OCLs,
+# cleared and ordered (H9: a damage warhead passes where the OCL ones do not); c retail cleared and ordered (t again);
+# d retail never quieted, ordered at f300 (engine_see's way: is NO_ATTACK's history the gate); e as c at an
+# AlliedBaseDefense (H7: the plant). Lines: frame; Hit (target attacked by p1, a 1 b 2 c 4 d 8 e 16); Hurt (target under
+# 100 %); Early (attacked by p1 before f300). The data predicts 900 / 31 / 31 / 8; all dark leaves the map (H8).
+ARMS_U = [('a', 'AlliedAntiStructureVehicle', 'SovietPowerPlant'), ('b', 'CNVA400Dmg', 'SovietPowerPlant'),
+          ('c', 'AlliedAntiStructureVehicle', 'SovietPowerPlant'), ('d', 'AlliedAntiStructureVehicle', 'SovietPowerPlant'),
+          ('e', 'AlliedAntiStructureVehicle', 'AlliedBaseDefense')]
+
+
+def athena_dmg():
+    uid, wid = 'CNVA400Dmg', 'CNVA400DmgWeapon'
+    sage = Path(labpaths.SDK3) / 'SageXML'
+    w = re.search(r'<WeaponTemplate\s+id="AlliedAntiStructureSolarTargeter".*?</WeaponTemplate>',
+                  (sage / 'GlobalData/Weapon.xml').read_text(encoding='utf-8-sig'), re.S).group(0)
+    w = w.replace('id="AlliedAntiStructureSolarTargeter"', f'id="{wid}"').replace('<Nuggets>', '<Nuggets>\n<DamageNugget '
+        'Damage="1.0" Radius="10.0" DamageType="EXPLOSIVE" DeathType="NORMAL" PartitionFilterTestType="CIRCLE"/>', 1)
+    xml = (sage / 'Allied/Units/AlliedAntiStructureVehicle.xml').read_text(encoding='utf-8-sig')
+    assert xml.count('id="AlliedAntiStructureVehicle"') == xml.count('Template="AlliedAntiStructureSolarTargeter"') == 1
+    xml = xml.replace('id="AlliedAntiStructureVehicle"', f'id="{uid}"').replace(
+        'Template="AlliedAntiStructureSolarTargeter"', f'Template="{wid}"').replace(
+        '</AssetDeclaration>', f'{w}\n</AssetDeclaration>', 1)
+    return Unit(uid, xml, link=[f'WeaponTemplate:{wid}'])
+
+
+def mission_u():
+    m = Mission(name='CampSlaughterU', map=infiltrator_batch, units=[athena_dmg()])
+    for k, (tag, host, target) in enumerate(ARMS_U):
+        dx = 1000 * k - 3000
+        m.put(host, 'ship', dx, -850, side='p1', role=tag + ' host', name='A400 ' + tag + ' host')
+        m.put(target, 'ship', dx, -500, side='s1', role=tag + ' target', name='A400 ' + tag + ' target')
+    return m
+
+
+def check_u(m):
+    t = Test()
+    t.counters = [('A400Frame', '完成帧'), ('A400Hit', '打到'), ('A400Hurt', '掉血'), ('A400Early', '早打')]
+    p1 = m.player('p1')
+    t.scripts = [Script('Test - frame', [('COUNTER', 'A400Frame', 0, 900)],
+                        [('INCREMENT_COUNTER', 1, 'A400Frame')], once=False),
+                 Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', p1)])]
+    for k, (tag, *_) in enumerate(ARMS_U):
+        host, victim, bit = m.role(tag + ' host').name, m.role(tag + ' target').name, 1 << k
+        hit = ('NAMED_ATTACKED_BY_PLAYER', victim, p1)
+        t.scripts += [Script('Test - quiet ' + tag, [], [('UNIT_CHANGE_OBJECT_STATUS', victim, 'NO_ATTACK', 1)] + (
+                          [] if tag == 'd' else [('UNIT_CHANGE_OBJECT_STATUS', host, 'NO_ATTACK', 1)])),
+                      Script('Test - hit ' + tag, [hit], [('INCREMENT_COUNTER', bit, 'A400Hit')]),
+                      Script('Test - hurt ' + tag, [('UNIT_HEALTH', victim, 0, 100)],
+                             [('INCREMENT_COUNTER', bit, 'A400Hurt')]),
+                      Script('Test - early ' + tag, [('COUNTER', 'A400Frame', 0, 300), hit],
+                             [('INCREMENT_COUNTER', bit, 'A400Early')]),
+                      Script('Test - attack ' + tag, [('COUNTER', 'A400Frame', 2, 300)],
+                             ([] if tag == 'd' else [('UNIT_CHANGE_OBJECT_STATUS', host, 'NO_ATTACK', 0)]) +
+                             ([] if tag == 'a' else [('NAMED_ATTACK_NAMED', host, victim)]))]
+    t.expect = [('完成帧', 0, 'ever==', 900), ('打到', 0, 'ever==', 31), ('掉血', 0, 'ever==', 31), ('早打', 0, 'ever==', 8)]
+    t.bench = [('bench_camera', dict(x=3800, y=2700, look=False)),
+               ('bench_watch', dict(every=1, sheet=False, lines=4, seconds=80))]
+    return t
+
+
 MISSION = {'engine_slaughter_e': mission, 'engine_slaughter_p': lambda: mission('CampSlaughterP', ('p1', 'p1')),
-           'engine_slaughter_q': mission_q, 'engine_slaughter_r': mission_r, 'engine_slaughter_s': mission_s}
+           'engine_slaughter_q': mission_q, 'engine_slaughter_r': mission_r, 'engine_slaughter_s': mission_s,
+           'engine_slaughter_u': mission_u}
 CHECKS = {'engine_slaughter_e': {'a': check, 'b': lambda m: check(m, corrected=True)},
           'engine_slaughter_p': {'p': check_p}, 'engine_slaughter_q': {'q': check_q},
-          'engine_slaughter_r': {'r': check_r}, 'engine_slaughter_s': {'s': check_s, 't': lambda m: check_s(m, True)}}
+          'engine_slaughter_r': {'r': check_r}, 'engine_slaughter_s': {'s': check_s, 't': lambda m: check_s(m, True)},
+          'engine_slaughter_u': {'u': check_u}}
 # Each arm's drones are counted by its own player, so the hosts (and targets) swap sides: a confound, held here
 # as the one freedom; both arms read 0 (a negative baseline). Put both on p1 and count by area when E170 reopens.
 CONTROL_ARMS = {'engine_slaughter_e': ('On', 'Off', 'side'), 'engine_slaughter_p': ('On', 'Off')}
