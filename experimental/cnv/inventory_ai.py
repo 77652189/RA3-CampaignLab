@@ -183,13 +183,6 @@ NOTES = {
         '整项保持TODO：随机生成/基地世界输入/非空威胁及高度未闭环，整局阳性strict xfail；'
         '旧同名范围1实际加载1500；新1500局计数窄窗缺帧FAIL，1局PASS。'
         '见work/re/c_point_resume_report.md；27关静态14关45条宿主引用见c_point_scope.json'),
-    '目标/AITargetingHeuristic.HeuristicType=TechBuilding': (GUESSED,
-        'C aitechkind/aitechnon:a 原名ClosestTechBuildingHeuristic、敌距0、空VitalKindOf，'
-        '同位中立油井/普通电厂；f16油井ok并选中，普通电厂不在科技候选集合，'
-        '阴性组反选地图原有远油井(700,3200)。s40四区域计数4/0/0/0与0/0/0/0；'
-        'tests/test_tech_building_c.py按名回放选择/计数，阴性模型留家、两strict xfail，'
-        '原预测FAIL另strict xfail。资格对照已测，实时基地/搜索范围参考仍gap，不晋升；'
-        '见work/re/c_techkind_report.md、handoff-c.md'),
     '目标/AITargetingHeuristic.UnderAttack': (GUESSED,
         'C重开复用D164：满血电厂f5记录、f16门true并选中；last33/clear109来源活，'
         '另一对象last146/clear222来源已删，clr不等于同帧门。新aiuagate两局，'

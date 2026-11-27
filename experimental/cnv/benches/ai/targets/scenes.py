@@ -606,18 +606,17 @@ def aimindist_bench():
     def tech_kind(name, tech=True):
         """Same neutral structure/site: oil qualifies, ordinary plant does not.
 
-        The retail ClosestTechBuildingHeuristic host has no VitalKindOf filter.
-        Enemy distance is disabled to isolate the registered tech-building set;
-        this does not reopen the minimum-distance or fallback probes.
-        Native negative control selects the inherited far oil instead of staying
-        home; preserve the original prediction. See work/re/c_techkind_report.md.
+        No VitalKindOf filter, enemy distance 0: only the registered tech-building
+        set differs. Its own id (B 11-27): under the retail id ClosestTechBuildingHeuristic
+        the map stream's copy does not take -- the game kept the retail SearchRange 9999
+        and the negative took the map's far oil (work/re/b1127_techdup.md).
         """
         from benches.ai.tactics.scenes import aiteams_bench
         host_unit = aiteams_bench()["shared"].host_unit
         HOST = aiteams_bench()["shared"].HOST
         m = minimum(name, 0)
         asset, xml, ref = m.assets[0]
-        xml = xml.replace('CNVMinEnemy', 'ClosestTechBuildingHeuristic')
+        xml = xml.replace('CNVMinEnemy', 'CNVTechKind')
         xml = xml.replace('VitalKindOf="SUPPLY_SOURCE"', 'VitalKindOf=""')
         m.assets[0] = asset, xml, ref
         if not tech:

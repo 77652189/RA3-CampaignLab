@@ -126,8 +126,9 @@ expect = [
 bench_id = "engine_aimindist"
 id = "tech_building_named_bench_replay[aitechkind]"
 scene = {build = "aitechkind", check = "a", until = 22}
-bench = "aitechkind:a f309-318 = s20.6-21.2 (wall s40-41): counters (to power plant, to barracks, to tank, at home) read 4/0/0/0."
-proves = "simai TechBuilding kind: the registered tech building set draws the team out"
+bench = "aitechkind:a (B 11-27, own id CNVTechKind, CampTechKindA_mcp_1127_032820): f16 finds two oils, takes the near one (3150,3300); counters (to power plant, to barracks, to tank, at home) 4/0/0/0 from wall s7.8 to s57."
+proves = "TechBuilding: the nearest tech building (KindOf NEUTRAL_TECH) to the AI base within SearchRange draws the team out"
+item = "AI 目标/AITargetingHeuristic.HeuristicType=TechBuilding"
 let = {sel = "[v for t, v in zip(times, vals(rows)) if 20.5 <= t <= 21.5]"}
 expect = [
     "len(sel) > 0",
@@ -138,14 +139,14 @@ expect = [
 bench_id = "engine_aimindist"
 id = "tech_building_named_bench_replay[aitechnon]"
 scene = {build = "aitechnon", check = "a", until = 22}
-bench = "aitechnon:a f312-321 = s20.8-21.4 (wall s40-41): counters read 0/0/0/0 (the native selects the inherited far oil and the team leaves home)."
-proves = "simai TechBuilding kind: the non-tech set"
+bench = "aitechnon:a (B 11-27, CampTechNonA_mcp_1127_032657): the plant is no candidate; the map's far oil (700,3200) is one but out of SearchRange 1200 -- f16 / f466 find nothing; counters 0/0/0/4 wall s2.7-s57. (C 11-15's 0/0/0/0 ran under the retail id, whose map-stream copy does not take: SearchRange 9999; work/re/b1127_techdup.md.)"
+proves = "TechBuilding: an ordinary neutral structure is no tech building, and SearchRange rules a tech building out"
+item = "AI 目标/AITargetingHeuristic.HeuristicType=TechBuilding"
 let = {sel = "[v for t, v in zip(times, vals(rows)) if 20.5 <= t <= 21.5]"}
 expect = [
     "len(sel) > 0",
-    "all(tuple(v) == (0, 0, 0, 0) for v in sel)",
+    "all(tuple(v) == (0, 0, 0, 4) for v in sel)",
 ]
-mismatch = "sim 0/0/0/4; bench 0/0/0/0"
 
 [[reading]]
 bench_id = "engine_aimindist"

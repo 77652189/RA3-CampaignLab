@@ -412,8 +412,7 @@ def engine_aimindist():
     fallback remain gaps; see work/re/c_mindist_pair_report.md.
     TechBuilding type contrast: aitechkind oil / aitechnon ordinary neutral plant.
     Native f16 includes/selects the oil but never includes the ordinary plant;
-    the negative instead selects an inherited far oil. Its original home=4
-    prediction remains FAIL; see work/re/c_techkind_report.md.
+    the negative stays home (B 11-27, under its own heuristic id: work/re/b1127_techdup.md).
     """
     a = engine_aitargetpick()["shared"].a
     from parts import Script, Test, counted, square
