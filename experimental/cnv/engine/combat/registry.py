@@ -89,14 +89,16 @@ class Context:
     disguise / modifier / wear, fits)."""
     __slots__ = ('world', 'by', 'target', 'weapon', 'n', 'hurt', 'scalar', 'armor', 'speed', 'frames', 'gap',
                  'queue_hit', 'detonate', 'clear_notice', 'can_hit', 'held', 'cold_of', 'dots', 'mark_cold',
-                 'suppression_fields', 'emp_until', 'effects', 'victims', 'victim', 'claims', 'host', 'boost')
+                 'suppression_fields', 'emp_until', 'effects', 'victims', 'victim', 'claims', 'host', 'boost',
+                 'death_hits')
 
     def __init__(self, world, by, target, weapon, n, hurt, *, scalar, armor, speed, frames, gap, queue_hit,
                  detonate, clear_notice, can_hit, held, cold_of, dots, mark_cold, suppression_fields, emp_until,
-                 claims=None, host=None, boost=1.0):
+                 claims=None, host=None, boost=1.0, death_hits=None):
         self.world, self.by, self.target, self.weapon, self.n, self.hurt = world, by, target, weapon, n, hurt
         self.boost = boost      # the volley's damage factor (a charged shot's, weaponset.boost), the Damage nugget's
         self.claims = {} if claims is None else claims
+        self.death_hits = death_hits   # positive direct Damage hits with a known DeathType, by victim and type
         self.host = host
         self.scalar, self.armor, self.speed, self.frames, self.gap = scalar, armor, speed, frames, gap
         self.queue_hit, self.detonate, self.clear_notice, self.can_hit = queue_hit, detonate, clear_notice, can_hit

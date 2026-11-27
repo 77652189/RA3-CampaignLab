@@ -30,4 +30,8 @@ class Damage:
         victim = context.victim
         if taper:
             dmg = tapered(dmg, taper, context.by, victim)
-        context.add(victim, context.n * dmg * context.by.dealt * context.boost * context.hit(victim, damage_type))
+        amount = context.n * dmg * context.by.dealt * context.boost * context.hit(victim, damage_type)
+        context.add(victim, amount)
+        kind = context.weapon.get('death_type')
+        if amount > 0 and kind and context.death_hits is not None:
+            context.death_hits.setdefault(victim.serial, {})[kind] = context.by

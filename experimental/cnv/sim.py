@@ -2058,14 +2058,16 @@ class Sim:
         self.peeks = [q for q in self.peeks if now < q[3]]
         return [q[:3] for q in self.peeks]
 
-    def set_model_condition(self, b, condition, seconds=None):
+    stand = staticmethod(simorder.stand)
+
+    def set_model_condition(self, b, condition, seconds=None, *, after_scripts=False):
         """Shared minimal script/consumer store; separate from ObjectStatus.
 
         engine_spndisguise measures DISGUISED held for 20s. INFERRED: expiry
         at the first frame at/after duration, zero duration holds until cleared.
-        Other native producers (including suppression) are not merged here.
+        A producer after the script pass counts its first script-visible frame on the next pass.
         """
-        b.model_conditions[condition] = (self.frame_now() + math.ceil(seconds * simunits.LIFE_FPS)
+        b.model_conditions[condition] = (self.frame_now() + after_scripts + math.ceil(seconds * simunits.LIFE_FPS)
                                          if seconds and seconds > 0 else None)
 
     def has_model_condition(self, b, condition):

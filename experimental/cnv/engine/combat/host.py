@@ -29,7 +29,7 @@ import engine.objects.modifier as simmodifier
 from engine.modules import weaponset
 from engine.world.handle import GAP_WEAPON
 
-PEERS = frozenset({'attachment_tick', 'attachments', 'can_hit', 'chilling', 'cold_of', 'death_blasts', 'emp_disabled', 'emp_until', 'firing', 'garrison', 'has_model_condition', 'impact_flights', 'infiltrators', 'knock_hold', 'lift_timers', 'player_ups', 'projectile_detonate', 'queue_projectile_hit', 'set_model_condition', 'shots_due', 'suppression_fields', 'sweeps', 'volleys'})
+PEERS = frozenset({'attachment_tick', 'attachments', 'can_hit', 'chilling', 'cold_of', 'death_blasts', 'emp_disabled', 'emp_until', 'firing', 'garrison', 'has_model_condition', 'impact_flights', 'infiltrators', 'knock_hold', 'lift_timers', 'player_ups', 'projectile_detonate', 'queue_projectile_hit', 'set_model_condition', 'shots_due', 'stand', 'suppression_fields', 'sweeps', 'volleys'})
 LAZY = frozenset({'impact_flights', 'knock_hold', 'emp_until'})     # the host makes these dicts on first use
 
 
@@ -463,6 +463,7 @@ class Damage:
                     b.engine_status.discard('LIFTED_INTO_AIR')  # a soft landing (simunits.LiftTimers)
                     simmodifier.modify(world, b)
         hurt, instant = {}, {}      # instant: the part of hurt from shots with no projectile (TrackDamage)
+        death_hits = {}
         leech_events = {}       # the frame's leech claims (engine/combat/leech), paid after the damage
         host = EffectHost(self, world, peers)       # the 'effect' phase's calls (engine/combat)
 
@@ -498,7 +499,7 @@ class Damage:
                                            dots=self.dots, mark_cold=self.mark_cold,
                                            suppression_fields=peers.suppression_fields,
                                            emp_until=lambda: peers.emp_until, claims=leech_events, host=host,
-                                           boost=weaponset.boost(by, w))
+                                           boost=weaponset.boost(by, w), death_hits=death_hits)
                     if registry.run('launch', ctx):
                         continue
                     projectile = w.get('projectile')
@@ -541,7 +542,7 @@ class Damage:
                 continue
             before_hp = t.hp
             t.damage(dmg)
-            self.hit_reaction_damage(world, t, before_hp - t.hp, peers, by)
+            self.hit_reaction_damage(world, t, before_hp - t.hp, peers, by, death_hits.get(t.serial, {}))
             self.track(world, t, before_hp - t.hp, instant.get(t.serial, 0.0) / dmg if dmg > 0 else 0.0, now)
             leech.refund(leech_events.get(t.serial), t, before_hp, gap)
             t.set_last_damage(by.owner, by)
@@ -557,24 +558,29 @@ class Damage:
         registry.Context.mark_cold: SecondaryDamage)."""
         self.cold_on[target.serial] = (target, by)
 
-    def hit_reaction_damage(self, world, target, damage, peers, by):
+    def hit_reaction_damage(self, world, target, damage, peers, by, death_hits):
         """E172 gun-hit condition; RotateToSourceWhenDamaged turns a standing target (no way, no live goal) to
         `by` at its turn rate (engine_hitreaction_r: shielded, a back hit once, then front hits). Animation unmodelled.
 
-        INFERRED: start/refresh the SDK lifetime on positive applied damage,
-        using the common expiry store. The bench asserts ever-on and final
-        clear, not the precise first/last frame or repeated-hit refresh rule.
-        Turning only when the reaction plays, and the idle test, are INFERRED.
-        Script health changes, death blasts and other damage paths are gaps.
+        A396 engine_dogbite c: the BITTEN hit is visible to scripts for 30 frames (2 s) and drops the pending walk
+        (GoIdleWhenDamaged). Repeated-hit refresh and other hits' precise lifetime are INFERRED.
+        Turning only when the reaction plays, the idle test and simultaneous qualifying hits are INFERRED.
+        DeathType from projectile arrivals, DOTs and script damage remains a gap.
         """
         if damage <= 0 or target.hp <= 0:
             return
         rule = self.rule_of(world, self.hit_reaction_of, target.template, simunits.hit_reaction)
         if (rule and rule['seconds'] > 0 and rule['required'] <= set(target.status)
                 and not rule['forbidden'] & set(target.status)):
-            peers.set_model_condition(target, 'HIT_REACTION', rule['seconds'])
+            if rule['death_types']:
+                by = next((source for kind, source in death_hits.items() if kind in rule['death_types']), None)
+                if by is None:
+                    return
+            peers.set_model_condition(target, 'HIT_REACTION', rule['seconds'], after_scripts=True)
             if rule['rotate'] and not target.path and not getattr(target.goal, 'alive', False):
                 target.face = math.atan2(by.y - target.y, by.x - target.x)
+            if rule['go_idle']:
+                peers.stand(target)
             world.used.add('hit reaction')
             world.guessed.add('HitReactionBehavior: exact timing/refresh INFERRED')
 

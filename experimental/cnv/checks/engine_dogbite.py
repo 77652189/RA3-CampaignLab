@@ -37,8 +37,7 @@ gone -- 征死 / 娜落 run to the end; the control 31034 as a. The simulator: t
     to a line as a: 起应 = until hurt x 1000 + until HIT_REACTION; 长到 = frames HIT_REACTION is on x 1000 + until
     it is inside a 30 square at its goal.
 Predicted (data): On 应 = 起 (the 1 is BITTEN), 长 = 30 (2 s), 到 runs to the end (GoIdle drops the walk); Off 应
-runs to the end, 长 = 0, 到 = 起 + the 1.5 s stun + the walk left. The simulator: no death type on damage, the
-module refused for its RequiredDeathTypes / GoIdle -- both arms as Off. The facing is not read.
+runs to the end, 长 = 0, 到 = 起 + the 1.5 s stun + the walk left. The facing is not read.
 """
 import re
 from pathlib import Path

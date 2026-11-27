@@ -278,7 +278,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v53.json')    # v53: King Oni's arc shocks (A393); v52: PsyonicBlast's infantry shock (A391); v51: inherited armour (A387 h); v50: the dog's pounce (A386); v49: the SPN's StatusBitFlagsExclude (A374); v48: the shotgun's self-centred arc shock (A363); v47: the grapple nugget (E226); v46: the lift's retail filter; v45: the link guns' ally filter; v44: + taper (DamageDealtAtSelfPosition); v43: weapons from the data port (W1), the cache keeps `sets`; v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v54.json')    # v54: direct DeathType (E280); v53: King Oni's arc shocks (A393); v52: PsyonicBlast's infantry shock (A391); v51: inherited armour (A387 h); v50: the dog's pounce (A386); v49: the SPN's StatusBitFlagsExclude (A374); v48: the shotgun's self-centred arc shock (A363); v47: the grapple nugget (E226); v46: the lift's retail filter; v45: the link guns' ally filter; v44: + taper (DamageDealtAtSelfPosition); v43: weapons from the data port (W1), the cache keeps `sets`; v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
 ARMOR_DEFAULT = 100.0           # a damage type an armour does not name: taken in full (a guess)
@@ -360,7 +360,7 @@ def _weapons(texts, base_table=None):
             if not wid:
                 continue
             bare = re.sub(r'<!--.*?-->', '', body, flags=re.S)
-            dmg = [(_num(_attr(h, 'Damage')), _attr(h, 'DamageType', '')) for tag in HIT_NUGGETS
+            dmg = [(_num(_attr(h, 'Damage')), _attr(h, 'DamageType', ''), _attr(h, 'DeathType')) for tag in HIT_NUGGETS
                    for h, _ in _blocks(bare, tag) if _attr(h, 'Damage') is not None]
             war = [_attr(h, 'WarheadTemplate') for h, _ in _blocks(bare, 'ProjectileNugget')]
             projectiles = [_attr(h, 'ProjectileTemplate') for h, _ in _blocks(bare, 'ProjectileNugget')]
@@ -744,9 +744,14 @@ def _weapons(texts, base_table=None):
             if _attr(head, 'AttackRange'):
                 got['range'] = _num(_attr(head, 'AttackRange'))
             if dmg:
-                got['damage'] = sum(d for d, _ in dmg)
-                if any(t for _, t in dmg):                  # an override writing only Damage keeps the type
-                    got['type'] = next(t for _, t in dmg if t)
+                got['damage'] = sum(d for d, _, _ in dmg)
+                if any(t for _, t, _ in dmg):               # an override writing only Damage keeps the type
+                    got['type'] = next(t for _, t, _ in dmg if t)
+                death_types = {kind for amount, _, kind in dmg if amount > 0}
+                if len(death_types) == 1 and None not in death_types:
+                    got['death_type'] = death_types.pop()
+                elif len(dmg) > 1:
+                    got['death_type'] = None              # mixed direct nuggets share one damage scalar in the sim
             taper = [(_num(_attr(h, 'Radius', '0')), _num(_attr(h, 'MinRadius', '0')), _num(_attr(h, 'DamageTaperOff')))
                      for h, _ in _blocks(bare, 'DamageNugget') if _attr(h, 'DamageTaperOff') is not None]
             if _attr(head, 'DamageDealtAtSelfPosition') == 'true' and len(taper) == 1:
@@ -832,6 +837,7 @@ def _resolve(w, weapons):
                 ai_parts=[(round(d * shots / cycle, 2), t) for d, t in parts],
                 los=w['los'], sd=sd, sdps=round(sd * shots / cycle, 2) if sd > 0 else 0.0,
                 dmg=dmg, cycle=cycle, sched=_shot_times(w, shots), projectile=w.get('projectile'),
+                **({'death_type': w['death_type']} if w['damage'] and w.get('death_type') else {}),
                 suppression=w.get('suppression', weapons.get(w.get('warhead'), {}).get('suppression', [])),
                 hit_modifiers=w.get('hit_modifiers', weapons.get(w.get('warhead'), {}).get('hit_modifiers', [])),
                 line=w.get('line', weapons.get(w.get('warhead'), {}).get('line')),
@@ -3074,9 +3080,8 @@ def weapon_fire_ability(template, button, own=None):
 def hit_reaction(template, own=None):
     """E172: zero-threshold heavy HIT_REACTION with status validation.
 
-    Only the retail shielded Peacekeeper condition producer is measured.
-    Nonzero thresholds, light/medium reactions, death-type gates and GoIdle
-    are unsupported. rotate: RotateToSourceWhenDamaged (engine_hitreaction_r).
+    The shielded Peacekeeper and the conscript's BITTEN / GoIdle case are measured.
+    Nonzero thresholds, light/medium reactions and IgnoreIdleCheck turning remain gaps.
     """
     def read(xml):
         for head, inner in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'HitReactionBehavior'):
@@ -3085,12 +3090,12 @@ def hit_reaction(template, own=None):
                     or any(_num(_attr(head, k, '0')) != 0 for k in
                            ('LightDamageHitReactionThreshold', 'MediumDamageHitReactionThreshold'))
                     or any(_secs(_attr(head, k, '0s')) != 0 for k in
-                           ('LightDamageHitReactionLifeTimer', 'MediumDamageHitReactionLifeTimer'))
-                    or _attr(head, 'GoIdleWhenDamaged', 'false') != 'false'
-                    or _attr(head, 'RequiredDeathTypes', '')):
+                           ('LightDamageHitReactionLifeTimer', 'MediumDamageHitReactionLifeTimer'))):
                 return False
             validation = next(_blocks(inner, 'ObjectStatusValidation'), ('', ''))[0]
             return dict(seconds=_secs(_attr(head, 'HeavyDamageHitReactionLifeTimer', '0s')),
+                        death_types=set(_attr(head, 'RequiredDeathTypes', '').split()),
+                        go_idle=_attr(head, 'GoIdleWhenDamaged') == 'true',
                         rotate=_attr(head, 'RotateToSourceWhenDamaged', 'false') == 'true',
                         required=set(_attr(validation, 'RequiredStatus', '').split()),
                         forbidden=set(_attr(validation, 'ForbiddenStatus', '').split()))
