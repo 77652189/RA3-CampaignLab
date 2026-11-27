@@ -99,6 +99,7 @@ class Ground:
     owners: np.ndarray
     ramp: np.ndarray
     shore: np.ndarray
+    waterline: np.ndarray
     rank: tuple = ()
     edge_texture: Callable[[int, int, int, int, str], str | None] | None = None
 
@@ -333,7 +334,8 @@ def expand(plan, library, width, height, border):
     if np.any(blocked & ramp_shoulders & ~ramp_mask & ~cover):
         issues += ('ramp sides: exposed steep cells outside the travel lane have no measured edge fitting',)
     shore = np.abs(raw - waterline) <= ON_SHORE * rules.RAW_PER_WORLD
-    return Ground(raw, blocked, textures, cover & blocked, pieces, issues, owners, ramp_shoulders, shore)
+    return Ground(raw, blocked, textures, cover & blocked, pieces, issues, owners, ramp_shoulders, shore,
+                  waterline)
 
 
 def apply(m, plan, ground):

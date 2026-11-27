@@ -55,7 +55,7 @@ def _palette(kits, kit, kind, label, rng, count):
     raise ValueError(f'block {label}: missing texture for {kit}/{kind} (fallback {fallback})')
 
 
-def paint(plan, library, ground):
+def paint(plan, library, ground, roadbed=None):
     """Materialize each block's Surface on terrain.expand's ownership and geometry masks."""
     kits = library.get('texture_kits', {})
     catalogue = {entry['id']: (kit, kind, entry) for kit, classes in kits.items()
@@ -104,11 +104,23 @@ def paint(plan, library, ground):
                 if role == 'ramp' and surface is None:
                     ramp_material = name
 
+    road_material = None
+    if roadbed is not None and roadbed.paved.any():
+        kit = KIT_ALIASES.get(roadbed.kit, roadbed.kit.rsplit('_', 1)[0])
+        # The Heidelberg sample reads this exact substrate beneath the HV street meshes.
+        paving = catalogue.get('Pavement_Heidelberg10') if kit == 'Heidelberg' else None
+        road_material, = ([_asset('roadbed', paving[2])] if paving else
+                          _palette(kits, kit, 'Road', 'roadbed', Random(0), 1))
+        textures[roadbed.paved] = road_material
+        ground = replace(ground, hidden=ground.hidden | roadbed.hidden)
+
     def edge_texture(i, j, ni, nj, name):
         # Field 4 makes the model-covered foot transparent. Keep its substrate
         # out of neighbouring blends, and leave visible cliff faces exposed.
         if ground.hidden[j, i] or ground.hidden[nj, ni]:
             return None
+        if road_material in (textures[j, i], textures[nj, ni]):
+            return name
         if ground.owners[j, i] == ground.owners[nj, ni]:
             return name
         if ground.blocked[j, i] or ground.blocked[nj, ni]:
@@ -119,7 +131,7 @@ def paint(plan, library, ground):
 
     # Global ordering is independent of block order and the palette picked by
     # any neighbour. At a three-material corner the writer takes one winner.
-    fixed = {name for name in (plan.ground, ramp_material) if name is not None}
+    fixed = {name for name in (plan.ground, ramp_material, road_material) if name is not None}
 
     def priority(name):
         kind = catalogue[name][1]
