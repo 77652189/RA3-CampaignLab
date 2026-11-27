@@ -3,10 +3,12 @@ import json
 from pathlib import Path
 from xml.etree import ElementTree
 
+import numpy as np
+from PIL import Image
 import pytest
 
 from experimental.campaign.mapscript import Node
-from experimental.mapgen import build as builder, paint, terrain
+from experimental.mapgen import build as builder, paint, roads, terrain
 from experimental.mapgen.build import MapBuild
 from experimental.mapgen.buildings import Footprint, Layout, Shape
 from experimental.mapgen.checks import draw_failures
@@ -290,6 +292,25 @@ def _expanded(sketch, plan=None, **options):
     ground = terrain.expand(plan, {'kits': {}}, 160, 140, 30)
     frame = terrain.design_frame(sketch, ground, 0, 30)
     return MapBuild(plan, frame.close(ground), None, Layout(()), sketch, frame, (), **options)
+
+
+def test_preview_draws_bridge_deck_at_its_built_width(tmp_path, monkeypatch):
+    monkeypatch.setattr(viewer, 'CONTAINER', (160, 140, 30))
+    data = _split_design(height=3, coast=True, passage={'closed_reason': 'bank'})
+    data['blocks']['south']['kind'] = 'water'
+    built = _expanded(Design(data))
+    zero = np.zeros_like(built.ground.blocked)
+    bridge = roads.Bridge('lane', ((400, 100), (400, 550)), 450, roads.BRIDGE_DECK,
+                          frozenset(), frozenset(), 90, 55)
+    viewer.write_preview(tmp_path, built, title='Before layout')
+    with Image.open(tmp_path / 'built.png') as image:
+        water = image.getpixel((33, image.height - 1 - 20))
+        assert image.getpixel((34, image.height - 1 - 20)) == water
+    built = replace(built, roadbed=roads.Roadbed('test', (), (bridge,), zero, zero, zero))
+    viewer.write_preview(tmp_path, built, title='With bridge')
+    with Image.open(tmp_path / 'built.png') as image:
+        assert image.getpixel((34, image.height - 1 - 20)) == (139, 133, 120)
+        assert image.getpixel((33, image.height - 1 - 20)) == water
 
 
 def test_implicit_street_crossing_has_a_ramp():

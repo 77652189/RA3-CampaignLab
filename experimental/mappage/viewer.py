@@ -215,6 +215,9 @@ def write_preview(directory, built, *, title):
     pixels[ground.blocked[area]] *= .68
     if built.roadbed is not None:
         pixels[built.roadbed.paved[area]] = (139, 133, 120)
+        y, x = np.ogrid[y0:y1, x0:x1]
+        for bridge in built.roadbed.bridges:
+            pixels[bridge.mask(x * CELL, y * CELL)] = (139, 133, 120)
     Image.fromarray(pixels[::-1].astype(np.uint8)).save(directory / 'built.png')
     bounds = tuple(n * CELL for n in (x0, y0, x1, y1))
     _write_viewer(directory, title, built.sketch, built.check_relations(), bounds, built=built)

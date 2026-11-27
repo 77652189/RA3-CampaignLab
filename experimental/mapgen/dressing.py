@@ -401,7 +401,7 @@ def _edges(finish, block, spans, groups, cover, rocks, trees, rng):
     sketch = finish.sketch
     heights = sketch.state_heights['base']
     corners = defaultdict(list)
-    for a, b, left, right, name in spans:
+    for a, b, left, right, name, hard_quay in spans:
         other = right if left == block else left
         if other is None:
             continue
@@ -418,7 +418,7 @@ def _edges(finish, block, spans, groups, cover, rocks, trees, rng):
             continue  # The landing stays visually and physically open.
         if shore:
             at = _offset(a, angle, length / 2, 7 * CELL)
-            if sketch.blocks[block]['use'] in QUAY:
+            if hard_quay and sketch.blocks[block]['use'] in QUAY:
                 for group in groups:
                     if group['use'] == '码头' and finish.put(block, facade, SET_PIECE_BUDGET, _group(group, at, angle)):
                         break
@@ -509,11 +509,11 @@ def expand(sketch, ground, roadbed, layout, library, kits, sage, border, frame=N
     assets = assets or Assets(library, sage)
     finish = _Finish(sketch, ground, roadbed, layout, assets, kits, border, frame, native)
     edges = defaultdict(list)
-    for border in sketch.borders:
+    for border, spec in sketch.borders.items():
         for section in sketch.border_sections(border):
             for block in section[2:4]:
                 if block:
-                    edges[block].append(section)
+                    edges[block].append((*section, spec.get('shore') == 'quay'))
     for block, spec in sketch.blocks.items():
         if spec.get('kind') == 'water' or spec['use'] == 'ice':
             continue

@@ -82,6 +82,9 @@ def test_quay_dressing_respects_continuous_authored_paving(slice_inputs, monkeyp
     library['texture_kits'] = {'Town': {'Road': tiles('CargoApron', 'ContinuousPaving'),
                                         'Grass': tiles('Field'), 'Cliff': tiles('RockFace'),
                                         'Sand': tiles('Sand')}}
+    library['setpieces'] = {'groups': [{'style_kit': kit, 'use': '码头', 'anchor': 'T_Bush',
+                                      'relative_transforms': [{'template': 'T_Bush', 'dx': 0, 'dy': 0,
+                                                               'angle_deg': 0}]}]}
     data = {'version': 2, 'blocks': {
         'quay': {'at': [300, 370], 'height': 3, 'use': 'dock'},
         'field': {'at': [300, 480], 'height': 3, 'use': 'wildland'},
@@ -92,16 +95,25 @@ def test_quay_dressing_respects_continuous_authored_paving(slice_inputs, monkeyp
         'yard': {'line': [[0, 440], [600, 440]], 'pass': ['foot', 'vehicle', 'amphibian']},
     }}
 
+    monkeypatch.setattr(terrain, '_quay_pieces', lambda *args: ())
+
     def finish():
         sketch = Design(data)
         plan = terrain.from_design(sketch, TerrainPlan(ground='Field'), kit)
         ground = paint.paint(plan, library, expand(plan, library, 61, 51, 0))
         return dressing.expand(sketch, ground, None, Layout(()), library,
-                               dict.fromkeys(sketch.blocks, kit), sage, 0).ground
+                               dict.fromkeys(sketch.blocks, kit), sage, 0)
 
-    assert finish().textures[37, 30] == 'CargoApron'
+    def has_cargo(result):
+        return any((p.template, p.x, p.y) == ('T_Bush', 300, 370) for p in result.pieces)
+
+    assert not has_cargo(finish())
+    data['borders']['shore'] = {'line': [[0, 300], [600, 300]], 'shore': 'quay'}
+    result = finish()
+    assert has_cargo(result)
+    assert result.ground.textures[37, 30] == 'CargoApron'
     data['blocks']['quay']['ground_texture'] = 'ContinuousPaving'
-    ground = finish()
+    ground = finish().ground
     assert ground.textures[37, 30] == 'ContinuousPaving'
     assert ground.owners[43, 30] != ground.owners[45, 30]
     assert ground.edge_texture(30, 45, 30, 44, 'ContinuousPaving') == 'ContinuousPaving'
