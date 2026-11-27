@@ -65,9 +65,9 @@ import types
 KINDS = frozenset({
     'move', 'attack_move', 'attack', 'attack_ground', 'stop', 'idle', 'guard', 'follow_path', 'capture', 'enter',
     'exit', 'power', 'toggle', 'stance', 'build', 'place', 'unpack', 'sell', 'buy_science', 'hunt', 'flee',
-    'auto_acquire', 'face', 'set_lifetime', 'fill_body'})
+    'auto_acquire', 'face', 'set_lifetime', 'fill_body', 'collect_crate'})
 VERB = {'attack_move': '派', 'move': '走', 'attack': '攻击', 'power': '放', 'capture': '占领', 'build': '生产',
-        'buy_science': '买'}
+        'buy_science': '买', 'collect_crate': '拾取'}
 KIND = {v: k for k, v in VERB.items()}
 # the kinds `do` has a route for (the rest: R3 13e-13f, with their givers): the line verbs', and the script actions'
 # (13d-1 the orders; 13d-2 the buttons: unpack, toggle); face (Generals' AI command list has AICMD_FACE_POSITION;
@@ -130,7 +130,7 @@ ORDER = '命令'
 # record, names them; the command goes by the serials). A line written for a replay to read cannot hold them.
 PINS = ('unit_serials', 'target_serial')
 POINTED = frozenset({'move', 'attack_move', 'face', 'attack_ground', 'unpack'})     # the routes `_pointed` checks
-TARGETED = frozenset({'attack', 'capture', 'build', 'enter'})     # the routes that read `target` / `target_serial`
+TARGETED = frozenset({'attack', 'capture', 'build', 'enter', 'collect_crate'})
 
 
 def takes_target(cmd):
@@ -188,7 +188,7 @@ def text(cmd):
     return {'attack_move': f'派 {who} 去 {cmd.place}', 'move': f'走 {who} 去 {cmd.place}',
             'attack': f'攻击 {who} 打 {cmd.target}' + (f' {FORCE}' if cmd.force else ''),
             'power': f'放 {who} {cmd.power} 在 {cmd.place}',
-            'capture': f'占领 {who} 进 {cmd.target}'}[cmd.kind]
+            'capture': f'占领 {who} 进 {cmd.target}', 'collect_crate': f'拾取 {who} 去 {cmd.target}'}[cmd.kind]
 
 
 def event(cmd, at):
@@ -203,7 +203,7 @@ def event(cmd, at):
     who = cmd.units[0]
     tail = {'attack_move': (cmd.place,), 'move': (cmd.place,),
             'attack': (cmd.target + (f' {FORCE}' if cmd.force else ''),),
-            'power': (cmd.power, cmd.place), 'capture': (cmd.target,)}[cmd.kind]
+            'power': (cmd.power, cmd.place), 'capture': (cmd.target,), 'collect_crate': (cmd.target,)}[cmd.kind]
     return (at, verb, who) + tail
 
 
@@ -559,6 +559,14 @@ class Commands:
             return False, f'找不到 {cmd.target}'
         sent = [r.order.order_capture(w, r.peers, b, t) for b in self._units(cmd)]     # each one's answer (i #3)
         return (True, '') if sent and all(sent) else (False, f'没有能去占 {cmd.target} 的工兵')
+
+    def _collect_crate(self, cmd):
+        w, r = self._w, self._r
+        lookup = w.body if cmd.arg('objects') else lambda name: next(iter(w.pick(name)), None)
+        crate = self._target(cmd, lookup)
+        units = self._held(cmd, [b for b in self._units(cmd) if b is not None])
+        sent = [r.order.order_collect_crate(w, r.peers, b, crate) for b in units]
+        return (True, '') if sent and all(sent) else (False, f'无法拾取 {cmd.target}')
 
     def _build(self, cmd):
         w = self._w

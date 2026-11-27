@@ -27,6 +27,7 @@ A script (剧本), one event a line (or ';' between them), times in seconds or m
   <t> 血量 <谁> <百分比>     health set
   <t> 打 <谁>               attacked by the player (NAMED_ATTACKED_BY_PLAYER)
   <t> 占领 <谁>             now the player's
+  <t> 拾取 <谁> 去 <箱子>     move to collect the named heal crate
   <t> 占领 <谁> 进 <建筑>    the player's capture order (NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED Command_CaptureBuilding,
                             order_capture): the engineer walks to the building and takes it at its side
   <t> 旗标 <名字> <值>       a flag set outright (a check's or a device's)
@@ -1628,7 +1629,7 @@ class Sim:
         return out
 
     def happen(self, e):
-        cmd = self.commands.command(e, 'player')    # 派 走 攻击 放 占领 X 进 Y 生产 买: the player's orders, given
+        cmd = self.commands.command(e, 'player')    # the player's orders, given
         if e[1] == command_port.ORDER:              # through the command port (its routes are these verbs' order
             e = command_port.event(cmd, e[0])       # calls); a posted command noted as its line's event
         t, verb, *rest = e
@@ -2418,6 +2419,9 @@ def parse_script(text):
         elif rest.startswith('占领 ') and ' 进 ' in rest:
             who, _, target = rest[3:].rpartition(' 进 ')
             out.append((when(t), '占领', who.strip(), target.strip()))
+        elif rest.startswith('拾取 ') and ' 去 ' in rest:
+            who, _, target = rest[3:].rpartition(' 去 ')
+            out.append((when(t), '拾取', who.strip(), target.strip()))
         elif rest.startswith('血量 '):
             who, pct = rest[3:].rsplit(None, 1)
             out.append((when(t), '血量', who.strip(), float(pct.rstrip('%'))))
@@ -2436,7 +2440,7 @@ def parse_script(text):
         else:
             verb, _, who = rest.partition(' ')
             if verb not in ('摧毁', '删除', '打', '占领', '买'):
-                raise ValueError(f'剧本 {line!r}: 动作是 派 / 攻击 / 放 / 摧毁 / 删除 / 血量 / 打 / 占领 / 旗标 / 生产 / 造 / 买 之一')
+                raise ValueError(f'剧本 {line!r}: 动作是 派 / 攻击 / 放 / 摧毁 / 删除 / 血量 / 打 / 占领 / 拾取 / 旗标 / 生产 / 造 / 买 之一')
             out.append((when(t), verb, who.strip()))
     return out
 

@@ -1,5 +1,5 @@
 # Bench readings of checks/engine_healcrate.py (format: experimental/cnv/readings.py; runner: tests/conformance).
-# Includes the native right-click pickup. The simulator cannot replay that command yet.
+# Includes the native right-click pickup and its equivalent object-targeted replay order.
 
 [[reading]]
 id = "no_mover_takes_a_crate_it_passes"
@@ -41,7 +41,8 @@ expect = "all(r['箱子位'] == 15 and r['满血位'] == 0 and r['On 兵血'] ==
 
 [[reading]]
 id = "right_clicking_the_retail_heal_crate_takes_it"
-scene = {build = "engine_healcrate_r", check = "b", until = 18}
+scene = {build = "engine_healcrate_r", check = "b", until = 18, script = "2 拾取 On man 去 On crate"}
+item = "物体模块 Behaviors/HealCrateCollide"
 bench = """CampHCRealB_mcp_1127_025831, counters (箱子位, 满血位, On 兵血, Off 兵血): \
 s1–s25 15 0 50 50; s38–s61 14 1 100 50. Frame 7 shows the selected Peacekeeper and the crate at the click pixel; \
 frame 8 shows the Peacekeeper at the crate after pickup."""
@@ -49,7 +50,6 @@ proves = """Direct right-click on the retail HealCrate: that crate disappears an
 70 units away reach full health. The friendly Guardian 180 units away, the opposing Guardian 70 units away and the \
 uncommanded Peacekeeper in the Off lane stay below full health. Check a uses the same retail crate with script movement."""
 expect = "[rows[0][k] for k in ('箱子位', '满血位', 'On 兵血', 'Off 兵血')] == [15, 0, 50, 50] and [rows[-1][k] for k in ('箱子位', '满血位', 'On 兵血', 'Off 兵血')] == [14, 1, 100, 50]"
-mismatch = "The simulator executes no native click or crate-collect order here and stays at 15 0 50 50. Bench ends at 14 1 100 50. See work/re/handoff-e.md and E283."
 
 [[reading]]
 id = "neither_the_campaign_human_gate_nor_contact_nor_relationship_is_what_is_missing"

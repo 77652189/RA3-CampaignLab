@@ -26,10 +26,10 @@ import engine.data.units as simunits
 import engine.objects.locomotion as simlocomotion
 import engine.objects.path as simpath
 from engine.kernel import interfaces
-from engine.modules import locomotor, weaponset
+from engine.modules import healcrate, locomotor, weaponset
 from engine.orders import ability as simability
 from engine.orders import target as simtarget
-from engine.world.handle import GRID, inside
+from engine.world.handle import GRID, held, inside
 
 CAPTURE_REACH = 20.0           # R4: an engineer this far outside a building's round is at its side (a guess)
 ARRIVE = 1.5 * GRID             # a plain move that ends farther than this from where it was sent stopped short (held_up)
@@ -78,6 +78,8 @@ def order_move(world, peers, b, where, attacking, given=(), skip=(), face=None, 
         simability.stop_flee(b)             # INFERRED: any move order takes the run over, as STOP does
         m = b.aiupdate                      # ... and a waypoint path (order_follow sets it again after its legs)
         m.follow = m.ground_fire = None     # ... and a fire at the ground
+        if m.mode == 'collect_crate':
+            m.goal = None
         m.mode, m.ordered = 'attack' if attacking else 'move', False
         p = world.point(where) if isinstance(where, str) else where
         if p is not None and b.alive and b.speed > 0 and not exact:
@@ -163,6 +165,28 @@ def order_capture(world, peers, b, target_name):
     return False
 
 
+def order_collect_crate(world, peers, b, crate):
+    """Only replay the measured kind of pickup: the human sends a mobile unit to a heal crate."""
+    if (not b or not b.alive or b.owner != world.human or b.speed <= 0 or 'IMMOBILE' in b.status
+            or not crate or not crate.alive or not crate.find(healcrate.HealCrate)):
+        return False
+    order_move(world, peers, b, (crate.x, crate.y), False, exact=True)
+    b.goal, b.mode = crate, 'collect_crate'
+    return True
+
+
+def collect_crate_due(world, b, crate):
+    if not held(world, crate) or not crate.alive:
+        stand(b)
+        return
+    # INFERRED: sample contact after movement, using the two bounding circles.
+    if math.hypot(crate.x - b.x, crate.y - b.y) <= crate.radius + b.radius:
+        for effect in crate.find(healcrate.HealCrate):
+            effect.heal(world, b)
+        world.world.remove(crate, '拾取医疗箱')
+        stand(b)
+
+
 def capture_due(world, peers):
     """R4 / E15: an engineer at the building's side (reach and travel timing INFERRED).
     EngineerContain admits capture or allied repair; the entering engineer is consumed
@@ -172,6 +196,10 @@ def capture_due(world, peers):
     the derrick the player's at the first reading after the order (s4), 500, then 15 every 2 s (s7 515 -> s46 800)."""
     for b in world.living():
         g = b.goal
+        if b.mode == 'collect_crate':
+            if isinstance(g, type(b)):
+                collect_crate_due(world, b, g)
+            continue
         if b.mode != 'capture' or not isinstance(g, type(b)):
             continue
         if not g.alive:

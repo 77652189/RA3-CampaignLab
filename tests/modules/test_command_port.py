@@ -82,8 +82,24 @@ def test_unknown_and_unrouted_kinds_are_refused():
     assert not ok and 'no route' in why and not s.events
     ok, why = port.post(Command('hunt', units=('a',)), 5.0)          # routed, but no script line carries it
     assert not ok and 'not queued' in why and not s.events
-    assert set(ROUTED) < port.kinds() and len(port.kinds()) == 25
+    assert set(ROUTED) < port.kinds() and len(port.kinds()) == 26
     assert [r[2] for r in port.issued()] == [False, False, False]
+
+
+def test_collect_crate_order_is_replaced_by_a_ground_move():
+    s = simsmall.small_world([('man', 'AlliedAntiInfantryInfantry', 'Player_1', 1300.0, 1450.0),
+                              ('crate', 'HealCrate', 'PlyrCivilian', 1360.0, 1450.0)], model=False)
+    man, crate = s.bodies['man'], s.bodies['crate']
+    collect = Command('collect_crate', units=('man',), target='crate')
+    assert sim.parse_script(f'0 {text(collect)}') == [event(collect, 0)]
+    assert command(event(collect, 0), collect.by) == collect
+    man.set_hp(man.max_hp / 2)
+    assert s.commands.do(collect)[0]
+    assert man.goal is crate and crate.alive
+    assert s.commands.do(Command('move', units=('man',), pos=(crate.x, crate.y)))[0]
+    assert man.goal is None and man.mode == 'move'
+    s.advance(90)
+    assert crate.alive and man.hp == man.max_hp / 2
 
 
 def test_post_queues_as_the_line_and_pending_keeps_the_order():
