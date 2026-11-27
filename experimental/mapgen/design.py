@@ -248,15 +248,16 @@ class Design:
     """A validated design. Geometry is indexed once and shared by all states."""
 
     def __init__(self, data):
-        _fields(data, "$", "version blocks", "seed roads borders points states relations patches commitments")
+        _fields(data, "$", "version blocks", "seed roads borders points states relations patches commitments mission")
         _need(type(data["version"]) is int and data["version"] == 2,
               "$", "version", "expected format version 2")
         _int(data.get("seed", 0), "$", "seed")
         commitments = data.get("commitments", {})
-        _fields(commitments, "$.commitments", optional="mood")
+        _fields(commitments, "$.commitments", optional="mood kit road_kit ground_texture")
+        self.commitments = commitments
         self.mood = commitments.get("mood")
-        if "mood" in commitments:
-            _text(self.mood, "$.commitments", "mood")
+        for key, value in commitments.items():
+            _text(value, "$.commitments", key)
         self.data = data
         all_ids = {"base"}
         for section in ("blocks", "roads", "borders", "points", "states", "relations", "patches"):
@@ -273,6 +274,7 @@ class Design:
         self._read_points()
         self._read_borders()
         self._read_states()
+        self._read_mission(data.get("mission", {}), all_ids)
         self.via_ids = self.blocks.keys() | self.borders.keys() | self.base_pass.keys()
         self._read_relations()
         self._read_patches()
@@ -502,6 +504,65 @@ class Design:
     def _override_pass(self, item, name, value, targets):
         _ref(name, targets, item, "pass")
         return _pass(value, f"{item}.{name}", LAND if name in self.roads else KINDS)
+
+    def _read_mission(self, mission, all_ids):
+        at = "$.mission"
+        slots = {"Player_1_Start", "Player_2_Start", "InitialCameraPosition"}
+        _fields(mission, at, optional="points starts regions paths strongpoints ore")
+        self.mission = {}
+        for section, entries in mission.items():
+            item = f"{at}.{section}"
+            _need(isinstance(entries, dict), item, "shape", "expected an object keyed by ID")
+            for name in entries:
+                _id(name, item)
+                if section != "starts":
+                    _need(name not in all_ids | slots, name, "id", "ID already used or reserved")
+                    all_ids.add(name)
+            self.mission[section] = dict(sorted(entries.items()))
+
+        points = self.mission.get("points", {})
+        for name, xy in points.items():
+            _xy(xy, name)
+        locations = self.points.keys() | points.keys()
+        _need(not locations & slots, at, "id", "point names cannot be native start slots")
+        starts = self.mission.get("starts", {})
+        for slot, point in starts.items():
+            _ref(slot, slots, at, "start slot")
+            _ref(point, locations, slot, "start")
+        labels = defaultdict(int)
+        for name, path in self.mission.get("paths", {}).items():
+            _list(path, name, "path")
+            for point in path:
+                _ref(point, locations, name, "path point")
+                labels[point] += 1
+                _need(labels[point] <= 3, point, "path", "at most three path labels per point")
+            _need(path and len(set(path)) == len(path), name, "path", "expected distinct points")
+        for name, block in self.mission.get("strongpoints", {}).items():
+            _ref(block, self.blocks, name, "garrison block")
+        ore_nodes, pads = set(), set()
+        for name, field in self.mission.get("ore", {}).items():
+            _fields(field, name, "pad node facing", "base")
+            _ref(field["pad"], locations, name, "pad")
+            _need(field["pad"] not in pads, name, "pad", "pad already has an ore field")
+            pads.add(field["pad"])
+            _id(field["node"], name)
+            _need(field["node"] not in all_ids | ore_nodes | slots, name, "id",
+                  f"ore node {field['node']!r} already used or reserved")
+            ore_nodes.add(field["node"])
+            facing = field["facing"]
+            _need(type(facing) is int and facing % 90 == 45, name, "facing", "expected 45 + k*90 degrees")
+            if "base" in field:
+                _ref(field["base"], locations, name, "base")
+        for name, area in self.mission.get("regions", {}).items():
+            if isinstance(area, dict):
+                _fields(area, name, "point radius")
+                _ref(area["point"], locations | ore_nodes, name, "point")
+                _width(area["radius"], name)
+            else:
+                _list(area, name, "polygon")
+                poly = [_xy(xy, name) for xy in area]
+                _need(len(poly) >= 3 and signed_area_twice([*poly, poly[0]]), name, "polygon",
+                      "expected at least three vertices enclosing an area")
 
     def _read_relations(self):
         endpoints = self.blocks.keys() | self.points.keys()

@@ -1,6 +1,6 @@
 """Expand and export a map from its design and original asset library."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import json
 from pathlib import Path
 
@@ -120,6 +120,10 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
     background_count = len(plan.blocks)
     border = CONTAINER[2]
     if sketch is not None:
+        kit = kit or sketch.commitments.get('kit')
+        road_kit = road_kit or sketch.commitments.get('road_kit')
+        if 'ground_texture' in sketch.commitments:
+            plan = replace(plan, ground=sketch.commitments['ground_texture'])
         if kit is None:
             raise ValueError('building from a design requires a civilian kit')
         plan = terrain.from_design(sketch, plan, kit)
