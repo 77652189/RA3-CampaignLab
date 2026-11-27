@@ -137,6 +137,8 @@ RUNS |= {r: ((who,) * 5, PROPS[p]) for r, who, p in (('t', CONSCRIPT, 0), ('u', 
 # of the central CC_WOODFENCE01 pair west of aigar1's house: (3616, 2668.4), (3632.8, 2638.9).
 WOOD_FENCE = ('CC_WOODFENCE01', 'CC_WOODFENCE02')
 RUNS['y'] = RUNS['z'] = ((CONSCRIPT,) * 5, (None, None, None, None, PROPS[1][4]))
+# A399: y's straight pair in all five lanes, lane and pair moved off the 20-unit grid together by SHIFT (a398_fence.md)
+SHIFT, RUNS['ys'] = (0.0, 5.0, 10.0, 14.0, 18.0), ((CONSCRIPT,) * 5, None)
 # E281: isolate the three middle cars from a, one at a time at the original offsets.
 # Lane 4 repeats the near-side car with a Guardian, lane 5 keeps a's whole row as a control.
 RUNS['cr'] = ((APOC, APOC, APOC, GUARDIAN, APOC), CARS)
@@ -152,7 +154,7 @@ def _kinds(kinds, k):
 
 
 def _dy(k, run=''):
-    return 1600.0 + CLICK[k][0] if run == 'q' else 600.0 + 500.0 * (k - 1) - 6.35 * (run == 'z' and k == 2)
+    return 1600.0 + CLICK[k][0] if run == 'q' else 600.0 + 500.0 * (k - 1) - 6.35 * (run == 'z' and k == 2) + (run == 'ys') * SHIFT[k - 1]
 
 
 def _wall(kinds):
@@ -219,8 +221,8 @@ def mission(run):
             i = ((0, 1, 2, 1) if run == 'cr' else (2, 1, 2, 1))[k - 1]
             template, y, angle = wall[near[i]]
             wall = [(template, -y if run == 'ct' and k in (1, 4) else y, angle)]
-        if run in 'yz' and k in (2, 3, 4):
-            y0 = {2: -17.0, 3: 0.0, 4: -34.0}[k]
+        if run in ('y', 'z', 'ys') and (run == 'ys' or k in (2, 3, 4)):
+            y0 = -17.0 if run == 'ys' else {2: -17.0, 3: 0.0, 4: -34.0}[k]
             wall = [(template, y0 + 34.0 * i, 0.0) for i, template in enumerate(WOOD_FENCE)]
         side = SIDES.get(run, {}).get(k, 'neutral')
         for i, (t, y, ang) in enumerate(wall):
@@ -246,7 +248,7 @@ def check(m, run, view=False):
     for k in lanes:
         name = m.role(f'mover {k}').name
         mid_x = x + 4.4 if run == 'z' and k == 2 else x
-        t.areas[f'A1T Mid {k}'] = square(mid_x, y + _dy(k, run), 8.0 if run in 'yz' else 50.0)
+        t.areas[f'A1T Mid {k}'] = square(mid_x, y + _dy(k, run), 8.0 if run in ('y', 'z', 'ys') else 50.0)
         if k in LONE.get(run, ()):
             if (run, k) not in IDLE:
                 go.append(('NAMED_ATTACK_NAMED', name, m.role(f'car {k} 0').name))

@@ -124,6 +124,14 @@ expect = "rows[-1]['穿心'] == 11"
 mismatch = "sim 穿心 1, bench 11: sim misses the staggered seam. SDK box trials break the straight control; see work/re/handoff-e-archive.md E269."
 
 [[reading]]
+id = "ys_the_straight_seam_opens_once_lane_and_pair_move_off_the_grid"
+scene = {build = "engine_a1tollys", check = "ys", until = 20}
+bench = "CampA1TollYSYs (11-27 A399): 穿心 1110 from s5; lanes 1–5 arrive in 141, 139, 139, 139, 141 frames. y's straight pair and its lane moved together 0 / 5 / 10 / 14 / 18 off the 20-unit grid: lanes 2–4 cross the center gate."
+proves = "the program's box footprint (step 2, cell trunc(x / 20), a sample marks its cell only 7 or more from every cell edge unless CLASSIFY_ENTIRE_FOOTPRINT): predicted 1110; Generals' half-cell sampling, no margin and whole-cell sampling predict 0 / 0 / 1100"
+expect = "rows[-1]['穿心'] == 1110"
+mismatch = "sim 穿心 1, bench 1110: the sim's fence footprint is not the program's; for E (E269), the rule in work/re/a398_fence.md A399."
+
+[[reading]]
 id = "yz_all_five_conscripts_reach_their_goals"
 scenes = {y = {build = "engine_a1tolly", check = "y", until = 20}, z = {build = "engine_a1tollz", check = "z", until = 20}}
 bench = "CampA1TollYY / ZZ (11-26 E269): all five arrival timers settle at 139, 141, 140, 141, 174 / 139, 139, 140, 141, 174 frames."
