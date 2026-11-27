@@ -5,11 +5,12 @@ Cliff runs face left (high ground is on the left of the directed line). A ramp s
 low landing and points uphill; the rise in steps determines its length. Blocks paint in order.
 """
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import math
 
 import numpy as np
 
+from experimental.mapgen.design import LAND, DesignError
 from experimental.mapgen.campaign_writer import RAMP_MAX, mapterrain, newmap, rules
 from experimental.mapgen.library import CLIFF_STEP_RAW
 
@@ -96,6 +97,94 @@ class Ground:
     waterline: np.ndarray
     rank: tuple = ()
     edge_texture: Callable[[int, int, int, int, str], str | None] | None = None
+
+
+@dataclass(frozen=True)
+class DesignFrame:
+    mask: np.ndarray
+    bounds: tuple[int, int, int, int]  # inclusive rectangle in cells, relative to the playable corner
+
+    def close(self, ground):
+        return replace(ground, blocked=ground.blocked | ~self.mask)
+
+    def map_borders(self, padding):
+        height, width = self.mask.shape
+        whole = (0, 0, width - 2 * padding, height - 2 * padding)
+        # The engine initializes the terrain from border zero, then a script
+        # can activate a smaller playable rectangle without changing its origin.
+        return [whole] if self.bounds == whole else [whole, self.bounds]
+
+
+def design_frame(sketch, ground, background_count, border):
+    """The union of design faces, clipped to the map's playable cells."""
+    mask = ground.owners >= background_count
+    for name, spec in sketch.blocks.items():
+        if spec.get('kind') == 'water':
+            y, x = (np.indices(mask.shape) - border) * CELL
+            ring = tuple(tuple(map(float, p)) for p in sketch.rings[name][:-1])
+            mask |= polygon_mask(ring, x, y)
+    height, width = mask.shape
+    # The east/north boundary vertices are included in the map rectangle.
+    mask[:border] = mask[height - border + 1:] = False
+    mask[:, :border] = mask[:, width - border + 1:] = False
+    rows = np.flatnonzero(mask.any(axis=1))
+    cols = np.flatnonzero(mask.any(axis=0))
+    if len(rows) < 2 or len(cols) < 2:
+        raise DesignError('$', 'playable', 'design has no playable rectangle inside the map')
+    bounds = tuple(int(v) - border for v in (cols[0], rows[0], cols[-1], rows[-1]))
+    return DesignFrame(mask, bounds)
+
+
+def from_design(sketch, plan, kit):
+    """Lay out the v2 faces and explicit land openings using the measured cliff and ramp rules."""
+    def depth(name):
+        parent = sketch.blocks[name].get('parent')
+        return 0 if parent is None else 1 + depth(parent)
+
+    faces = {name: tuple(tuple(map(float, p)) for p in sketch.rings[name][:-1])
+             for name in sorted(sketch.blocks, key=depth)}
+    blocks = tuple(Block(points, spec['height'], surface=Surface(name, spec['use'], kit, sketch.block_seed(name)))
+                   for name, points in faces.items() if (spec := sketch.blocks[name]).get('kind') != 'water')
+    water = plan.water or tuple(Water(points) for name, points in faces.items()
+                                if sketch.blocks[name].get('kind') == 'water')
+    cliffs, ramps = [], []
+    for border in sketch.borders:
+        for (a, b), _, _ in sketch.border_edges[border]:
+            left, right = sketch.sides[a, b]
+            if not left or not right or any(sketch.medium(f) != LAND for f in (left, right)):
+                continue
+            diff = sketch.blocks[left]['height'] - sketch.blocks[right]['height']
+            if diff and not plan.cliffs:
+                points = tuple(tuple(map(float, p)) for p in ((a, b) if diff > 0 else (b, a)))
+                cliffs.append(Cliff(*points, kit))
+        if plan.ramps:
+            continue
+        sections = []
+        for a, b, left, right, name in sketch.border_sections(border):
+            if left and right and sketch.medium(left) == sketch.medium(right) == LAND:
+                diff = sketch.blocks[left]['height'] - sketch.blocks[right]['height']
+                if diff and sketch.base_pass.get(name):
+                    if not sections or sections[-1][0] != name or sections[-1][1][-1][1] != a:
+                        sections.append((name, []))
+                    sections[-1][1].append((a, b, diff))
+        for name, parts in sections:
+            a, b, diff = parts[0][0], parts[-1][1], parts[0][2]
+            tangent = unit_direction(np.subtract(b, a))
+            if any(rise != diff or not np.allclose(unit_direction(np.subtract(q, p)), tangent)
+                   for p, q, rise in parts):
+                raise DesignError(name, 'ramp', 'choose an opening along one straight cliff of constant rise')
+            if sketch.base_pass[name] != LAND:
+                raise DesignError(name, 'ramp', 'the available ramp carries foot, vehicle and amphibian')
+            spec = sketch.borders[border]
+            opening = spec.get('segments', {}).get(name.split('.')[-1], {}) if name != border else {}
+            width = opening.get('width', min(math.dist(a, b), spec.get('width', math.inf)))
+            if width > math.dist(a, b) + 1e-7:
+                raise DesignError(name, 'ramp', 'ramp width exceeds its opening along the cliff')
+            uphill = np.array((-tangent[1], tangent[0])) * (1 if diff > 0 else -1)
+            low = (np.add(a, b) / 2) - uphill * (RAMP_LENGTH * abs(diff) / 2)
+            ramps.append(Ramp(tuple(low), tuple(uphill), abs(diff), width))
+    return replace(plan, blocks=(*plan.blocks, *blocks), water=water,
+                   cliffs=plan.cliffs or tuple(cliffs), ramps=plan.ramps or tuple(ramps))
 
 
 def polygon_mask(points, x, y, distances=False):

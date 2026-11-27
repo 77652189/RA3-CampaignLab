@@ -46,7 +46,7 @@ def read_xml(path):
     return root
 
 
-def _shape(node):
+def read_shape(node):
     shape = dict(node.attrib)
     for key in ("MajorRadius", "MinorRadius", "Height"):
         if key in shape:
@@ -72,8 +72,8 @@ def _geometry(obj, source, objects, issues):
         source, obj = objects[key][0]
 
     node = obj.find("Geometry")
-    shapes = [_shape(shape) for shape in node.findall("Shape")]
-    placement = [_shape(shape) for shape in node.findall("PlacementShape")]
+    shapes = [read_shape(shape) for shape in node.findall("Shape")]
+    placement = [read_shape(shape) for shape in node.findall("PlacementShape")]
     return {"source": source, "attributes": node.attrib, "shapes": shapes,
             "footprint": placement or shapes}
 

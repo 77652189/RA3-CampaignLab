@@ -67,10 +67,14 @@ def test_road_to_frame_uses_apron_grade_without_opening_the_backdrop(tmp_path, m
         return [dict(id=name, Texture='surface.tga', BumpTexture='surface.tga')]
 
     library = tmp_path / 'library.json'
-    library.write_text(json.dumps({'kits': {KIT: {}}, 'texture_kits': {
-        'Heidelberg': {'Grass': material('Grass_Heidelberg01'), 'Road': material('Pavement_Heidelberg10')},
-        'Gibraltar': {'Cliff': material('Cliff_Gibraltar1')},
-    }}), encoding='utf8')
+    library.write_text(json.dumps({
+        'kits': {KIT: {'buildings': [], 'destructibles': [], 'props': []}},
+        'blocking': {},
+        'texture_kits': {
+            'Heidelberg': {'Grass': material('Grass_Heidelberg01'), 'Road': material('Pavement_Heidelberg10')},
+            'Gibraltar': {'Cliff': material('Cliff_Gibraltar1')},
+        },
+    }), encoding='utf8')
     frame = ((100, 200), (700, 200), (700, 600), (100, 600))
     design_file = tmp_path / 'slice.json'
     design_file.write_text(json.dumps({
@@ -83,6 +87,8 @@ def test_road_to_frame_uses_apron_grade_without_opening_the_backdrop(tmp_path, m
     apron = terrain.Block(((50, 150), (750, 150), (750, 650), (50, 650)), 4,
                           surface=terrain.Surface('apron', 'park', KIT))
     result = build.build(design_file, library, terrain.TerrainPlan(blocks=(apron,)), kit=KIT, road_kit=KIT)
+    assert result.frame.map_borders(0) == [(0, 0, 81, 81), (10, 20, 70, 60)]
+    assert result.border_index == 1
     assert result.roadbed.paved[40, 10] and not result.ground.blocked[40, 10]
     assert result.ground.raw[40, 9] == result.ground.raw[40, 10] == 4 * terrain.CLIFF_STEP_RAW
     assert result.ground.blocked[40, 9] and result.ground.textures[40, 9] == 'Grass_Heidelberg01'

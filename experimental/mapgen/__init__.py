@@ -6,5 +6,6 @@
     buildings
     paint
     dressing
+    checks
     build
 """

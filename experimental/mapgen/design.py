@@ -421,7 +421,7 @@ class Design:
     def _read_relations(self):
         endpoints = self.blocks.keys() | self.points.keys()
         schemas = {
-            "通不通": ("from to who", "only_via reachable"),
+            "通不通": ("from to who", "only_via reachable without"),
             "谁先到": ("a b to who min_lead", ""),
             "罩住": ("point road by fraction", ""),
             "绕多远": ("from to via who max_extra", ""),
@@ -429,7 +429,8 @@ class Design:
             "放得下": ("point side", ""),
         }
         references = {"from": endpoints, "to": endpoints, "a": endpoints, "b": endpoints,
-                      "only_via": self.via_ids, "via": self.via_ids, "point": self.points, "road": self.roads,
+                      "only_via": self.via_ids, "via": self.via_ids, "without": self.via_ids,
+                      "point": self.points, "road": self.roads,
                       "who": KINDS, "state": self.state_pass, "by": ("range", "vision")}
         for item, rel in self.relations.items():
             _need(isinstance(rel, dict), item, "shape", "expected a relation object")
@@ -540,17 +541,28 @@ class Design:
 
     def _crossings(self, border):
         """Face pairs and passage IDs for each positive-length border interval."""
+        for _, _, left, right, item in self.border_sections(border):
+            yield left, right, item
+
+    def border_sections(self, border):
+        """Oriented endpoints, face pair, and passage ID of each border section."""
+        def at(a, b, start, end, offset):
+            t = (offset - start) / (end - start)
+            return tuple(float(p + (q - p) * t) for p, q in zip(a, b))
+
         for edge, start, end in self.border_edges[border]:
             left, right = self.sides[edge]
+            a, b = map(lambda p: tuple(map(float, p)), edge)
             cursor = start
             for item, (lo, hi, _) in self.spans[border].items():
-                if max(start, lo) < min(end, hi):
+                lo, hi = max(start, lo), min(end, hi)
+                if lo < hi:
                     if cursor < lo:
-                        yield left, right, border
-                    yield left, right, item
+                        yield at(a, b, start, end, cursor), at(a, b, start, end, lo), left, right, border
+                    yield at(a, b, start, end, lo), at(a, b, start, end, hi), left, right, item
                     cursor = hi
             if cursor < end:
-                yield left, right, border
+                yield at(a, b, start, end, cursor), b, left, right, border
 
     def _road_links(self):
         for point, pieces in self.junctions.items():
@@ -586,7 +598,7 @@ class Design:
                       item, "closed_cliff", f"{left}/{right} needs an opening or closed_reason")
 
     def _graph(self, who, state, without):
-        faces = self.playable[state] - {without}
+        faces = self.playable[state] - without
         passes = self.state_pass[state]
         graph = defaultdict(set)
 
@@ -598,20 +610,20 @@ class Design:
             if who in self.medium(face):
                 graph[face] = set()
         for border in self.borders:
-            if border != without:
+            if border not in without:
                 for left, right, item in self._crossings(border):
-                    if left in graph and right in graph and item != without and who in passes.get(item, ()):
+                    if left in graph and right in graph and item not in without and who in passes.get(item, ()):
                         link(left, right)
 
         for i, (road, owners) in enumerate(self.pieces):
-            if road != without and who in passes[road] and owners & faces:
+            if road not in without and who in passes[road] and owners & faces:
                 graph[i] = set()
                 for face in owners:
                     if face in graph:
                         link(i, face)
         for a, b, left, right, border, opening in self._road_links():
             if a in graph and b in graph and left in faces and right in faces:
-                if border is None or (without not in (border, opening) and who in passes.get(opening, LAND)):
+                if border is None or (border not in without and opening not in without and who in passes.get(opening, LAND)):
                     link(a, b)
         return graph
 
@@ -624,6 +636,9 @@ class Design:
         _ref(state, self.state_pass, str(start), "state")
         if without is not None:
             _ref(without, self.via_ids, str(start), "without")
+        return self._connected(start, end, who, state, {without} - {None})
+
+    def _connected(self, start, end, who, state, without):
         graph = self._graph(who, state, without)
         a = self.points[start]["block"] if start in self.points else start
         b = self.points[end]["block"] if end in self.points else end
@@ -638,9 +653,9 @@ class Design:
                 continue
             args = rel["from"], rel["to"], rel["who"]
             state = rel.get("state", "base")
-            ok = self.reachable(*args, state=state) == rel.get("reachable", True)
+            ok = self.reachable(*args, state=state, without=rel.get("without")) == rel.get("reachable", True)
             if ok and "only_via" in rel:
-                ok = not self.reachable(*args, state=state, without=rel["only_via"])
+                ok = not self._connected(*args, state, {rel.get("without"), rel["only_via"]} - {None})
             results[item] = "pass" if ok else "fail"
         return results
 

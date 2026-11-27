@@ -96,7 +96,7 @@ class Shape:
                    min(self.segment_gap(a, b) for a, b in other.edges()))
 
 
-def _shapes(entries):
+def geometry_shapes(entries):
     shapes = []
     for entry in entries:
         kind, radius = entry['Type'], entry['MajorRadius']
@@ -244,7 +244,7 @@ class BuildingPlanner:
                 raise DesignError(block, 'buildings', f'{template.name}: {exc}') from exc
         return self._garrisons[template.name]
 
-    def _palette(self, block):
+    def _palette(self, block, require_front):
         kit = self.kits.get(block)
         if kit not in self.library['kits']:
             raise DesignError(block, 'buildings', f'no civilian kit {kit!r}')
@@ -253,10 +253,10 @@ class BuildingPlanner:
         for entry in sorted(entries, key=lambda e: e['template']):
             name, g = entry['template'], entry['geometry']
             front = self.fronts.get(name.casefold())
-            if g and g['footprint'] and front is not None:
+            if g and g['footprint'] and (front is not None or not require_front):
                 # The library has already followed inheritance and selected PlacementShape.
-                choices.append(_Template(name, entry['source'], front,
-                                         _shapes(g['footprint']), _shapes(g['shapes'])))
+                choices.append(_Template(name, entry['source'], front or 0.,
+                                         geometry_shapes(g['footprint']), geometry_shapes(g['shapes'])))
         random.Random(self.design.block_seed(block)).shuffle(choices)
         return choices
 
@@ -313,12 +313,17 @@ class BuildingPlanner:
                     for s in placement + collision)
         offset = setback + reach + depth
         x, y = (round(p + n * offset, 9) for p, n in zip(kerb, inward))
+        corners = tuple(end for end in (frontage.a, frontage.b) if end in self.junctions) if clear_corners else ()
+        return self._place(block, rings, placed, template, frontage.name, x, y, angle, placement, collision,
+                           corners=corners, tangent=(ny, -nx))
+
+    def _place(self, block, rings, placed, template, street, x, y, angle, placement, collision,
+               *, corners=(), tangent=(0., 0.)):
         placement, collision = (tuple(replace(s, center=(s.center[0] + x, s.center[1] + y, s.center[2]))
                                       for s in group) for group in (placement, collision))
         shapes = tuple(dict.fromkeys(placement + collision))
         worst = (0., '')
-        corners = [end for end in (frontage.a, frontage.b) if end in self.junctions] if clear_corners else ()
-        tx, ty = ny, -nx
+        tx, ty = tangent
         for s in shapes:
             # Leave an alley's width across the mouth of a junction. The gap
             # is for seeing the turn and moving a squad through it, so test the
@@ -344,7 +349,7 @@ class BuildingPlanner:
             return None, miss
         garrisonable = self._garrisonable(block, template)
         blocking = self.library['blocking'].get(template.name.casefold(), {}).get('cls', 'unknown')
-        return Building(template.name, x, y, angle, frontage.name, not placed, placement,
+        return Building(template.name, x, y, angle, street, not placed, placement,
                         collision, foundation, garrisonable, blocking), None
 
     def lock_block(self, block):
@@ -354,13 +359,13 @@ class BuildingPlanner:
         if request is None and (not town or spec.get('kind') == 'water'):
             return ()
         frontage = self.frontages[block]
-        if request is not None and (not frontage or spec.get('kind') == 'water'):
-            raise DesignError(block, 'buildings', f'{request!r}: no dry street frontage')
-        if not frontage:
+        if request is not None and spec.get('kind') == 'water':
+            raise DesignError(block, 'buildings', f'{request!r}: choose a dry block')
+        if not frontage and request is None:
             return ()
         ring = self.rings[block]
         rings = (ring, *(self.rings[k] for k, v in self.design.blocks.items() if v.get('parent') == block))
-        palette = self._palette(block)
+        palette = self._palette(block, require_front=bool(frontage))
         placed = []
         if request is not None:
             key = request.strip().casefold()
@@ -370,8 +375,19 @@ class BuildingPlanner:
             elif key in {'garrison', 'garrisonable', '驻军楼'}:
                 candidates = [t for t in palette if self._garrisonable(block, t)]
             if not candidates:
-                raise DesignError(block, 'buildings', f'{request!r}: no kit candidate with a footprint and measured front')
+                needed = 'a footprint and measured front' if frontage else 'a footprint'
+                raise DesignError(block, 'buildings', f'{request!r}: no kit candidate with {needed}')
             anchor = spec['at']
+            if not frontage:
+                misses = []
+                for t in candidates:
+                    b, miss = self._place(block, rings, [], t, '', *anchor, 0., t.placement, t.collision)
+                    if b is not None:
+                        return (b,)
+                    misses.append((*miss, t.name))
+                amount, reason, template = min(misses)
+                raise DesignError(block, 'buildings',
+                                  f'{request!r} at {tuple(anchor)}: {template}, {reason}, {amount:.3f} world units')
             slots = [(kerb, normal, f) for f in frontage for kerb, normal in f.slots(anchor)]
             slots.sort(key=lambda slot: math.dist(anchor, slot[0]))
             xs, ys = zip(*ring)
