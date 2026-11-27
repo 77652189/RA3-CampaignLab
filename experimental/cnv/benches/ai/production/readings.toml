@@ -907,6 +907,33 @@ expect = ["146 <= times[first] <= 176", "15 <= times[three] - times[first] <= 35
 
 [[reading]]
 bench_id = "engine_aiskirm"
+id = "a_mobile_reach_cache_of_an_hour_leaves_the_skirmish_team_as_stock"
+item = "AI 全局常量/AIData.Optimization_TimeToCacheCanReachMobileTarget"
+scene = {build = "aiskocm", check = "fm", until = 250}
+bench = """\
+B 11-27 aiskocm (CampAISkOCMFm_mcp_1127_122333, PASS; Optimization_TimeToCacheCanReachMobileTarget 3600s, stock 2s) \
+reads as aiskfon run in the same batch (CampAISkFOnFm_mcp_1127_123144) second for second to s248: 激流到 1 at s174, \
+3 at s185, 6 at s215-s229, 维和到 1 at s174, home again by s237, the next wave from s249 / s250. Of the three aiskoc \
+fields only the immobile cache splits it (aiskoci)"""
+proves = "simai: the skirmish attack team runs as stock with a can-reach answer for a moving target held an hour"
+let = {first = "next(i for i, r in enumerate(rows) if r['激流到'] >= 1)", three = "next(i for i, r in enumerate(rows) if r['激流到'] >= 3)"}
+expect = ["146 <= times[first] <= 176", "15 <= times[three] - times[first] <= 35", "rows[-1]['激流到'] == 0"]
+
+[[reading]]
+bench_id = "engine_aiskirm"
+id = "a_tactics_kick_period_of_an_hour_leaves_the_skirmish_team_as_stock"
+item = "AI 全局常量/AIData.Optimization_TacticsEmergencyKickPeriod"
+scene = {build = "aiskock", check = "fm", until = 250}
+bench = """\
+B 11-27 aiskock (CampAISkOCKFm_mcp_1127_122739, PASS; Optimization_TacticsEmergencyKickPeriod 3600s, stock 4s) reads \
+as aiskfon run in the same batch (CampAISkFOnFm_mcp_1127_123144) second for second to s248, the next wave from s249 \
+/ s250. The period clocks the tactics' periodic check (work/re l4_tactics); this team's attack run is never ended by it"""
+proves = "simai: the skirmish attack team runs as stock with the tactics' periodic check held off an hour"
+let = {first = "next(i for i, r in enumerate(rows) if r['激流到'] >= 1)", three = "next(i for i, r in enumerate(rows) if r['激流到'] >= 3)"}
+expect = ["146 <= times[first] <= 176", "15 <= times[three] - times[first] <= 35", "rows[-1]['激流到'] == 0"]
+
+[[reading]]
+bench_id = "engine_aiskirm"
 id = "no_efficiency_updates_leave_the_attack_team_at_the_player_s_base"
 scene = {build = "aiskoe", check = "fm", until = 268}
 bench = """\
@@ -921,16 +948,16 @@ expect = ["rows[-1]['激流到'] >= 3", "all(r['维和到'] == 0 for r in rows)"
 
 [[reading]]
 bench_id = "engine_aiskirm"
-id = "reach_caches_and_kick_of_an_hour_bring_the_riders_in_with_the_riptides"
-scene = {build = "aiskoc", check = "fm", until = 268}
+id = "an_immobile_reach_cache_of_an_hour_brings_the_riders_in_with_the_riptides"
+scene = {build = "aiskoci", check = "fm", until = 268}
 bench = """\
-B 11-27 aiskoc (CampAISkOCFm_mcp_1127_113944 and _114630 read second for second the same, as do the two aiskfon \
-beside them, _112626 / _114507; Optimization_TimeToCacheCanReachMobileTarget / ImmobileTarget and \
-TacticsEmergencyKickPeriod 3600s): 激流到 1 at s154-155, 维和到 3 by s162-163 (with the Riptides; aiskfon 15 s \
-behind), at most 5 there, all home by s205-206 (aiskfon s237), and the next wave stays home, 8 Riptides from s238 to \
-the end (aiskfon's leaves from s249). Which of the three does it not split"""
-proves = "simai: the reach caches and the emergency kick period hold the attack team as aiskfon (riders 15 s behind)"
-mismatch = "the simulator reads none of the three: its aiskoc is stock -- the riders come 15 s behind, the next wave leaves"
+B 11-27 aiskoci (CampAISkOCIFm_mcp_1127_122457; Optimization_TimeToCacheCanReachImmobileTarget 3600s, stock 2s) reads \
+as the three Optimization_ fields at once did (aiskoc, CampAISkOCFm_mcp_1127_113944 / _114630) to a second: 激流到 1 \
+at s154, 维和到 3 at s162 (with the Riptides; aiskfon 15 s behind), at most 5 there, all home by s205-206 (aiskfon \
+s237), and the next wave stays home, 8 Riptides from s238 to the end (aiskfon's leaves from s249). The other two \
+(aiskocm, aiskock) read as aiskfon: this field alone splits it"""
+proves = "simai: a can-reach answer for a building target held an hour sends the riders in with the Riptides, no next wave"
+mismatch = "the simulator does not read the immobile reach cache: its aiskoci is stock -- riders 15 s behind, the next wave leaves"
 let = {riptide = "next(i for i, r in enumerate(rows) if r['激流到'] >= 1)", pk = "next(i for i, r in enumerate(rows) if r['维和到'] >= 1)"}
 expect = ["pk - riptide <= 10", "all(r['激流在家'] >= 8 for r in rows[-20:])"]
 
