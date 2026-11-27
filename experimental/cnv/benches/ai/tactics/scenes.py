@@ -928,14 +928,12 @@ def aigarrison_bench():
     HOUSE = 'AM_Apartments_01'
     HOUSE_NAME = 'UNIT - CNV AI House'
     NEAR, FAR = 200.0, -450.0                # north (+) of the far plant (3700, 2400); the AI's base is north (3850, 3400)
-    geometry = SimpleNamespace(EAST=0.0)                               # towards the team's line from its base
-    # Round 121 (engine A): was 40, the house then stood on a grass tuft of niagara's scenery (CC_GRASS06 at 3733, 2599;
-    # tests/test_maps.py test_nothing_a_build_places_stands_on_scenery). The round-66 bench readings were at EAST 40.
-
+    EAST = 40.0         # towards the team's line from its base; as benched 11-09, the NEAR house on a CC_GRASS06 tuft
+                        # of niagara's scenery (tests/test_maps.py ON_SCENERY_AS_BENCHED)
 
     def mission(mod, north, enter, observe=False):
         m = ar.mission(mod, guards=ar.GUARDS, RetreatPowerAdvantage='0.0', EnterGarrisons=enter)
-        m.put(HOUSE, 'carrier home', geometry.EAST, north, side='civ', name=HOUSE_NAME, role='house')
+        m.put(HOUSE, 'carrier home', EAST, north, side='civ', name=HOUSE_NAME, role='house')
         m.facts['house'] = HOUSE_NAME
         if observe:
             # Engine line D round 144: aigar1 plus D's passive CNVTeams carrier (as aimicro_bench.update_time), for the
@@ -954,7 +952,7 @@ def aigarrison_bench():
         'aigarfar': lambda: mission('CampAIGarFar', FAR, 'true'),
         'aigar1t': lambda: mission('CampAIGar1T', NEAR, 'true', observe=True),
     }
-    return dict(MISSION=MISSION, shared=geometry)
+    return dict(MISSION=MISSION)
 
 
 def aihome_bench():

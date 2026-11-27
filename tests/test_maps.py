@@ -155,7 +155,9 @@ ON_SCENERY_AS_BENCHED = {'aibd0', 'aibd1', 'aibdidle', 'aibdwho', 'aibdpre',
                          # (4500, 2000) stand by an MR_Tree04 as benched (tests/fixtures/<build>_target_picks.txt,
                          # aiuab*_fight.txt, underattack_*_c.txt; moving them drops the readings)
                          'aiclosest', 'aicrateoff', 'aicrateon', 'aiegarroff', 'aiegarron', 'aigarroff', 'aigarron',
-                         'aihusknamed', 'aihusknone', 'aiuabl', 'aiuabw', 'aiuagate', 'aiunderatk'}
+                         'aihusknamed', 'aihusknone', 'aiuabl', 'aiuabw', 'aiuagate', 'aiunderatk',
+                         # B's EnterGarrisons house on a grass tuft as benched 11-09 (engine_aigarrison readings)
+                         'aigar1', 'aigar0', 'aigar1t'}
 
 
 # AllBuild and AllFlip were measured with the same six Hammers on this scenery.

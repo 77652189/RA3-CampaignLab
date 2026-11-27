@@ -1,4 +1,4 @@
-"""Replay the recorded engine_aigarrison geometry, before its scenery relocation.
+"""Replay the recorded engine_aigarrison geometry (the house at EAST 40, as benched).
 
 Only the retail 150 distance's near/far behavior is measured. Exact boundary,
 other configured distances and entry/death timing remain unmeasured.
@@ -9,13 +9,8 @@ from test_simai_bench_b import lib, _probe_run, pytestmark, simai  # noqa: F401
 def test_garrison_distance_replays_recorded_near_far_and_disabled(lib, monkeypatch):
     """engine_aigarrison: aigar1 owns house, aigar0/aigarfar never do (11-09).
 
-    Restore EAST=40: those readings precede the map's EAST=0 scenery fix.
     Assert ownership counters rather than inferring entry from survival alone.
     """
-    from benches.ai.tactics.scenes import aigarrison_bench as aigarrison_bench_tables
-    aigarrison_bench = aigarrison_bench_tables()["shared"]
-
-    monkeypatch.setattr(aigarrison_bench, 'EAST', 40.0)
     for build in ('aigar1', 'aigar0', 'aigarfar'):
         world, rows = _probe_run(build, lib, 75.0)
         assert rows

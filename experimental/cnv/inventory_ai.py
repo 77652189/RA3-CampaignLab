@@ -591,7 +591,7 @@ NOTES = {
         'engine_aidodge aidodgezero/aidodgetwo固定相等端点联合快慢对照；tests/test_ai_dodge.py按名回放出生/首次离开锁存和前置；'
         '只验0秒先于2秒，未区分单独Min/Max、随机分布或精确反应帧；见 work/re/e117_dodge_clock.md'),
     '微操/AIMicroManagerData.EnterGarrisonableStructureDistance': (BENCHED,
-        'engine_aigarrison aigar1/aigar0/aigarfar：默认150、旧楼EAST=40，近楼归AI、关闭或远楼不进；'
+        'engine_aigarrison aigar1/aigar0/aigarfar：默认150、楼EAST=40（台上原位），近楼归AI、关闭或远楼不进；'
         'tests/test_simai_garrison_distance.py::test_garrison_distance_replays_recorded_near_far_and_disabled；'
         '仅现成近远行为回放，精确边界、其他配置值和进门死亡时序未量；距离0仅模型敏感性守卫'),
     '微操/AIMicroManagerData.RetreatMinDistanceToFallback': (BENCHED,
