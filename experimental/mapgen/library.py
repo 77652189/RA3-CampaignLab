@@ -39,7 +39,7 @@ def _read(path, source, load, issues):
         return None
 
 
-def _xml(path):
+def read_xml(path):
     root = ET.parse(path).getroot()
     for node in root.iter():
         node.tag = node.tag.removeprefix(ASSET_NS)
@@ -91,7 +91,7 @@ def _civilian(sage, issues):
     for path in sorted(paths):
         relative = path.relative_to(sage)
         source = f"sdk/SageXML/{relative.as_posix()}"
-        root = _read(path, source, _xml, issues)
+        root = _read(path, source, read_xml, issues)
         if root is None:
             continue
         for obj in root.iter("GameObject"):
@@ -115,7 +115,7 @@ def _civilian(sage, issues):
 def _texture_kits(sage, issues):
     relative = "Terrain/Terrain.xml"
     source = f"sdk/SageXML/{relative}"
-    root = _read(sage / relative, source, _xml, issues)
+    root = _read(sage / relative, source, read_xml, issues)
     kits = {}
     if root is not None:
         for node in sorted(root.iter("TerrainAsset"), key=lambda node: node.attrib["id"]):

@@ -5,10 +5,7 @@ from random import Random
 
 import numpy as np
 
-from experimental.mapgen import terrain  # loads the campaign writer's imports
-
-import labpaths
-import newmap
+from experimental.mapgen.campaign_writer import labpaths, noise_field
 
 
 ART = Path(labpaths.SDK3) / 'Art' / 'Terrain'
@@ -91,7 +88,7 @@ def paint(plan, library, ground, roadbed=None):
             j, i = np.nonzero(mask)
             if accents and i.size:
                 # Smooth patches at 12 cells (120 world units), with a high cutoff for sparse accents.
-                noise = newmap._noise_field(rng.getrandbits(32), 12, i, j)
+                noise = noise_field(rng.getrandbits(32), 12, i, j)
                 for accent, patch in zip(accents, (noise > 0.82, noise < 0.18)):
                     textures[j[patch], i[patch]] = accent
         for role_mask, role in roles:

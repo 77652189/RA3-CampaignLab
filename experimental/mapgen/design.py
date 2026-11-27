@@ -82,7 +82,7 @@ def _pass(value, item, allowed=KINDS):
     return frozenset(value)
 
 
-def _sub(a, b):
+def subtract(a, b):
     return a[0] - b[0], a[1] - b[1]
 
 
@@ -90,8 +90,8 @@ def _cross(a, b):
     return a[0] * b[1] - a[1] * b[0]
 
 
-def _on(p, a, b):
-    return (_cross(_sub(p, a), _sub(b, a)) == 0
+def on_segment(p, a, b):
+    return (_cross(subtract(p, a), subtract(b, a)) == 0
             and all(min(a[i], b[i]) <= p[i] <= max(a[i], b[i]) for i in (0, 1)))
 
 
@@ -105,10 +105,10 @@ def _meet(a, b, c, d):
     if any(max(a[i], b[i]) < min(c[i], d[i]) or max(c[i], d[i]) < min(a[i], b[i])
            for i in (0, 1)):
         return ()
-    ab, cd, ac = _sub(b, a), _sub(d, c), _sub(c, a)
+    ab, cd, ac = subtract(b, a), subtract(d, c), subtract(c, a)
     determinant = _cross(ab, cd)
     if not determinant:
-        return tuple(sorted({p for p in (a, b, c, d) if _on(p, a, b) and _on(p, c, d)}))
+        return tuple(sorted({p for p in (a, b, c, d) if on_segment(p, a, b) and on_segment(p, c, d)}))
     along_ab = _cross(ac, cd) / Fraction(determinant)
     along_cd = _cross(ac, ab) / Fraction(determinant)
     if 0 <= along_ab <= 1 and 0 <= along_cd <= 1:
@@ -116,23 +116,24 @@ def _meet(a, b, c, d):
     return ()
 
 
-def _area(ring):
+def signed_area_twice(ring):
+    """Twice the oriented area of a closed ring."""
     return sum(_cross(a, b) for a, b in pairwise(ring))
 
 
-def _inside(p, ring):
+def point_in_ring(p, ring):
     """Return 1 inside, 0 on the outline, and -1 outside."""
     inside = False
     for a, b in pairwise(ring):
-        if _on(p, a, b):
+        if on_segment(p, a, b):
             return 0
         if (a[1] > p[1]) != (b[1] > p[1]):
-            left = _cross(_sub(b, a), _sub(p, a))
+            left = _cross(subtract(b, a), subtract(p, a))
             inside ^= (left > 0) == (b[1] > a[1])
     return 1 if inside else -1
 
 
-def _mid(a, b):
+def midpoint(a, b):
     return tuple((x + y) / Fraction(2) for x, y in zip(a, b))
 
 
@@ -162,7 +163,7 @@ def _split_lines(lines):
 
 
 def _angle(a, b):
-    x, y = _sub(b, a)
+    x, y = subtract(b, a)
     # Exact counterclockwise order starting at the downward ray.
     return (x < 0 or (x == 0 and y > 0), Fraction(y, x) if x else -math.inf)
 
@@ -186,8 +187,8 @@ def _face_rings(edges):
             edge = pending.pop(edge)
             if edge == start:
                 break
-        (rings if _area(ring) > 0 else other).append(ring)
-    return sorted(rings, key=_area), other
+        (rings if signed_area_twice(ring) > 0 else other).append(ring)
+    return sorted(rings, key=signed_area_twice), other
 
 
 def _spans(border, item, length):
@@ -280,13 +281,13 @@ class Design:
         rings, outer_walks = _face_rings(edges)
 
         def containing(point):
-            return next((i for i, ring in enumerate(rings) if _inside(point, ring) == 1), None)
+            return next((i for i, ring in enumerate(rings) if point_in_ring(point, ring) == 1), None)
 
         names = {}
         for item, block in self.blocks.items():
             _fields(block, item, "at height use", "parent kind seed protagonist")
             at = _xy(block["at"], item)
-            _need(not any(_on(at, a, b) for a, b in edges), item, "enclosure", "at lies on a line")
+            _need(not any(on_segment(at, a, b) for a, b in edges), item, "enclosure", "at lies on a line")
             face = containing(at)
             _need(face is not None, item, "enclosure", "at is outside all enclosed faces")
             _need(face not in names, item, "enclosure", f"same face as {names.get(face)}")
@@ -306,7 +307,7 @@ class Design:
 
         def enclosing(ring):
             # The midpoint is on this walk's rim, but inside a containing face.
-            index = containing(_mid(ring[0], ring[1]))
+            index = containing(midpoint(ring[0], ring[1]))
             return None if index is None else face_names[index]
 
         left = {edge: name for name, ring in faces.items() for edge in pairwise(ring)}
@@ -381,12 +382,12 @@ class Design:
 
     def _face(self, point):
         for name, ring in self.rings.items():
-            location = _inside(point, ring)
+            location = point_in_ring(point, ring)
             if location >= 0:
                 return name if location else None
         return None
 
-    def _medium(self, block):
+    def medium(self, block):
         return WATER if self.blocks[block].get("kind") == "water" else LAND
 
     def _read_states(self):
@@ -404,7 +405,7 @@ class Design:
             self.state_heights[item] = {name: block["height"] for name, block in self.blocks.items()}
             for name, height in heights.items():
                 _ref(name, self.blocks, item, "heights")
-                _need(self._medium(name) == WATER, item, "heights", f"{name} is not water")
+                _need(self.medium(name) == WATER, item, "heights", f"{name} is not water")
                 _int(height, item, "height")
                 self.state_heights[item][name] = height
             selected = state.get("playable", list(self.blocks))
@@ -534,7 +535,7 @@ class Design:
         for road, owners in self.pieces:
             if len(owners) == 2 and passes[road]:
                 left, right = sorted(owners)
-                _need(heights[left] == heights[right] and self._medium(left) == self._medium(right),
+                _need(heights[left] == heights[right] and self.medium(left) == self.medium(right),
                       road, "sides", f"road sides must have equal height and kind in state {state}")
 
     def _crossings(self, border):
@@ -579,7 +580,7 @@ class Design:
                     passages[frozenset((left, right))].add(opening)
             for pair, openings in passages.items():
                 left, right = sorted(pair)
-                kinds = self._medium(left) & self._medium(right)
+                kinds = self.medium(left) & self.medium(right)
                 _need(border.get("closed_reason") or (item, pair) in road_passages or
                       any(kinds & self.base_pass.get(name, frozenset()) for name in openings),
                       item, "closed_cliff", f"{left}/{right} needs an opening or closed_reason")
@@ -594,7 +595,7 @@ class Design:
             graph[b].add(a)
 
         for face in faces:
-            if who in self._medium(face):
+            if who in self.medium(face):
                 graph[face] = set()
         for border in self.borders:
             if border != without:

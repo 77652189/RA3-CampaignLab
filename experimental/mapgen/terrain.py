@@ -10,14 +10,8 @@ import math
 
 import numpy as np
 
-from experimental.campaign import mapscript as _mapscript  # noqa: F401  (campaign writer's import bootstrap)
+from experimental.mapgen.campaign_writer import RAMP_MAX, mapterrain, newmap, rules
 from experimental.mapgen.library import CLIFF_STEP_RAW
-
-# The existing campaign writer loads these modules for both the CLI and the map package.
-import mapterrain
-import newmap
-import terrain_rules as rules
-from platmap import RAMP_MAX
 
 CELL = rules.CELL
 RAMP_LENGTH = 180
@@ -104,7 +98,7 @@ class Ground:
     edge_texture: Callable[[int, int, int, int, str], str | None] | None = None
 
 
-def _polygon(points, x, y, distances=False):
+def polygon_mask(points, x, y, distances=False):
     """Even-odd interior including the outline, optionally with distance to its nearest edge."""
     if len(points) < 3:
         raise ValueError('terrain polygons need at least three vertices')
@@ -122,14 +116,14 @@ def _polygon(points, x, y, distances=False):
     return (inside, np.sqrt(distance)) if distances else inside
 
 
-def _direction(vector):
+def unit_direction(vector):
     length = math.hypot(*vector)
     if not length:
         raise ValueError('terrain line has zero length')
     return np.asarray(vector, dtype=float) / length
 
 
-def _strip(x, y, start, direction):
+def strip_coordinates(x, y, start, direction):
     dx, dy = x - start[0], y - start[1]
     tx, ty = direction
     return dx * tx + dy * ty, dy * tx - dx * ty
@@ -143,8 +137,8 @@ def _step(value):
 
 def _ramp_cut(start, tangent, ramp, uphill, run):
     """Interval along a cliff line inside the ramp and its one-cell shoulders."""
-    along, cross = _strip(*start, ramp.low, uphill)
-    da, dc = _strip(*tangent, (0, 0), uphill)
+    along, cross = strip_coordinates(*start, ramp.low, uphill)
+    da, dc = strip_coordinates(*tangent, (0, 0), uphill)
     half = ramp.width / 2 + CELL
     begin, end = -math.inf, math.inf
     for pos, rate, low, high in ((along, da, 0, run), (cross, dc, -half, half)):
@@ -186,7 +180,7 @@ def _cliffs(plan, library, base, at, x, y, ramps):
     for cliff in plan.cliffs:
         a, b = np.asarray(cliff.start), np.asarray(cliff.end)
         length = math.dist(a, b)
-        tangent = _direction(b - a)
+        tangent = unit_direction(b - a)
         normal = np.array((-tangent[1], tangent[0]))
         label = f'{cliff.kit} {cliff.start} → {cliff.end}'
         # Sample the two sides away from the ends, on the original blocks.
@@ -217,7 +211,7 @@ def _cliffs(plan, library, base, at, x, y, ramps):
             lo, hi = cut
             spans = [(p, q) for start, end in spans
                      for p, q in ((start, min(end, lo)), (max(start, hi), end)) if p < q]
-        along_grid, across_grid = _strip(x, y, a, tangent)
+        along_grid, across_grid = strip_coordinates(x, y, a, tangent)
         for start, end in spans:
             count = math.floor((end - start + 1e-7) / spacing)
             unused = end - start - count * spacing
@@ -236,7 +230,7 @@ def _cliffs(plan, library, base, at, x, y, ramps):
                           & (across_grid >= -CELL) & (across_grid < 0))
     joints = {}
     for cliff in plan.cliffs:
-        delta = _direction(np.subtract(cliff.end, cliff.start))
+        delta = unit_direction(np.subtract(cliff.end, cliff.start))
         for point, direction in ((cliff.start, delta), (cliff.end, -delta)):
             joints.setdefault(point, []).append(direction)
     bounds = x.min(), x.max(), y.min(), y.max()
@@ -261,7 +255,7 @@ def expand(plan, library, width, height, border):
         return np.clip(j, 0, height - 1), np.clip(i, 0, width - 1)
 
     for owner, block in enumerate(plan.blocks):
-        mask = _polygon(block.points, x, y)
+        mask = polygon_mask(block.points, x, y)
         if isinstance(block.height, tuple):
             z, dx, dy = block.height
             if max(abs(dx), abs(dy)) * CELL / rules.WORLD_PER_OURS > RAMP_MAX:
@@ -276,13 +270,13 @@ def expand(plan, library, width, height, border):
     ramps, ramp_mask = [], np.zeros(x.shape, bool)
     ramp_shoulders = np.zeros(x.shape, bool)
     for ramp in plan.ramps:
-        uphill = _direction(ramp.uphill)
+        uphill = unit_direction(ramp.uphill)
         lo = base[at(ramp.low)]
         rise = _step(ramp.steps)
         run = RAMP_LENGTH * ramp.steps
         if not (run and ramp.width >= 2 * CELL):
             raise ValueError(f'ramp at {ramp.low}: needs a positive rise and at least two cells of width')
-        along, cross = _strip(x, y, ramp.low, uphill)
+        along, cross = strip_coordinates(x, y, ramp.low, uphill)
         core = abs(cross) <= ramp.width / 2
         on = (along >= 0) & (along <= run)
         pad = abs(cross) <= ramp.width / 2 + CELL
@@ -305,7 +299,7 @@ def expand(plan, library, width, height, border):
     for water in plan.water:
         if type(water.level) is not int or water.level < SUB_DEPTH:
             raise ValueError('water level must be a whole world height at least 70 above zero')
-        area, edge = _polygon(water.points, x, y, distances=True)
+        area, edge = polygon_mask(water.points, x, y, distances=True)
         if np.any(np.isfinite(waterline[area])):
             raise ValueError('standing water footprints overlap')
         floor = math.floor((water.level - SUB_DEPTH) * rules.RAW_PER_WORLD)

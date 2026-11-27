@@ -8,8 +8,7 @@ import math
 import numpy as np
 
 from experimental.mapgen import design, terrain
-
-from platmap import BRIDGE_DECK, bridge as bridge_ends
+from experimental.mapgen.campaign_writer import BRIDGE_DECK, bridge as bridge_ends, rules
 
 
 PORT_TOLERANCE = 1.0  # Probe 5: matching retail socket centres, in world units.
@@ -132,7 +131,7 @@ def _unit(angle):
 
 
 def _heading(a, b):
-    x, y = design._sub(b, a)
+    x, y = design.subtract(b, a)
     return math.atan2(y, x)
 
 
@@ -151,7 +150,7 @@ def _move(p, angle, distance):
 
 
 def _place(fit, at, angle):
-    origin = design._sub(at, _rotate(fit.hub, angle))
+    origin = design.subtract(at, _rotate(fit.hub, angle))
     ports = tuple(Port(_add(origin, _rotate((x, y), angle)), math.radians(h) + angle)
                   for x, y, h in fit.ports)
     middle = tuple(_add(origin, _rotate(p, angle)) for p in fit.path)
@@ -165,7 +164,7 @@ def _error(road, point, detail):
 
 def _port_on_ray(port, a, b, width):
     heading = _heading(a, b)
-    along, cross = _rotate(design._sub(port.xy, a), -heading)
+    along, cross = _rotate(design.subtract(port.xy, a), -heading)
     return (-PORT_TOLERANCE <= along <= math.dist(a, b) + PORT_TOLERANCE
             and abs(cross) <= PORT_TOLERANCE
             and abs(math.sin(_turn(heading, port.heading) / 2)) * width <= PORT_TOLERANCE
@@ -213,7 +212,7 @@ class _Layout:
         i = np.searchsorted(self.x[0], (min(px) - terrain.CELL, max(px) + terrain.CELL))
         j = np.searchsorted(self.y[:, 0], (min(py) - terrain.CELL, max(py) + terrain.CELL))
         window = np.s_[j[0]:j[1], i[0]:i[1]]
-        local = terrain._polygon(np.asarray(points, dtype=float), self.x[window], self.y[window])
+        local = terrain.polygon_mask(np.asarray(points, dtype=float), self.x[window], self.y[window])
         mask[window] |= local
 
     def covered(self, points):
@@ -273,7 +272,7 @@ def _junction_verges(layout, ports, width):
             q = _move(b.xy, b.heading - math.pi / 2, offset)
             # Outer corners of the model are square, including the closed side of a T.
             axis = _unit(a.heading)
-            gap = design._sub(q, p)
+            gap = design.subtract(q, p)
             corner = _add(p, _scale(axis, sum(u * v for u, v in zip(axis, gap))))
             if abs(math.cos(_turn(a.heading, b.heading))) < PORT_TOLERANCE / width:
                 layout.tool(template, (p, corner, q), size, hard=True)
@@ -291,8 +290,8 @@ def _fitting_shape(piece, path, width):
     # All the selected junctions fill an axis-aligned rectangle in model space.
     # Their closed side and the sides of the port openings give its extents.
     ports = piece.ports
-    corners = [_rotate(design._sub(_move(p.xy, p.heading + sign * math.pi / 2, width / 2),
-                                   (piece.x, piece.y)), -piece.angle)
+    corners = [_rotate(design.subtract(_move(p.xy, p.heading + sign * math.pi / 2, width / 2),
+                                       (piece.x, piece.y)), -piece.angle)
                for p in ports for sign in (-1, 1)]
     lo, hi = (tuple(f(axis) for axis in zip(*corners)) for f in (min, max))
     box = ((lo[0], lo[1]), (hi[0], lo[1]), hi, (lo[0], hi[1]))
@@ -305,14 +304,14 @@ def _offset_fit(a, b, links, claimed):
     u, = set(links[a]) - {b}
     v, = set(links[b]) - {a}
     angle = _heading(u, a)
-    along, lateral = _rotate(design._sub(b, a), -angle)
+    along, lateral = _rotate(design.subtract(b, a), -angle)
     if not 0 < along < 150:
         return None
     for fit in OFFSETS:
         delta = fit.ports[1][1] - fit.ports[0][1]
         if abs(lateral - delta) > PORT_TOLERANCE:
             continue
-        pose = _add(design._mid(a, b), _rotate((0, (delta - lateral) / 2), angle))
+        pose = _add(design.midpoint(a, b), _rotate((0, (delta - lateral) / 2), angle))
         piece, path = _place(fit, pose, angle)
         if (_port_on_ray(piece.ports[0], a, u, ROAD_WIDTH['street']) and
                 _port_on_ray(piece.ports[1], b, v, ROAD_WIDTH['street'])):
@@ -326,17 +325,17 @@ def _bridge(layout, sketch, road, run, links, ends):
     exit_ = [p for p in links[b] if p != run[-1][0]]
     if (len(entry) != 1 or len(exit_) != 1 or
             any(len(links[p]) != 2 for _, p in run[:-1]) or
-            any(not design._on(p, a, b) for edge in run for p in edge)):
+            any(not design.on_segment(p, a, b) for edge in run for p in edge)):
         _error(road, a, 'bridge needs a straight crossing and one approach at each bank')
     u, = entry
     v, = exit_
-    if not (design._on(a, u, b) and design._on(b, a, v)):
+    if not (design.on_segment(a, u, b) and design.on_segment(b, a, v)):
         _error(road, a, 'bridge approaches must continue the deck heading')
     passes = sketch.state_pass['base']
     declared = passes[road]
     for p in (a, b):
         for _, opening, left, right in sketch.contacts[p]:
-            if left and right and sketch._medium(left) != sketch._medium(right):
+            if left and right and sketch.medium(left) != sketch.medium(right):
                 declared &= passes.get(opening, design.LAND)
     if declared != design.LAND:
         _error(road, a, f'{BRIDGE_TEMPLATE} carries {sorted(design.LAND)}; opening declares {sorted(declared)}')
@@ -377,8 +376,8 @@ def _bridge(layout, sketch, road, run, links, ends):
     channel_width = 2 * max(0, float(dry_offsets.min(initial=wet_span / 2)) - CELL_MARGIN)
     if not middle.any() or not wet[middle].all() or channel_width < BOAT_BEAM:
         _error(road, a, 'river has no continuous boat channel below the centre span')
-    surface = g.waterline[middle].max() / terrain.rules.RAW_PER_WORLD
-    clearance = samples[0] / terrain.rules.RAW_PER_WORLD - surface - UNDERSIDE
+    surface = g.waterline[middle].max() / rules.RAW_PER_WORLD
+    clearance = samples[0] / rules.RAW_PER_WORLD - surface - UNDERSIDE
     if clearance < BOAT_HEIGHT:
         _error(road, a, f'only {clearance:g} units of clearance below the deck; a Hydrofoil needs {BOAT_HEIGHT}')
     if (g.blocked[deck & ~wet]).any():
@@ -393,7 +392,7 @@ def _straight_run(layout, road, a, b, start, end, tier, bends):
     p, q = start.xy, end.xy
     width = ROAD_WIDTH[tier]
     direction = _heading(a, b)
-    length, skew = _rotate(design._sub(q, p), -direction)
+    length, skew = _rotate(design.subtract(q, p), -direction)
     if length < -PORT_TOLERANCE:
         _error(road, a, 'adjacent fittings overlap')
     if abs(length) <= PORT_TOLERANCE and abs(skew) <= PORT_TOLERANCE:
@@ -478,7 +477,7 @@ def expand(sketch, ground, border, kit):
         run = []
         for edge in [*sketch.edges[name], None]:
             sides = set(filter(None, sketch.sides[edge])) if edge else ()
-            if sides and all(sketch._medium(block) == design.WATER for block in sides):
+            if sides and all(sketch.medium(block) == design.WATER for block in sides):
                 run.append(edge)
                 continue
             if run:
@@ -516,7 +515,7 @@ def expand(sketch, ground, border, kit):
             _error(road, point, 'no measured fitting relates these different width tiers')
         if degree == 2:
             a, b = neighbors
-            if design._on(point, a, b):
+            if design.on_segment(point, a, b):
                 continue
             options = BENDS[tier]
         else:

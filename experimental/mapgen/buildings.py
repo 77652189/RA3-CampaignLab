@@ -9,13 +9,16 @@ import random
 
 import numpy as np
 
-from experimental.mapgen.design import DesignError, _area, _inside
-from experimental.mapgen.library import _xml
+from experimental.mapgen.campaign_writer import rules
+from experimental.mapgen.design import DesignError, point_in_ring, signed_area_twice
+from experimental.mapgen.library import read_xml
 from experimental.mapgen.roads import ROAD_WIDTH
-from experimental.mapgen.terrain import CELL, rules
-from experimental.mappage.cityblocks import KINDS
-TOWN = {'oldtown', 'town', 'residential', 'suburb', '老城', '老街', '住宅', '郊区'}
-SETBACK, GAP, COVER = KINDS['rowhouses'][1:4]
+from experimental.mapgen.terrain import CELL
+
+# From cityblocks.KINDS: uses with a row, and the rowhouses setback, gap and coverage.
+TOWN = {'oldtown', 'town', 'residential', 'suburb', '老城', '老街', '住宅', '郊区',
+        'rowhouses', 'shops', 'apartments', 'towers', 'warehouses', 'villas'}
+SETBACK, GAP, COVER = 6, 6, 0.25
 EPS = 1e-7
 
 
@@ -200,7 +203,7 @@ class BuildingPlanner:
 
     def _document(self, path):
         if path not in self._sdk:
-            root = _xml(path)
+            root = read_xml(path)
             objects = {obj.attrib['id'].casefold(): obj for obj in root.iter('GameObject')}
             includes = [node.attrib['source'][5:] for node in root.findall('Includes/Include')
                         if node.get('source', '').startswith('DATA:')]
@@ -316,7 +319,7 @@ class BuildingPlanner:
         for s in shapes:
             for index, ring in enumerate(rings):
                 gap = min(s.segment_gap(a, b) for a, b in pairwise(ring))
-                if (_inside(s.center[:2], ring) == 1) != (index == 0) and gap > 0:
+                if (point_in_ring(s.center[:2], ring) == 1) != (index == 0) and gap > 0:
                     gap = -gap
                 worst = max(worst, (SETBACK - gap, 'face setback'))
             for road in self.roads:
@@ -338,7 +341,7 @@ class BuildingPlanner:
     def lock_block(self, block):
         spec = self.design.blocks[block]
         request = spec.get('protagonist')
-        town = spec['use'] in TOWN or spec['use'] in KINDS and KINDS[spec['use']][4] > 0
+        town = spec['use'] in TOWN
         if request is None and (not town or spec.get('kind') == 'water'):
             return ()
         frontage = self.frontages[block]
@@ -383,7 +386,7 @@ class BuildingPlanner:
         if town:
             rows = [t for t in palette if 'house' in t.name.casefold()]
             rows.sort(key=lambda t: -t.area)
-            coverage = COVER * (_area(ring) - sum(_area(hole) for hole in rings[1:])) / 2
+            coverage = COVER * (signed_area_twice(ring) - sum(map(signed_area_twice, rings[1:]))) / 2
             used = Counter(b.template for b in placed)
             built = sum(t.area for t in palette if used[t.name])
             for f in frontage:
