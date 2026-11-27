@@ -1,11 +1,12 @@
 """Fit measured sockets and read the resulting retail road records."""
 from collections import Counter
+import json
 import math
 
 import numpy as np
 import pytest
 
-from experimental.mapgen import design, paint, roads, terrain
+from experimental.mapgen import build, design, paint, roads, terrain
 
 import mapterrain
 import mapxml
@@ -55,6 +56,36 @@ def test_unjoinable_names_road_and_location():
     ground = terrain.expand(terrain.TerrainPlan(base_steps=4), {}, 81, 81, 0)
     with pytest.raises(design.DesignError, match=r'branch .*\(400, 400\).*3 junction arms'):
         roads.expand(sketch([[50, 400], [750, 400]], [[400, 400], [500, 750]]), ground, 0, KIT)
+
+
+def test_road_to_frame_uses_apron_grade_without_opening_the_backdrop(tmp_path, monkeypatch):
+    monkeypatch.setattr(build, 'CONTAINER', (81, 81, 0))
+    monkeypatch.setattr(paint, 'ART', tmp_path)
+    (tmp_path / 'surface.tga').touch()
+
+    def material(name):
+        return [dict(id=name, Texture='surface.tga', BumpTexture='surface.tga')]
+
+    library = tmp_path / 'library.json'
+    library.write_text(json.dumps({'kits': {KIT: {}}, 'texture_kits': {
+        'Heidelberg': {'Grass': material('Grass_Heidelberg01'), 'Road': material('Pavement_Heidelberg10')},
+        'Gibraltar': {'Cliff': material('Cliff_Gibraltar1')},
+    }}), encoding='utf8')
+    frame = ((100, 200), (700, 200), (700, 600), (100, 600))
+    design_file = tmp_path / 'slice.json'
+    design_file.write_text(json.dumps({
+        'version': 2,
+        'blocks': {'south': {'at': [300, 300], 'height': 4, 'use': 'park'},
+                   'north': {'at': [300, 500], 'height': 4, 'use': 'park'}},
+        'borders': {'frame': {'line': (*frame, frame[0]), 'closed_reason': 'slice boundary'}},
+        'roads': {'street': {'line': [(100, 400), (700, 400)], 'width': 'street'}},
+    }), encoding='utf8')
+    apron = terrain.Block(((50, 150), (750, 150), (750, 650), (50, 650)), 4,
+                          surface=terrain.Surface('apron', 'park', KIT))
+    result = build.build(design_file, library, terrain.TerrainPlan(blocks=(apron,)), kit=KIT, road_kit=KIT)
+    assert result.roadbed.paved[40, 10] and not result.ground.blocked[40, 10]
+    assert result.ground.raw[40, 9] == result.ground.raw[40, 10] == 4 * terrain.CLIFF_STEP_RAW
+    assert result.ground.blocked[40, 9] and result.ground.textures[40, 9] == 'Grass_Heidelberg01'
 
 
 def test_same_design_same_map_bytes(tmp_path, monkeypatch):

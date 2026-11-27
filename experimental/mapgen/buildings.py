@@ -190,6 +190,7 @@ class BuildingPlanner:
         self._garrisons = {}
         self.rings = {name: tuple((float(x), float(y)) for x, y in ring)
                       for name, ring in design.rings.items()}
+        self.junctions = {tuple(map(float, point)) for point, edges in design.junctions.items() if len(edges) >= 3}
         self.roads = []
         self.frontages = {name: [] for name in design.blocks}
         for road, spec in design.roads.items():
@@ -301,7 +302,7 @@ class BuildingPlanner:
         spread = high - low
         return Foundation(z, low, high), (spread - rules.BUILD_VARIATION, f'foundation relief {spread:.3f}')
 
-    def _fit(self, block, rings, placed, template, frontage, kerb, inward, depth):
+    def _fit(self, block, rings, placed, template, frontage, kerb, inward, depth, *, clear_corners=False):
         nx, ny = inward
         angle = (math.atan2(-ny, -nx) - template.front) % math.tau
         angle = round(angle, 12) % math.tau
@@ -316,7 +317,15 @@ class BuildingPlanner:
                                       for s in group) for group in (placement, collision))
         shapes = tuple(dict.fromkeys(placement + collision))
         worst = (0., '')
+        corners = [end for end in (frontage.a, frontage.b) if end in self.junctions] if clear_corners else ()
+        tx, ty = ny, -nx
         for s in shapes:
+            # Leave an alley's width across the mouth of a junction. The gap
+            # is for seeing the turn and moving a squad through it, so test the
+            # complete footprint, including wings away from the origin.
+            for a, b in corners:
+                along = abs((s.center[0] - a) * tx + (s.center[1] - b) * ty)
+                worst = max(worst, (ROAD_WIDTH['alley'] / 2 + s.support(tx, ty) - along, 'junction clearance'))
             for index, ring in enumerate(rings):
                 gap = min(s.segment_gap(a, b) for a, b in pairwise(ring))
                 if (point_in_ring(s.center[:2], ring) == 1) != (index == 0) and gap > 0:
@@ -396,7 +405,7 @@ class BuildingPlanner:
                     for t in rows:
                         if used[t.name] >= 3:
                             continue
-                        b, _ = self._fit(block, rings, placed, t, f, kerb, normal, 0.)
+                        b, _ = self._fit(block, rings, placed, t, f, kerb, normal, 0., clear_corners=True)
                         if b is not None:
                             placed.append(replace(b, protagonist=False))
                             used[t.name] += 1

@@ -5,6 +5,7 @@ import pytest
 from experimental.mapgen.buildings import BuildingPlanner
 from experimental.mapgen.design import Design, DesignError
 from experimental.mapgen.library import _civilian
+from experimental.mapgen.roads import ROAD_WIDTH
 from experimental.mapgen.terrain import TerrainPlan, expand
 
 
@@ -33,8 +34,8 @@ def planner(tmp_path):
         </AssetDeclaration>''', encoding='utf8')
     library = {'kits': _civilian(tmp_path, set()), 'blocking': {'t_house': {'cls': 'all'}}}
 
-    def make(depth=130, south='T_House'):
-        design = Design({
+    def make(depth=130, south='T_House', *, junction=False):
+        sketch = {
             'version': 2,
             'blocks': {
                 'south': {'at': [120, 50], 'height': 3, 'use': 'square', 'protagonist': south},
@@ -42,7 +43,12 @@ def planner(tmp_path):
             },
             'borders': {'frame': {'line': [[0, 0], [240, 0], [240, 320], [0, 320], [0, 0]]}},
             'roads': {'lane': {'line': [[0, depth], [240, depth]], 'width': 'alley'}},
-        })
+        }
+        if junction:
+            sketch['blocks']['south']['at'] = [70, 50]
+            sketch['blocks']['north'] = {'at': [120, 200], 'height': 3, 'use': 'oldtown'}
+            sketch['roads']['branch'] = {'line': [[120, 0], [120, depth]], 'width': 'alley'}
+        design = Design(sketch)
         ground = expand(TerrainPlan(), library, 25, 33, 0)
         return BuildingPlanner(design, ground, library, dict.fromkeys(design.blocks, 'Town_T'),
                                {'T_House': 0., 'T_Shop': 0.}, tmp_path, 0)
@@ -78,3 +84,10 @@ def test_relock_only_one_block_and_repeat_same_bytes(planner):
     shop, = dict(relocked.blocks)['south']
     assert shop.template == 'T_Shop' and not shop.garrisonable and shop.blocking == 'unknown'
     assert relocked.to_bytes() == changed.lock().to_bytes() != layout.to_bytes()
+
+
+def test_rowhouses_leave_an_alley_wide_view_across_junction(planner):
+    houses = planner(junction=True).lock_block('north')
+    assert {h.x > 120 for h in houses} == {False, True}
+    assert all(abs(s.center[0] - 120) - s.support(1, 0) >= ROAD_WIDTH['alley'] / 2
+               for h in houses for s in h.placement + h.collision)
