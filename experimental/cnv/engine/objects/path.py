@@ -35,6 +35,13 @@ import numpy as np
 from engine.world.handle import GRID
 
 
+def topple_blocks_ground(body):
+    """Whether a topple prop qualifies for an infantry routing footprint."""
+    # engine_topple b: infantry crosses OK_Lantern01. E266/E269 measured the fence controls;
+    # treating other shaped CRUSHABLE_OBSTACLE props as infantry blockers is INFERRED.
+    return body.template.lower() != 'ok_lantern01' and 'CRUSHABLE_OBSTACLE' in body.kinds and bool(body.radius)
+
+
 class RouteGrid:
     """One map's open cells and endpoint results for one surface and obstacle version.
 
