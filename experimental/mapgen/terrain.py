@@ -24,6 +24,8 @@ ON_SHORE = 2 * SHORE_RISE   # two bank cells' rise on each side of the waterline
 # These straight pieces have placement measurements from the 150 game probe.
 # The catalogue's adjacent-position medians (99/-13 and 119/-30) include hand placements.
 _BENCHED = {'HB_CliffWall01': (100, -15), 'RM_CliffWall01_GRID': (120, -30)}
+# Russian Village places this irregular wall as close as 56.9 units on near-straight runs.
+_MIN_CLIFF_PITCH = {'VL_CliffWall02': 57}
 
 
 @dataclass(frozen=True)
@@ -512,17 +514,25 @@ def _cliffs(plan, library, base, at, x, y, ramps):
             continue
         along_grid, across_grid = strip_coordinates(x, y, a, tangent)
         for start, end in spans:
-            count = math.floor((end - start + 1e-7) / spacing)
-            unused = end - start - count * spacing
+            span = end - start
+            count = math.floor((span + 1e-7) / spacing)
+            unused = span - count * spacing
+            pitch = spacing
+            minimum = _MIN_CLIFF_PITCH.get(template, spacing)
+            # Fit an additional piece only if both ends can meet and the overlap was observed in retail.
+            if count and unused > 1e-7 and (span - spacing) / count >= minimum:
+                pitch = (span - spacing) / count
+                count += 1
+                unused = 0
             if unused > 1e-7:
                 issues.append(f'{label}: {unused:g} units uncovered at ends of [{start:g}, {end:g}]')
             first = start + unused / 2 + spacing / 2
-            stop = first + (count - 0.5) * spacing
+            stop = first + (count - 1) * pitch + spacing / 2
             if template.endswith('_GRID') and count and np.any(np.mod(a + tangent * first - normal * offset, 30)):
                 issues.append(f'{label}: piece origins at [{start:g}, {end:g}] would leave the 30-unit grid')
                 continue
             for k in range(count):
-                px, py = a + tangent * (first + k * spacing) - normal * offset
+                px, py = a + tangent * (first + k * pitch) - normal * offset
                 pieces.append(Piece(template, float(px), float(py), math.atan2(tangent[1], tangent[0])))
             if count:
                 cover |= ((along_grid >= first - spacing / 2) & (along_grid < stop)

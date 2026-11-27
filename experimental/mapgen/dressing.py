@@ -13,6 +13,7 @@ import numpy as np
 from experimental.mapgen.buildings import Footprint, NO_PATH_BLOCK, Shape, TOWN, geometry_shapes
 from experimental.mapgen.design import DesignError, ROUTING_CELL, point_in_ring
 from experimental.mapgen.library import read_shape, sdk_xml, texture_kit
+from experimental.mapgen.paint import USE_CLASS
 from experimental.mapgen.roads import ROAD_WIDTH
 from experimental.mapgen.terrain import CELL, Ground, Piece
 
@@ -296,8 +297,9 @@ class _Finish:
                             for child, spec in self.sketch.blocks.items() if spec.get('parent') == block))
 
     def patch(self, block, at, angle, length, width, material, *, slope=False):
-        if self.sketch.blocks[block].get('ground_texture') is not None:
-            return  # Dressing must not break up a designer's continuous surface.
+        spec = self.sketch.blocks[block]
+        if spec.get('ground_texture') is not None or (material == 'Dirt' and USE_CLASS.get(spec['use']) == 'Snow'):
+            return  # Keep the authored surface or the paint layer's scoured snow.
         folder = texture_kit(self.kits[block])
         entries = self.assets.library.get('texture_kits', {}).get(folder, {}).get(material, ())
         names = sorted(e['id'] for e in entries if not e['id'].startswith(('Transition', 'Cliff')))

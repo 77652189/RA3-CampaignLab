@@ -230,6 +230,38 @@ def test_winter_woods_leave_a_building_pad_and_ice_bare(slice_inputs, tmp_path, 
     assert result.check_relations()['room'].status == 'pass'
 
 
+def test_snow_ramp_keeps_its_snow_and_exposed_rock_after_dressing(slice_inputs, monkeypatch):
+    _, _, _, _, library, _, sage, _ = slice_inputs
+    monkeypatch.setattr(paint, 'ART', sage)
+    (sage / 'tile').touch()
+
+    def tiles(*names):
+        return [dict(id=name, Texture='tile', BumpTexture='tile') for name in names]
+
+    library['texture_kits'] = {'Town': {
+        'Snow': tiles(*paint.WINTER_SURFACES['snow']),
+        'Dirt': tiles('BareDirt'), 'Grass': tiles('GreenGrass'), 'Cliff': tiles('ExposedRock'),
+    }}
+    sketch = Design({'version': 2, 'blocks': {
+        'low': {'at': [450, 200], 'height': 3, 'use': 'snow'},
+        'high': {'at': [450, 600], 'height': 4, 'use': 'snow'},
+    }, 'borders': {
+        'frame': {'line': [[0, 0], [900, 0], [900, 800], [0, 800], [0, 0]]},
+        'cliff': {'line': [[0, 400], [900, 400]], 'segments': {
+            'ramp': {'span': [360, 540], 'pass': ['foot', 'vehicle', 'amphibian']},
+        }},
+    }})
+    plan = terrain.from_design(sketch, TerrainPlan(ground='Snow_Solvang01'), 'Town_T')
+    native = expand(plan, library, 91, 81, 0)
+    surface = paint.paint(plan, library, native)
+    ground = dressing.expand(sketch, surface, None, Layout(()), library,
+                             dict.fromkeys(sketch.blocks, 'Town_T'), sage, 0).ground
+    assert not native.blocked[37, 45] and ground.textures[37, 45] == 'Snow_Iceland04'
+    assert native.blocked[37, 35] and ground.textures[37, 35] == 'ExposedRock'
+    assert not {'BareDirt', 'GreenGrass'} & set(ground.textures.flat)
+    assert ground.raw is native.raw and ground.blocked is native.blocked
+
+
 def test_patches_apply_to_the_written_scenery_slots(slice_inputs):
     data = slice_inputs[0].data
     args = slice_inputs[1:]

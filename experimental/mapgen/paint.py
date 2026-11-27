@@ -112,16 +112,21 @@ def paint(plan, library, ground, roadbed=None):
         for role_mask, role in roles:
             cells = mask & role_mask
             if cells.any() or (surface is None and role == 'ramp' and ground.ramp.any()):
-                ramp_class = 'Rock' if kind == 'Dirt' else 'Dirt'
+                ramp_class = {'Snow': 'Snow', 'Dirt': 'Rock'}.get(kind, 'Dirt')
                 role_class = {'cliff': 'Cliff', 'shore': 'Snow' if ground_class == 'Snow' else 'Sand',
                               'ramp': ramp_class}[role]
-                rng = Random(f'{label}:{surface.seed if surface else 0}:{role}')
-                name, = _palette(kits, kit, role_class, label, rng, 1)
+                packed = catalogue.get('Snow_Iceland04') if role == 'ramp' and kind == 'Snow' else None
+                if packed:
+                    name = _asset(label, packed[2])
+                else:
+                    rng = Random(f'{label}:{surface.seed if surface else 0}:{role}')
+                    name, = _palette(kits, kit, role_class, label, rng, 1)
                 textures[cells] = name
                 if role == 'ramp' and surface is None:
                     ramp_material = name
         shoulder = mask & ground.ramp_edges & ~ground.hidden
-        if shoulder.any():
+        # On winter terrain let the local snow meet the exposed rock.
+        if kind != 'Snow' and shoulder.any():
             if named_texture is None:
                 named_texture, = _palette(kits, kit, 'Dirt' if kind == 'Dirt' else 'Grass', label,
                                           Random(f'{kit}:ramp verge'), 1)
