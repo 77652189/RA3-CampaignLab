@@ -40,6 +40,24 @@ bench = "cash (A349, CampAreaCash_mcp_1124_041836), 钱0..3 every 1 s: s1-s7 128
 proves = "with no script money Player_1 and Soviet_1..6 each hold exactly 10000 from the start, and keep it (idle); the bench enters through the campaign menu (nav.STEPS), so this is the campaign start: SageXML System/PlayerTemplates.xml StartingMoney Amount 10000 of Allies / Soviet / Japan (no CampaignOverrides entry), read by Money.start"
 expect = "all(v[:4] == [128, 128, 128, 8] for v in vals(rows))"
 
+# E297, engine_bridgesegment:a (CampBridgeSegA_mcp_1127_090706).
+[[reading]]
+bench_id = "engine_bridgesegment"
+id = "short_bridge_gate_follows_proxy_damage"
+scene = {build = "engine_bridgesegment", check = "a", until = 23}
+bench = "Short/long gate: 100/100 at s2.8-s7.8, 80/100 at s8.87-s15.87; long remains 100 through s24.93"
+proves = "The short HB_Bridge_02 gate follows 200 damage to its proxy while the undamaged long gate remains full."
+expect = ["win(4, 6, '短门') == [100] * 3", "win(11, 14, '短门') == [80] * 4", "win(4, 22, '长门') == [100] * 19"]
+
+[[reading]]
+bench_id = "engine_bridgesegment"
+id = "short_bridge_center_and_proxy_share_nonlethal_damage"
+scene = {build = "engine_bridgesegment", check = "a", until = 23}
+bench = "Short gate / long gate / short center / center count: 100/100/100/32 at s2.8-s7.8, 80/100/80/32 at s8.87-s15.87, 60/100/60/32 at s16.93-s24.93. ua: gives 800/1000 at f121 and 600/1000 at f241 for the short proxy and center."
+proves = "The live scripted reference to the generated short HB_Bridge_02_Center follows proxy damage; 200 direct damage via that reference also reaches the proxy and gate. Both bridges keep their center counts (1 short, 2 long). Lethal damage and other configurations are open."
+expect = ["win(4, 6, '中血') == [100] * 3", "win(11, 14, '中血') == [80] * 4", "win(19, 22, '中血') == [60] * 4", "win(19, 22, '短门') == [60] * 4", "win(4, 22, '中量') == [32] * 19"]
+mismatch = "The simulator generates no bridge center objects. It reads -1 for the guarded reference and encodes 11 (0/0 centers), so the second hit is never sent and its short gate stays at 80. See work/re/e297_managedactivebody.md."
+
 # Bench readings of engine_bridgefix in checks.py (format: experimental/cnv/readings.py; runner: tests/conformance).
 # The bench's watch second sN is the simulator's mission second N + 1 here: the break (timer 8.0) reads 1 from s7 on
 # the bench, from 8 in the run; the press is timer 14.0.
