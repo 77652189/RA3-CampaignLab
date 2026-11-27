@@ -289,6 +289,45 @@ def check(m, run, view=False):
     return t
 
 
+FIRE_LANES = (None, 'ST_SOVIETFENCE01', WOOD_FENCE[0], 'SovietBunker')
+
+
+def fire_mission():
+    """An idle peacekeeper and a hold-fire Hammer 130 apart, with one prop centred on the line of fire.
+
+    West to east fire, four lanes: open, Soviet fence, Cape Cod wood fence, bunker. The read also latches
+    any shooter leaving its start box.
+    """
+    m = Mission(name='CampFence', map=probe_range, units=[])
+    for k, prop in enumerate(FIRE_LANES, 1):
+        dy = _dy(k)
+        m.put('AlliedAntiInfantryInfantry', 'order gun', -65, dy, angle=0., role=f'gun {k}', name=f'Fence Gun {k}')
+        m.put(HAMMER, 'order gun', 65, dy, side='s1', role=f'target {k}', name=f'Fence Target {k}')
+        if prop:
+            m.put(prop, 'order gun', 0, dy, angle=math.pi / 2, side='p1' if k == 4 else 'neutral')
+    return m
+
+
+def fire_check(m):
+    t = Test()
+    x, y = m.site('order gun')
+    lanes = range(1, len(FIRE_LANES) + 1)
+    targets = [m.role(f'target {k}').name for k in lanes]
+    t.scripts.append(Script('Test - fence fire start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]
+                            + [('UNIT_SET_STANCE', target, 3) for target in targets]))
+    s8.total(t, 'FenceHit', '伤', [(10 ** i, ('UNIT_HEALTH', target, 0, 100)) for i, target in enumerate(targets)])
+    t.counters.append(('FenceMoved', '离位'))
+    for k in lanes:
+        area = f'Fence Start {k}'
+        t.areas[area] = square(x - 65, y + _dy(k), 10)
+        t.scripts.append(Script(f'Test - fence moved {k}', [('NAMED_OUTSIDE_AREA', m.role(f'gun {k}').name, area)],
+                                [('INCREMENT_COUNTER', 10 ** (k - 1), 'FenceMoved')]))
+    s8.watch(t, 10.)
+    return t
+
+
 MISSION = {f'engine_a1toll{r}': (lambda r=r: mission(r)) for r in RUNS}
 CHECKS = {f"engine_a1toll{r}": {r: (lambda m, r=r: check(m, r))} for r in RUNS}
 CHECKS["engine_a1tolla"]["v"] = lambda m: check(m, "a", True)
+MISSION['engine_fencefire'] = fire_mission
+CHECKS['engine_fencefire'] = {'fire': fire_check}

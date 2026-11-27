@@ -116,3 +116,10 @@ bench = "CampA1TollYY / ZZ (11-26 E269): all five arrival timers settle at 139, 
 proves = "each conscript reaches its goal area; each lane's timer is positive and stops advancing once there"
 expect = ["all(run[-2][key] == run[-1][key] for run in (y, z) for key in ('到时甲', '到时乙'))",
           "all(run[-1][key] // place % 1000 > 0 for run in (y, z) for key, places in (('到时甲', (1, 1000, 1000000)), ('到时乙', (1, 1000))) for place in places)"]
+
+[[reading]]
+id = "the_two_fences_let_the_peacekeeper_fire_from_its_start"
+scene = {build = "engine_fencefire", check = "fire", until = 11}
+bench = "CampFenceFire (11-26 E277), s1-s11: 伤 111, 离位 0. The open, ST_SOVIETFENCE01 and CC_WOODFENCE01 targets took damage; the SovietBunker control never did. All four shooters stayed in their start boxes."
+proves = "sim.Sim.shot_blocked: both measured infantry-blocking fence templates let the line-of-sight shotgun fire through"
+expect = ["rows[-1]['伤'] == 111", "rows[-1]['离位'] == 0"]

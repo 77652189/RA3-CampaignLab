@@ -1692,9 +1692,8 @@ class Sim:
         """Line of fire (docs/engine/pathing.md 7c; bench 2026-11-08 engine_seal idle / row / cut): a weapon with
         ATTACK_NEEDS_LINE_OF_SIGHT in its Flags (simunits `los`: the peacekeeper's shotgun, tank cannons, the IFV's
         missiles; not the Athena's lob) does not shoot through a structure's footprint, whoever owns it; terrain in
-        between does not stop it. Generals Pathfinder::isAttackViewBlockedByObstacle walks the pathfinding cells along
-        the line: an obstacle cell blocks unless it is the shooter's own, the target's, or one the shooter or the
-        target stands inside (its container; a target within another's bounds). Here the footprints are `blocks`'s
+        between does not stop it. E277: ST_SOVIETFENCE01 and CC_WOODFENCE01 let fire through. Ignore footprints
+        of the shooter, target or a structure they stand inside. Here the footprints are `blocks`'s
         shapes and the line is tested against them exactly (INFERRED: the cell walk, not read in RA3's program).
         A target in the air is never blocked (bench 2026-11-08 engine_seal aa / aaopen: an IFV's missiles at a
         Twinblade over the player's row the same as with no row)."""
@@ -1707,7 +1706,8 @@ class Sim:
         if getattr(self, '_fire_obstacles', None) is None:
             self._fire_obstacles = [(b, s) for b in self.living() for s in (self.blocks(b),) if s]
         for b, s in self._fire_obstacles:
-            if b is a or b is t or (inside and _in_shape(s, x, y)) or _in_shape(s, t.x, t.y):
+            if b is a or b is t or b.template.lower() in ('st_sovietfence01', 'cc_woodfence01') or \
+                    (inside and _in_shape(s, x, y)) or _in_shape(s, t.x, t.y):
                 continue
             if _line_hits(s, x, y, t.x, t.y):
                 return True
@@ -1732,9 +1732,9 @@ class Sim:
                 if not self.line_blocked(x, y, t, a) and \
                         not any(b is not t and _in_shape(sh, x, y) for b, sh in self._fire_obstacles):
                     cands.append((math.hypot(x - a.x, y - a.y), -y, x, y))
-        best = None
+        best, ground = None, self.ground
         for _, _, x, y in sorted(cands)[:12]:
-            way = self.ground.route(a.surface, (a.x, a.y), (x, y))
+            way = ground.route(ground.walks(a), (a.x, a.y), (x, y))
             if way is None:
                 continue
             n = sum(math.hypot(q[0] - p[0], q[1] - p[1]) for p, q in zip([(a.x, a.y)] + way[:-1], way))
