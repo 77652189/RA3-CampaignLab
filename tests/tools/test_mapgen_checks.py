@@ -316,17 +316,18 @@ def test_preview_draws_bridge_deck_at_its_built_width(tmp_path, monkeypatch):
     data['blocks']['south']['kind'] = 'water'
     built = _expanded(Design(data))
     zero = np.zeros_like(built.ground.blocked)
-    bridge = roads.Bridge('lane', ((400, 100), (400, 550)), 450, roads.BRIDGE_DECK,
+    bridge = roads.Bridge('lane', ((400, 100), (400, 550)), 450, 80,
                           frozenset(), frozenset(), 90, 55)
+    inside = int((bridge.landings[0][0] - bridge.deck_width / 2) / terrain.CELL)
     viewer.write_preview(tmp_path, built, title='Before layout')
     with Image.open(tmp_path / 'built.png') as image:
-        water = image.getpixel((33, image.height - 1 - 20))
-        assert image.getpixel((34, image.height - 1 - 20)) == water
+        water = image.getpixel((inside - 1, image.height - 1 - 20))
+        assert image.getpixel((inside, image.height - 1 - 20)) == water
     built = replace(built, roadbed=roads.Roadbed('test', (), (bridge,), zero, zero, zero))
     viewer.write_preview(tmp_path, built, title='With bridge')
     with Image.open(tmp_path / 'built.png') as image:
-        assert image.getpixel((34, image.height - 1 - 20)) == (139, 133, 120)
-        assert image.getpixel((33, image.height - 1 - 20)) == water
+        assert image.getpixel((inside, image.height - 1 - 20)) == (139, 133, 120)
+        assert image.getpixel((inside - 1, image.height - 1 - 20)) == water
 
 
 def test_implicit_street_crossing_has_a_ramp():

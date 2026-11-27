@@ -43,6 +43,52 @@ def texture_kit(kit):
     return KIT_ALIASES.get(kit, kit.rsplit('_', 1)[0])
 
 
+# Retail winter surfaces mix Solvang snow and exposed Iceland ground.
+WINTER_SURFACES = {
+    'snow_woodland': ('Snow_Solvang08', 'Snow_Solvang10', 'Snow_Solvang01'),
+    'ice': ('Snow_Solvang02', 'Snow_Solvang09', 'Snow_Solvang03'),
+}
+SNOW_RAMPS = {'Iceland': 'Snow_Iceland04'}
+SNOW_FIELDS = {'Iceland': ('Snow_Solvang01', SNOW_RAMPS['Iceland'], 'Snow_Solvang08')}
+
+
+# Placement measurements from the 150 game probe take precedence over medians.
+_BENCHED = {'HB_CliffWall01': (100, -15), 'RM_CliffWall01_GRID': (120, -30)}
+_CLIFF_FITTINGS = {
+    'Vladivostok_VL': {'VL_CliffWall02': (57, None)},  # Russian Village near-straight minimum: 56.9.
+    'Mount_Fuji_MJ': {'MJ_CliffWall01': (None, 'MJ_CliffWall08')},  # Coaxial centres 90 apart.
+}
+
+
+def straight_cliff(library, kit, steps):
+    kits = library['kits']
+    cliffs = kits.get(kit, {}).get('cliffs', ())
+    choices = []
+    for entry in cliffs:
+        if entry['height_steps'] != steps:
+            continue
+        name = entry['template']
+        source = entry.get('borrowing', {}).get('from', kit)
+        label = next((asset.get('editor_name', '') for category in ('props', 'buildings', 'destructibles')
+                      for asset in kits[source].get(category, ()) if asset['template'] == name), '')
+        if 'Corner' in label or 'Curve' in label:
+            continue
+        if name.endswith('_GRID') and name not in _BENCHED and not label.endswith('Straight'):
+            continue
+        length, offset = _BENCHED.get(name, (entry['length'], entry['offset_y']))
+        if length and offset is not None and offset <= 0:
+            choices.append((name not in _BENCHED, -entry['samples'], name, length, offset, source))
+    if not choices:
+        return None
+    _, _, name, length, offset, source = min(choices)
+    if name.endswith('_GRID'):
+        length, offset = round(length / 30) * 30, round(offset / 30) * 30
+    pitch, filler = _CLIFF_FITTINGS.get(source, {}).get(name, (None, None))
+    short = next((entry['length'] for entry in cliffs
+                  if entry['template'] == filler and entry['height_steps'] == steps and entry['length']), 0)
+    return name, length, offset, pitch or length, filler, short
+
+
 def _read(path, source, load, issues):
     try:
         return load(path)

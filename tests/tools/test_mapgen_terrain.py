@@ -126,33 +126,36 @@ def test_straight_cliff_continues_across_a_face_split():
 
 
 def test_vladivostok_wall_fits_the_run_up_to_the_ramp_shoulders():
-    kit = 'Iceland_IL'
+    kit = 'Vladivostok_VL'
     wall = dict(template='VL_CliffWall02', length=74, offset_y=-26, height_steps=1, samples=56)
     library = {'kits': {kit: {'cliffs': [wall]}}}
     plan = TerrainPlan(
-        blocks=(Block(((0, 200), (450, 200), (450, 350), (0, 350)), 4),),
-        cliffs=(Cliff((0, 200), (450, 200), kit),),
-        ramps=(Ramp((250, 110), (0, 1), 1, 200),),
+        blocks=(Block(((0, 200), (481, 200), (481, 350), (0, 350)), 4),),
+        cliffs=(Cliff((0, 200), (481, 200), kit),),
+        ramps=(Ramp((241, 110), (0, 1), 1, 200),),
     )
-    ground = expand(plan, library, 46, 36, 0)
-    # The cut is [140, 360]. Two 74-unit pieces fit the first run at pitch 66.
-    # The second 90-unit run is too short for that overlap; it keeps one centred piece.
-    assert [(p.x, p.y) for p in ground.pieces] == [(37, 226), (103, 226), (405, 226)]
+    ground = expand(plan, library, 49, 36, 0)
+    # The shoulders cut [131, 351]. The 131-unit run fits 74 + 57;
+    # the 130-unit run would need a pitch of 56 and keeps one centred piece.
+    assert [(p.x, p.y) for p in ground.pieces] == [(37, 226), (94, 226), (416, 226)]
+    assert any('56 units uncovered at ends of [351, 481]' in issue for issue in ground.issues)
     assert ground.hidden[19, :14].all() and not ground.hidden[19, 14:36].any()
 
 
 def test_measured_short_cliff_fills_a_straight_run_on_the_same_axis():
+    kit = 'Mount_Fuji_MJ'
     long, short, curve = ('MJ_CliffWall' + suffix for suffix in ('01', '08', '10'))
-    library = {'kits': {'Fuji': {
+    library = {'kits': {kit: {
         'props': [{'template': name, 'editor_name': role} for name, role in
-                  ((long, 'CliffStraight'), (short, 'CliffStraightShorter2'), (curve, 'CliffSCurveLeft2'))],
+                  ((long, 'CliffStraight'), (short, 'CliffStraightShorter2'))],
         'cliffs': [
             {'template': name, 'height_steps': 1, 'length': length, 'offset_y': offset, 'samples': samples}
-            for name, length, offset, samples in ((long, 120, -28, 91), (short, 60, -10, 79), (curve, 157, -13, 100))
-        ],
-    }}}
+            for name, length, offset, samples in ((long, 120, -28, 91), (short, 60, -10, 79))
+        ] + [dict(template=curve, height_steps=1, length=157, offset_y=-13, samples=100,
+                  borrowing={'from': 'Donor'})],
+    }, 'Donor': {'props': [{'template': curve, 'editor_name': 'CliffSCurveLeft2'}]}}}
     plan = TerrainPlan(blocks=(Block(((0, 100), (190, 100), (190, 200), (0, 200)), 4),),
-                       cliffs=(Cliff((0, 100), (190, 100), 'Fuji'),))
+                       cliffs=(Cliff((0, 100), (190, 100), kit),))
     ground = expand(plan, library, 20, 21, 0)
     # 120 + 60 centred in 190. The paired originals are 90 apart with no cross-axis offset.
     assert [(p.template, p.x, p.y) for p in ground.pieces] == [(long, 65, 128), (short, 155, 128)]

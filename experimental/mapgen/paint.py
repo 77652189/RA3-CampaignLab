@@ -6,7 +6,7 @@ from random import Random
 import numpy as np
 
 from experimental.mapgen.campaign_writer import labpaths, noise_field, rules
-from experimental.mapgen.library import texture_kit
+from experimental.mapgen.library import SNOW_FIELDS, SNOW_RAMPS, WINTER_SURFACES, texture_kit
 from experimental.mapgen.terrain import Blend
 
 
@@ -23,13 +23,6 @@ USE_CLASS = {
 FALLBACK = {'Road': 'Heidelberg', 'Grass': 'Heidelberg', 'Dirt': 'Yucatan',
             'Cliff': 'Cape_Cod', 'Sand': 'Santa_Monica', 'Rock': 'Yucatan', 'Snow': 'Iceland'}
 CLIFF_DONOR = {'Heidelberg': 'Gibraltar'}
-WINTER_SURFACES = {
-    # Murmansk and Iceland mix a continuous Solvang snow bed with exposed
-    # Iceland ground and dirty snow. The scored Solvang tile reads as ice.
-    'snow': ('Snow_Solvang01', 'Snow_Iceland04', 'Snow_Solvang08'),
-    'snow_woodland': ('Snow_Solvang08', 'Snow_Solvang10', 'Snow_Solvang01'),
-    'ice': ('Snow_Solvang02', 'Snow_Solvang09', 'Snow_Solvang03'),
-}
 HEIDELBERG_ASPHALT = {'Pavement_Heidel07', 'Pavement_Heidel08', 'Pavement_Heidel09'}
 
 
@@ -73,7 +66,7 @@ def paint(plan, library, ground, roadbed=None):
         if surface is None:
             raise ValueError(f'block at {plan.blocks[owner].points[0]}: missing surface id, use and kit')
 
-    ramp_material = None
+    fixed = {plan.ground}
     for owner, surface in enumerate([*surfaces, None]):
         mask = ground.owners == (owner if surface else -1)
         label, kit, kind = backdrop, ground_kit, ground_class
@@ -94,7 +87,7 @@ def paint(plan, library, ground, roadbed=None):
                 textures[mask] = named_texture
             else:
                 rng = Random(f'{label}:{surface.seed}')
-                winter = WINTER_SURFACES.get(surface.use)
+                winter = SNOW_FIELDS.get(kit) if surface.use == 'snow' else WINTER_SURFACES.get(surface.use)
                 entries = ([catalogue[name][2] for name in winter if name in catalogue] if winter else None)
                 if winter and len(entries) != len(winter):
                     missing = next(name for name in winter if name not in catalogue)
@@ -111,11 +104,11 @@ def paint(plan, library, ground, roadbed=None):
                         textures[j[patch], i[patch]] = accent
         for role_mask, role in roles:
             cells = mask & role_mask
-            if cells.any() or (surface is None and role == 'ramp' and ground.ramp.any()):
+            if cells.any():
                 ramp_class = {'Snow': 'Snow', 'Dirt': 'Rock'}.get(kind, 'Dirt')
                 role_class = {'cliff': 'Cliff', 'shore': 'Snow' if ground_class == 'Snow' else 'Sand',
                               'ramp': ramp_class}[role]
-                packed = catalogue.get('Snow_Iceland04') if role == 'ramp' and kind == 'Snow' else None
+                packed = catalogue.get(SNOW_RAMPS.get(kit)) if role == 'ramp' and kind == 'Snow' else None
                 if role == 'ramp' and named_texture is not None and catalogue[named_texture][1] == role_class:
                     name = named_texture
                 elif packed:
@@ -124,8 +117,8 @@ def paint(plan, library, ground, roadbed=None):
                     rng = Random(f'{label}:{surface.seed if surface else 0}:{role}')
                     name, = _palette(kits, kit, role_class, label, rng, 1)
                 textures[cells] = name
-                if role == 'ramp' and surface is None:
-                    ramp_material = name
+                if role == 'ramp':
+                    fixed.add(name)
         shoulder = mask & ground.ramp_edges & ~ground.hidden
         # On winter terrain let the local snow meet the exposed rock.
         if kind != 'Snow' and shoulder.any():
@@ -152,9 +145,7 @@ def paint(plan, library, ground, roadbed=None):
             textures[roadbed.infill] = asphalt
         ground = replace(ground, hidden=ground.hidden | roadbed.hidden)
 
-    # Global ordering is independent of block order and the palette picked by
-    # any neighbour. At a three-material corner the writer takes one winner.
-    fixed = {name for name in (plan.ground, ramp_material, road_material, asphalt) if name is not None}
+    fixed.update(name for name in (road_material, asphalt) if name is not None)
 
     def priority(name):
         kind = catalogue[name][1]
@@ -167,4 +158,4 @@ def paint(plan, library, ground, roadbed=None):
     rank = tuple(sorted(set(textures.flat) | fixed, key=lambda n: (priority(n), n)))
     authored = frozenset(i for i, s in enumerate(surfaces) if s.ground_texture is not None)
     return replace(ground, textures=textures, rank=rank,
-                   blend=Blend(plan.ground, ramp_material, road_material, asphalt, authored))
+                   blend=Blend(plan.ground, road_material, asphalt, authored))

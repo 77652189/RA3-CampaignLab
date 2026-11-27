@@ -509,11 +509,11 @@ def expand(sketch, ground, roadbed, layout, library, kits, sage, border, frame=N
     assets = assets or Assets(library, sage)
     finish = _Finish(sketch, ground, roadbed, layout, assets, kits, border, frame, native)
     edges = defaultdict(list)
-    for border, spec in sketch.borders.items():
+    for border in sketch.borders:
         for section in sketch.border_sections(border):
             for block in section[2:4]:
                 if block:
-                    edges[block].append((*section, spec.get('shore') == 'quay'))
+                    edges[block].append((*section, border in sketch.quays))
     for block, spec in sketch.blocks.items():
         if spec.get('kind') == 'water' or spec['use'] == 'ice':
             continue

@@ -12,7 +12,7 @@ from scipy.ndimage import distance_transform_edt
 
 from experimental.mapgen.design import LAND, STEP_WORLD, DesignError, face_rings, on_segment, point_in_ring
 from experimental.mapgen.campaign_writer import RAMP_MAX, mapterrain, newmap, rules
-from experimental.mapgen.library import CLIFF_STEP_RAW
+from experimental.mapgen.library import CLIFF_STEP_RAW, straight_cliff
 
 CELL = rules.CELL
 RAMP_LENGTH = 180
@@ -21,15 +21,6 @@ SUB_DEPTH = 70              # WorldBuilder manual, docs/research/first-party.md
 SHORE_RISE = 4              # world units per cell: 6.4 writer units, below the ramp limit of 6.5
 VISIBLE = rules.FIELDS.index('visible')
 ON_SHORE = 2 * SHORE_RISE   # two bank cells' rise on each side of the waterline
-
-# These straight pieces have placement measurements from the 150 game probe.
-# The catalogue's adjacent-position medians (99/-13 and 119/-30) include hand placements.
-_BENCHED = {'HB_CliffWall01': (100, -15), 'RM_CliffWall01_GRID': (120, -30)}
-# Russian Village places this irregular wall as close as 56.9 units on near-straight runs.
-_MIN_CLIFF_PITCH = {'VL_CliffWall02': 57}
-# Retail Fuji joins 01 to 08 on the same axis every 90 units: half of 120 plus half of 60.
-_SHORT_STRAIGHTS = {'MJ_CliffWall01': 'MJ_CliffWall08'}
-
 
 @dataclass(frozen=True)
 class Surface:
@@ -111,7 +102,6 @@ class Piece:
 @dataclass(frozen=True)
 class Blend:
     backdrop: str
-    ramp: str | None
     road: str | None
     asphalt: str | None
     authored: frozenset[int] = frozenset()
@@ -144,10 +134,9 @@ class Ground:
             return name
         if self.blocked[j, i] or self.blocked[nj, ni]:
             return name if self.ramp_edges[j, i] or self.ramp_edges[nj, ni] else None
-        if self.owners[j, i] in blend.authored or self.owners[nj, ni] in blend.authored:
+        if ((self.ramp[j, i] and self.ramp[nj, ni]) or
+                self.owners[j, i] in blend.authored or self.owners[nj, ni] in blend.authored):
             return name
-        if self.ramp[j, i] and self.ramp[nj, ni]:
-            return blend.ramp
         return blend.backdrop
 
 
@@ -307,9 +296,10 @@ def from_design(sketch, plan, kit):
     water = _design_water(sketch)
     cliffs, ramps, quays, closed_edges, sealed_shores = {}, [], [], [], []
     for border in sketch.borders:
+        quay = border in sketch.quays
         for (a, b), _, _ in sketch.border_edges[border]:
             left, right = sketch.sides[a, b]
-            if sketch.borders[border].get('shore') == 'quay':
+            if quay:
                 dry, points = (left, (a, b)) if sketch.medium(left) == LAND else (right, (b, a))
                 spec = sketch.blocks[dry]
                 quays.append(Quay(*(tuple(map(float, p)) for p in points),
@@ -328,7 +318,7 @@ def from_design(sketch, plan, kit):
                 continue
             allowed = sketch.base_pass.get(name)
             if sketch.medium(left) != sketch.medium(right):
-                if allowed is not None and 'amphibian' not in allowed and not sketch.borders[border].get('shore'):
+                if allowed is not None and 'amphibian' not in allowed and not quay:
                     if allowed:
                         raise DesignError(name, 'shore', 'a land/water crossing can open only to amphibians')
                     sealed_shores.append((a, b))
@@ -479,31 +469,6 @@ def _ramp_cut(start, tangent, ramp, uphill, run, *, ends=0):
     return (begin, end) if begin <= end else None
 
 
-def _straight(library, kit, steps):
-    style = library['kits'].get(kit, {})
-    editor_names = {entry['template']: entry.get('editor_name', '')
-                    for category in ('props', 'buildings', 'destructibles') for entry in style.get(category, ())}
-    choices = []
-    for entry in style.get('cliffs', ()):
-        name = entry['template']
-        if entry['height_steps'] != steps:
-            continue
-        editor_name = editor_names.get(name, '')
-        if 'Corner' in editor_name or 'Curve' in editor_name:
-            continue
-        if name.endswith('_GRID') and name not in _BENCHED and not editor_name.endswith('Straight'):
-            continue
-        length, offset = _BENCHED.get(name, (entry['length'], entry['offset_y']))
-        if length and offset is not None and offset <= 0:
-            choices.append((name not in _BENCHED, -entry['samples'], name, length, offset))
-    if not choices:
-        return None
-    _, _, name, length, offset = min(choices)
-    if name.endswith('_GRID'):
-        length, offset = round(length / 30) * 30, round(offset / 30) * 30
-    return name, length, offset
-
-
 def _cliffs(plan, library, base, at, x, y, ramps):
     pieces, issues, errors = [], [], []
     cover = np.zeros(x.shape, bool)
@@ -534,19 +499,15 @@ def _cliffs(plan, library, base, at, x, y, ramps):
                      for p, q in ((start, min(end, lo)), (max(start, hi), end)) if p < q]
         if not spans:
             continue
-        spec = _straight(library, cliff.kit, steps)
+        spec = straight_cliff(library, cliff.kit, steps)
         if spec is None:
             errors.append(f'{label}: no measured {steps}-step straight piece')
             continue
-        template, spacing, offset = spec
+        template, spacing, offset, minimum, filler, short = spec
         if template.endswith('_GRID') and (
                 not np.isclose(tangent.prod(), 0) or np.any(np.mod([a, b], 30))):
             issues.append(f'{label}: GRID runs need cardinal edges on the 30-unit grid')
             continue
-        filler = _SHORT_STRAIGHTS.get(template)
-        short = next((entry['length'] for entry in library['kits'][cliff.kit]['cliffs']
-                      if entry['template'] == filler and entry['height_steps'] == steps), 0)
-        minimum = _MIN_CLIFF_PITCH.get(template, spacing)
         along_grid, across_grid = strip_coordinates(x, y, a, tangent)
         for start, end in spans:
             span = end - start

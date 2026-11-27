@@ -383,6 +383,7 @@ class Design:
 
     def _read_borders(self):
         self.spans, self.lengths, self.base_pass, self.border_edges = {}, {}, {}, {}
+        self.quays = set()
         for item, border in self.borders.items():
             if "width" in border:
                 _width(border["width"], item)
@@ -410,6 +411,7 @@ class Design:
                 _need(all(l and r and {self.medium(l), self.medium(r)} == {LAND, WATER}
                           for edge, _, _ in arcs for l, r in (self.sides[edge],)),
                       item, "shore", "a quay must separate land from water")
+                self.quays.add(item)
                 self.base_pass[item] = frozenset()
             if "pass" in border:
                 self.base_pass[item] = _pass(border["pass"], item)

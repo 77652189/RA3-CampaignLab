@@ -107,14 +107,17 @@ def test_quay_dressing_respects_continuous_authored_paving(slice_inputs, monkeyp
     def has_cargo(result):
         return any((p.template, p.x, p.y) == ('T_Bush', 300, 370) for p in result.pieces)
 
-    assert not has_cargo(finish())
+    soft = finish()
+    assert not has_cargo(soft)
+    # The dock palette picks the accent here, inside the hard quay's apron.
+    assert soft.ground.textures[36, 27] == 'ContinuousPaving'
     data['borders']['shore'] = {'line': [[0, 300], [600, 300]], 'shore': 'quay'}
     result = finish()
     assert has_cargo(result)
-    assert result.ground.textures[37, 30] == 'CargoApron'
+    assert result.ground.textures[36, 27] == 'CargoApron'
     data['blocks']['quay']['ground_texture'] = 'ContinuousPaving'
     ground = finish().ground
-    assert ground.textures[37, 30] == 'ContinuousPaving'
+    assert ground.textures[36, 27] == 'ContinuousPaving'
     assert ground.owners[43, 30] != ground.owners[45, 30]
     assert ground.edge_texture(30, 45, 30, 44, 'ContinuousPaving') == 'ContinuousPaving'
 
@@ -265,28 +268,29 @@ def test_snow_ramp_keeps_its_snow_and_exposed_rock_after_dressing(slice_inputs, 
         return [dict(id=name, Texture='tile', BumpTexture='tile') for name in names]
 
     library['texture_kits'] = {
-        'Town': {'Snow': tiles('Snow_Solvang01', 'Snow_Solvang08'),
+        'Town': {'Snow': tiles('TownSnow'),
                  'Dirt': tiles('BareDirt'), 'Grass': tiles('GreenGrass'), 'Cliff': tiles('ExposedRock')},
-        'Iceland': {'Snow': tiles('Snow_Iceland04')},  # Outside the local palette.
+        'Iceland': {'Snow': [dict(id='Snow_Iceland04', Texture='unused', BumpTexture='unused')]},
     }
     sketch = Design({'version': 2, 'blocks': {
         'low': {'at': [450, 200], 'height': 3, 'use': 'snow'},
-        'high': {'at': [450, 600], 'height': 4, 'use': 'snow', 'ground_texture': 'Snow_Solvang01'},
+        'high': {'at': [450, 600], 'height': 4, 'use': 'snow'},
     }, 'borders': {
         'frame': {'line': [[0, 0], [900, 0], [900, 800], [0, 800], [0, 0]]},
         'cliff': {'line': [[0, 400], [900, 400]], 'segments': {
             'ramp': {'span': [360, 540], 'pass': ['foot', 'vehicle', 'amphibian']},
         }},
     }})
-    plan = terrain.from_design(sketch, TerrainPlan(ground='Snow_Solvang01'), 'Town_T')
+    plan = terrain.from_design(sketch, TerrainPlan(ground='GreenGrass'), 'Town_T')
     native = expand(plan, library, 91, 81, 0)
     surface = paint.paint(plan, library, native)
     ground = dressing.expand(sketch, surface, None, Layout(()), library,
                              dict.fromkeys(sketch.blocks, 'Town_T'), sage, 0).ground
-    assert native.ramp[37, 45] and not native.blocked[37, 45] and ground.textures[37, 45] == 'Snow_Iceland04'
-    assert native.ramp[42, 45] and not native.blocked[42, 45] and ground.textures[42, 45] == 'Snow_Solvang01'
+    assert ground.owners[40, 45] != ground.owners[41, 45]
+    assert native.ramp[40:42, 45].all() and not native.blocked[40:42, 45].any()
+    assert list(ground.textures[40:42, 45]) == ['TownSnow', 'TownSnow']
+    assert ground.edge_texture(45, 40, 45, 41, 'TownSnow') == 'TownSnow'
     assert native.blocked[37, 35] and ground.textures[37, 35] == 'ExposedRock'
-    assert not {'BareDirt', 'GreenGrass'} & set(ground.textures.flat)
     assert ground.raw is native.raw and ground.blocked is native.blocked
 
 
