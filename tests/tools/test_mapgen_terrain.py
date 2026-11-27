@@ -161,14 +161,38 @@ def test_quay_connects_the_deck_to_deep_water_with_a_closed_lip():
     # The 100-unit retail model meets the next piece end to end, facing the water.
     assert [(p.template, p.x, p.y, p.angle) for p in ground.pieces] == [
         (template, x, 307, 0) for x in (50, 150, 250, 350)]
-    # The sea bed reaches the wall. The first dry row holds any beaching unit.
-    assert ground.raw[29, 20] == 130 * terrain_rules.RAW_PER_WORLD
-    assert not ground.blocked[29, 20] and ground.blocked[31, 20]
-    assert ground.blocked[32, 20] and not ground.blocked[33, 20]
+    # Two terrain cells of setback put the model's origin over the 130
+    # floor. The two dry routing rows behind the model still block beaching.
+    assert all(p.z == pytest.approx(80) for p in ground.pieces)
+    assert ground.raw[32, 20] == 130 * terrain_rules.RAW_PER_WORLD
+    assert not ground.blocked[32, 20] and ground.blocked[33, 20]
+    assert ground.blocked[34, 20] and not ground.blocked[35, 20]
     m = _container(41, 51, 0)
     apply(m, plan, ground)
     tiles = mapterrain.Tiles(m, 41)
-    assert tiles.extra[31 * tiles.row_bytes + 20 // 8] & 1 << (20 % 8)
+    assert tiles.extra[33 * tiles.row_bytes + 20 // 8] & 1 << (20 % 8)
+    assert not ground.hidden[33, 20]  # the blocked lip continues past the mesh
+
+def test_quay_corner_fits_both_straights_and_a_diagonal_join():
+    kit = 'StPetersburg_ST'
+    straight, corner = 'ST_SeaWallPiece01', 'ST_SeaWallPiece02'
+    library = {'kits': {kit: {'props': [{'template': name} for name in (straight, corner)]}}}
+    plan = TerrainPlan(quays=tuple(terrain.Quay(a, b, kit, 3) for a, b in (
+        ((0, 200), (400, 200)), ((400, 200), (400, 450)), ((400, 450), (550, 600)),
+    )))
+    pieces = expand(plan, library, 71, 71, 0).pieces
+    fitting, = [p for p in pieces if p.template == corner]
+    # Two 50-unit legs, on axes offset 7 inland. The diagonal
+    # straight shares a tip with the preceding one at the miter.
+    assert (fitting.x, fitting.y, fitting.angle) == (393, 207, 0)
+    east = [p for p in pieces if p.angle == 0 and p.template == straight]
+    north = [p for p in pieces if p.angle == np.pi / 2]
+    diagonal = [p for p in pieces if p.angle == np.pi / 4]
+    assert (east[-1].x + 50, east[-1].y) == (343, 207)
+    assert (north[0].x, north[0].y - 50) == (393, 257)
+    diagonal_tip = np.array([diagonal[0].x, diagonal[0].y]) - 50 / np.sqrt(2)
+    np.testing.assert_allclose(diagonal_tip, [north[-1].x, north[-1].y + 50])
+
 
 def test_named_atmosphere_reaches_both_mapgen_outputs_and_saves_review(tmp_path, monkeypatch):
     size = (61, 61, 0)

@@ -67,6 +67,43 @@ def test_busy_frontage_stops_at_its_budget(slice_inputs):
     assert sum(used for _, used in counts.values()) == len(result.pieces)
 
 
+def test_quay_dressing_respects_continuous_authored_paving(slice_inputs, monkeypatch):
+    _, _, _, _, library, _, sage, _ = slice_inputs
+    kit = 'Town_T'
+    monkeypatch.setattr(paint, 'ART', sage)
+    (sage / 'tile').touch()
+
+    def tiles(*names):
+        return [dict(id=name, Texture='tile', BumpTexture='tile') for name in names]
+
+    library['texture_kits'] = {'Town': {'Road': tiles('CargoApron', 'ContinuousPaving'),
+                                        'Grass': tiles('Field'), 'Cliff': tiles('RockFace'),
+                                        'Sand': tiles('Sand')}}
+    data = {'version': 2, 'blocks': {
+        'quay': {'at': [300, 370], 'height': 3, 'use': 'dock'},
+        'field': {'at': [300, 480], 'height': 3, 'use': 'wildland'},
+        'sea': {'at': [300, 160], 'height': 3, 'use': 'water', 'kind': 'water'},
+    }, 'borders': {
+        'frame': {'line': [[0, 0], [600, 0], [600, 500], [0, 500], [0, 0]]},
+        'shore': {'line': [[0, 300], [600, 300]], 'pass': []},
+        'yard': {'line': [[0, 440], [600, 440]], 'pass': ['foot', 'vehicle', 'amphibian']},
+    }}
+
+    def finish():
+        sketch = Design(data)
+        plan = terrain.from_design(sketch, TerrainPlan(ground='Field'), kit)
+        ground = paint.paint(plan, library, expand(plan, library, 61, 51, 0))
+        return dressing.expand(sketch, ground, None, Layout(()), library,
+                               dict.fromkeys(sketch.blocks, kit), sage, 0).ground
+
+    assert finish().textures[37, 30] == 'CargoApron'
+    data['blocks']['quay']['ground_texture'] = 'ContinuousPaving'
+    ground = finish()
+    assert ground.textures[37, 30] == 'ContinuousPaving'
+    assert ground.owners[43, 30] != ground.owners[45, 30]
+    assert ground.edge_texture(30, 45, 30, 44, 'ContinuousPaving') == 'ContinuousPaving'
+
+
 def test_bluff_corners_and_camera_margin_get_kit_planting(slice_inputs):
     _, _, _, _, library, _, sage, _ = slice_inputs
     sketch = Design({

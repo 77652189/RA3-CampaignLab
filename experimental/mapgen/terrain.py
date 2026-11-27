@@ -105,6 +105,7 @@ class Blend:
     ramp: str | None
     road: str | None
     asphalt: str | None
+    authored: frozenset[int] = frozenset()
 
 
 @dataclass
@@ -136,6 +137,8 @@ class Ground:
             return name if self.ramp_edges[j, i] or self.ramp_edges[nj, ni] else None
         if self.ramp[j, i] and self.ramp[nj, ni]:
             return blend.ramp
+        if self.owners[j, i] in blend.authored or self.owners[nj, ni] in blend.authored:
+            return name
         return blend.backdrop
 
 
@@ -522,13 +525,43 @@ def _cliffs(plan, library, base, at, x, y, ramps):
     return tuple(pieces), tuple(errors + issues), tuple(errors), cover
 
 
-# The Leningrad straight piece is 100 units tip-to-tip and the front lip
-# sits 7 units to the right of its origin (retail placements and model).
-_QUAY_PIECES = {'StPetersburg_ST': ('ST_SeaWallPiece01', 100, 7)}
+# Leningrad's run is 100 units long with the front lip 7 to the right of
+# its origin. The outward corner replaces 50 units of each adjacent run.
+_QUAY_PIECES = {'StPetersburg_ST': ('ST_SeaWallPiece01', 'ST_SeaWallPiece02', 100, 7)}
+_QUAY_BANK_SETBACK = 2 * CELL  # the model's rear shelf covers the stepped terrain join
 
 
-def _sheer_edges(plan, x, y):
+def _quay_water(water, quays):
+    """Let the wall model form the visible lip, with the cell edge behind it."""
+    edges = {(q.end, q.start) for q in quays}  # water is on the left of its ring
+    shifted = {}
+
+    def inset(ring):
+        for i, here in enumerate(ring):
+            before, after = ring[i - 1], ring[(i + 1) % len(ring)]
+            normals = []
+            for a, b in ((before, here), (here, after)):
+                if (a, b) in edges:
+                    dx, dy = unit_direction(np.subtract(b, a))
+                    normals.append(np.array((dy, -dx)))
+            if len(normals) == 2:
+                a, b = normals
+                # Miters leave both translated edges parallel to the model.
+                # Bound near-reversals to the scale of the retaining shelf.
+                normal = (a + b) / max(.5, 1 + a @ b)
+            elif normals:
+                normal = normals[0]
+            else:
+                continue
+            shifted[here] = tuple(here + normal * _QUAY_BANK_SETBACK)
+        return tuple(shifted.get(p, p) for p in ring)
+
+    return replace(water, points=inset(water.points), islands=tuple(map(inset, water.islands))), shifted
+
+
+def _sheer_edges(plan, x, y, shifted):
     for a, b in (*plan.sealed_shores, *((q.start, q.end) for q in plan.quays)):
+        a, b = shifted.get(a, a), shifted.get(b, b)
         length = math.dist(a, b)
         tangent = unit_direction(np.subtract(b, a))
         along, across = strip_coordinates(x, y, a, tangent)
@@ -537,26 +570,64 @@ def _sheer_edges(plan, x, y):
 
 def _quay_pieces(plan, library, raw, border):
     pieces = []
+    outgoing = {(q.start, q.kit, q.steps): q for q in plan.quays}
+    joins, corners = {}, set()
     for quay in plan.quays:
-        template, length, offset = _QUAY_PIECES.get(quay.kit, ('', 0, 0))
-        props = library['kits'].get(quay.kit, {}).get('props', ())
-        if not any(p['template'] == template for p in props):
+        template, corner, length, offset = _QUAY_PIECES.get(quay.kit, ('', '', 0, 0))
+        names = {p['template'] for p in library['kits'].get(quay.kit, {}).get('props', ())}
+        if template not in names:
             raise ValueError(f'quay at {quay.start}: {quay.kit} has no measured retaining piece')
+        following = outgoing.get((quay.end, quay.kit, quay.steps))
+        if following is None:
+            continue
+        before = np.subtract(quay.end, quay.start)
+        after = np.subtract(following.end, following.start)
+        size = min(math.hypot(*before), math.hypot(*after))
+        u, v = unit_direction(before), unit_direction(after)
+        turn = math.atan2(u[0] * v[1] - u[1] * v[0], u @ v)
+        joint = quay.end, quay.kit, quay.steps
+        # Intersect the inboard axes at the bend. Bound the miter on
+        # near-reversals so the fit cannot consume either straight run.
+        limit = min(size / 4, length / 2)
+        joins[joint] = max(-limit, min(limit, offset * math.tan(turn / 2)))
+        if corner in names and size >= length + 2 * offset and math.isclose(turn, math.pi / 2):
+            corners.add(joint)
+
+    def place(template, xy, angle, steps):
+        x, y = xy
+        ix, iy = np.clip(np.asarray((x, y)) / CELL + border, 0, np.asarray(raw.shape[::-1]) - 1)
+        i, j = min(int(ix), raw.shape[1] - 2), min(int(iy), raw.shape[0] - 2)
+        u, v = ix - i, iy - j
+        z = (np.array([1 - v, v]) @ raw[j:j+2, i:i+2] @ np.array([1 - u, u])) / rules.RAW_PER_WORLD
+        pieces.append(Piece(template, float(x), float(y), angle, steps * STEP_WORLD - float(z)))
+
+    for quay in plan.quays:
+        template, corner, length, offset = _QUAY_PIECES[quay.kit]
         a, b = np.asarray(quay.start), np.asarray(quay.end)
         run = math.dist(a, b)
         tangent = (b - a) / run
         normal = np.array((-tangent[1], tangent[0]))
-        count = math.ceil(run / length)
         angle = math.atan2(tangent[1], tangent[0])
+        first, last = ((p, quay.kit, quay.steps) for p in (quay.start, quay.end))
+        start, end = joins.get(first, 0), run - joins.get(last, 0)
+        if first in corners:
+            start += length / 2
+        if last in corners:
+            place(corner, b + offset * (normal - tangent), angle, quay.steps)
+            end -= length / 2
+        if end <= start:
+            continue
+        count = math.ceil((end - start) / length)
         for step in range(count):
-            # Keep both tips covered and spread any overlap evenly along a run.
-            along = run / 2 if count == 1 else length / 2 + step * (run - length) / (count - 1)
-            x, y = a + along * tangent + offset * normal
-            ix, iy = np.clip(np.asarray((x, y)) / CELL + border, 0, np.asarray(raw.shape[::-1]) - 1)
-            i, j = min(int(ix), raw.shape[1] - 2), min(int(iy), raw.shape[0] - 2)
-            u, v = ix - i, iy - j
-            z = (np.array([1 - v, v]) @ raw[j:j+2, i:i+2] @ np.array([1 - u, u])) / rules.RAW_PER_WORLD
-            pieces.append(Piece(template, float(x), float(y), angle, quay.steps * STEP_WORLD - float(z)))
+            if count == 1:
+                # At a fitting the tip must meet the fitting's socket.
+                if (first in corners) == (last in corners):
+                    along = (start + end) / 2
+                else:
+                    along = start + length / 2 if first in corners else end - length / 2
+            else:
+                along = start + length / 2 + step * (end - start - length) / (count - 1)
+            place(template, a + along * tangent + offset * normal, angle, quay.steps)
     return tuple(pieces)
 
 
@@ -637,12 +708,16 @@ def expand(plan, library, width, height, border):
                     raise DesignError('$', 'water', 'handwritten water must preserve the entire design basin and level')
         basins.extend((water, area, edge) for water, area, edge in intended
                       if not any(np.any(area & other) for _, other, _ in basins))
-    waters = tuple(water for water, _, _ in basins)
-    if len({water.level for water in waters}) > 1:
+    if len({water.level for water, _, _ in basins}) > 1:
         raise ValueError('terrain water footprints need one common global level')
+    waters = []
     waterline = np.full(x.shape, -np.inf)
     sheer = np.zeros(x.shape, bool)
     for water, area, edge in basins:
+        water, shifted = _quay_water(water, plan.quays)
+        if shifted:
+            _, area, edge = wet(water)
+        waters.append(water)
         if type(water.level) is not int or water.level < SUB_DEPTH:
             raise ValueError('water level must be a whole world height at least 70 above zero')
         if np.any(np.isfinite(waterline[area])):
@@ -651,7 +726,7 @@ def expand(plan, library, width, height, border):
         bank = np.maximum(floor, base - edge * SHORE_RISE / CELL * rules.RAW_PER_WORLD)
         if np.any(area & ramp_shoulders):
             raise ValueError('water footprint overlaps a ramp')
-        for distance in _sheer_edges(plan, x, y):
+        for distance in _sheer_edges(plan, x, y, shifted):
             # Only the bank whose nearest shoreline is sealed becomes vertical.
             cut = area & (distance <= edge + 1e-8) & (bank > floor)
             bank[cut] = floor
@@ -675,6 +750,7 @@ def expand(plan, library, width, height, border):
         raise ValueError('ground outside the water footprints reaches the global water level')
     blocked = rules.impassable_bits(raw / rules.RAW_PER_OURS, waterline / rules.RAW_PER_OURS)
     # The field-0 lip stops amphibians from using the face as a beach.
+    # Leave it visible: the blocked strip can extend past the retaining mesh.
     # Include the wet/dry join, not the deep water alongside the wall.
     lip = quay_bank & (slope > RAMP_MAX) & (raw > waterline)
     # A 20-unit routing cell straddles two 10-unit terrain samples.
@@ -687,12 +763,11 @@ def expand(plan, library, width, height, border):
         blocked |= across**2 + beyond_end**2 <= CELL**2 / 2
     pieces, issues, errors, cover = _cliffs(plan, library, base, at, x, y, ramps)
     pieces += _quay_pieces(plan, library, raw, border)
-    cover |= lip
     if np.any(blocked & ramp_shoulders & ~ramp_mask & ~cover):
         issues += ('ramp sides: exposed steep cells outside the travel lane have no measured edge fitting',)
     shore = np.abs(raw - waterline) <= ON_SHORE * rules.RAW_PER_WORLD
     return Ground(raw, blocked, textures, cover & blocked, pieces, issues, owners, ramp_shoulders, shore,
-                  waterline, ramp_edges, errors=errors, water=waters)
+                  waterline, ramp_edges, errors=errors, water=tuple(waters))
 
 
 def apply(m, plan, ground):

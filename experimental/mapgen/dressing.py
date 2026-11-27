@@ -373,6 +373,8 @@ class _Finish:
                             for child, spec in self.sketch.blocks.items() if spec.get('parent') == block))
 
     def patch(self, block, at, angle, length, width, material, *, slope=False):
+        if self.sketch.blocks[block].get('ground_texture') is not None:
+            return  # Dressing must not break up a designer's continuous surface.
         folder = texture_kit(self.kits[block])
         entries = self.assets.library.get('texture_kits', {}).get(folder, {}).get(material, ())
         names = sorted(e['id'] for e in entries if not e['id'].startswith(('Transition', 'Cliff')))

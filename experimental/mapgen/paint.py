@@ -155,4 +155,6 @@ def paint(plan, library, ground, roadbed=None):
         return 2 if name in fixed else 3
 
     rank = tuple(sorted(set(textures.flat) | fixed, key=lambda n: (priority(n), n)))
-    return replace(ground, textures=textures, rank=rank, blend=Blend(plan.ground, ramp_material, road_material, asphalt))
+    authored = frozenset(i for i, s in enumerate(surfaces) if s.ground_texture is not None)
+    return replace(ground, textures=textures, rank=rank,
+                   blend=Blend(plan.ground, ramp_material, road_material, asphalt, authored))
