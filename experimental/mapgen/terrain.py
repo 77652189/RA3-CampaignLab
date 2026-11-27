@@ -598,16 +598,24 @@ def apply(m, plan, ground):
     hm.elev = ground.raw.ravel().tolist()
     hm.store()
     tiles = mapterrain.Tiles(m, hm.width)
+    if tiles.counts[2] != 1:
+        raise ValueError('terrain container has custom cliff UVs')
+    # Every cell is repainted. A template's old textures and blends would still
+    # be sent to the SDK atlas even though no cell can use them.
+    original_textures, tiles.textures = tiles.textures, {}
+    tiles.tex_at = tiles.tex_end
+    tiles.counts[0] = tiles.counts[3] = 0
+    tiles.descs.clear()
+    tiles._known.clear()
     for field in range(8):
         tiles.fill_field(field, field == VISIBLE)
     for field, mask, value in ((rules.IMPASSABLE, ground.blocked, True), (VISIBLE, ground.hidden, False)):
         for j, i in zip(*np.nonzero(mask)):
             tiles.set_bit(field, int(i), int(j), value)
     for name in sorted(set(ground.textures.ravel()).union(ground.rank)):
-        tiles.add_texture(name)
+        size = original_textures[name][1:] if name in original_textures else ()
+        tiles.add_texture(name, *size)
     tiles.arrays[3] = [0] * tiles.n
-    if tiles.counts[2] != 1:
-        raise ValueError('terrain container has custom cliff UVs')
     rank = ground.rank or [plan.cliff, plan.shore, *dict.fromkeys(b.texture for b in plan.blocks), plan.ground]
     newmap.paint_grid(tiles, {(i, j): texture for (j, i), texture in np.ndenumerate(ground.textures)},
                       rank, ground.edge_texture)

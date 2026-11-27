@@ -1,13 +1,16 @@
 from runpy import run_path
+from struct import unpack_from
 from types import SimpleNamespace
 
 import numpy as np
 
 from experimental.mapgen.build import MapBuild
 from experimental.mapgen.buildings import Layout
+from experimental.mapgen.campaign_writer import MapFile, mapterrain
 from experimental.mapgen.design import Design
 from experimental.mapgen.export import _interface, module_bytes
-from experimental.mapgen.terrain import DesignFrame, TerrainPlan
+from experimental.mapgen.terrain import DesignFrame, TerrainPlan, expand
+from test_mapgen_terrain import _container
 
 
 def test_exported_mission_interface(tmp_path):
@@ -67,3 +70,28 @@ def test_exported_mission_interface(tmp_path):
     assert contract(mission) == []
     mission.scripts.append(Script('Test - missing mark', [], [('MOVE_NAMED_UNIT_TO', 'Scout', 'missing')]))
     assert contract(mission) == ["Test - missing mark: MOVE_NAMED_UNIT_TO waypoint 'missing' not published"]
+
+
+def test_full_export_replaces_template_texture_table():
+    size = (11, 11, 0)
+    container = _container(*size)
+    tiles = mapterrain.Tiles(container, size[0])
+    tiles.blend(0, 0, 'Grass_Heidelberg01', (0, 1, 0, 0))
+    tiles.store()
+
+    plan = TerrainPlan(ground='Snow_Iceland03')
+    ground = expand(plan, {}, *size)
+    ground.textures[:, :5] = 'Snow_Solvang01'
+    ground.rank = ('Snow_Iceland03', 'Snow_Solvang01')
+    built = MapBuild(plan, ground, None, Layout(()), None, None, ())
+    built.apply_terrain(container)
+    game, editor, _ = built.outputs(container)
+
+    for raw in (game, editor):
+        tiles = mapterrain.Tiles(MapFile(raw), size[0])
+        assert set(tiles.textures) == {'Snow_Iceland03', 'Snow_Solvang01'}
+        assert (tiles.texture_at(4, 5), tiles.texture_at(5, 5)) == ('Snow_Solvang01', 'Snow_Iceland03')
+        used_blends = set(tiles.arrays[1]) - {0}
+        assert used_blends == set(range(1, len(tiles.descs) + 1))
+        start, cells, _ = tiles.textures['Snow_Iceland03']
+        assert used_blends and all(start <= unpack_from('<I', d)[0] // 4 < start + cells for d in tiles.descs)
