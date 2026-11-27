@@ -79,6 +79,19 @@ def test_the_host_puts_one_in_through_the_module():
     assert s.garrison.out(gi) and house.owner is None and 'ENCLOSED' not in gi.script_status and m.home() == ()
 
 
+def test_a_seat_inside_a_neighbouring_building_is_blocked_by_it():
+    # review_1126e P2 (A390): only the passenger's own house lets its line through, not another one it starts in
+    s = simsmall.small_world()
+    house = s.add('house', 'GE_TownHouse01', None, 300.0, 300.0)
+    plant = s.add('plant', 'AlliedPowerPlant', 'Player_2', 600.0, 300.0)
+    gi = s.add('gi', 'AlliedAntiInfantryInfantry', 'Player_1', 400.0, 300.0)
+    man = s.add('man', 'SovietEngineer', 'Player_2', 800.0, 300.0)
+    assert s.garrison.put(gi, house, script=True)
+    gi.x, gi.y = plant.x, plant.y
+    assert s.line_blocked(gi.x, gi.y, man, house, inside=False) and not s.line_blocked(gi.x, gi.y, man, house)
+    assert s.shot_blocked(gi, man, gi.weapons[0])
+
+
 def test_player_exit_all_buildings_lets_nobody_out():
     """engine_plexit a / b (bench 11-23): PLAYER_EXIT_ALL_BUILDINGS on the human player or a campaign computer player
     leaves every man in (unlike TEAM_EXIT_ALL_BUILDINGS), and it is a known action, no gap."""

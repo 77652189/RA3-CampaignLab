@@ -1703,14 +1703,14 @@ class Sim:
         Twinblade over the player's row the same as with no row)."""
         if not w.get('los') or t.surface == 'air':
             return False
-        return self.line_blocked(a.x, a.y, t, self.garrison.where.get(a.serial, a))   # a seat on its edge
+        return self.line_blocked(a.x, a.y, t, (h := self.garrison.where.get(a.serial)) or a, inside=h is None)  # seat
 
-    def line_blocked(self, x, y, t, a=None):
-        """A structure's footprint on the line from (x, y) to t (shot_blocked's test from any point)."""
+    def line_blocked(self, x, y, t, a=None, inside=True):
+        """A structure's footprint on the line from (x, y) to t (shot_blocked's; inside: skip one it starts in)."""
         if getattr(self, '_fire_obstacles', None) is None:
             self._fire_obstacles = [(b, s) for b in self.living() for s in (self.blocks(b),) if s]
         for b, s in self._fire_obstacles:
-            if b is a or b is t or _in_shape(s, x, y) or _in_shape(s, t.x, t.y):
+            if b is a or b is t or (inside and _in_shape(s, x, y)) or _in_shape(s, t.x, t.y):
                 continue
             if _line_hits(s, x, y, t.x, t.y):
                 return True
