@@ -798,8 +798,8 @@ def engine_aiopen():
       m CampAIPoorM (aiopenpoor, 3000 at the wake): 2963 at s9, 兵营 s19, 电厂 s29, money 23 at s37 and 0 s38-s125 --
         the refinery is never finished (精炼厂 0 all run) and nothing after it starts: the opening stalls in order on the
         order it cannot pay, the 2000 Deposit into PRODUCTION buys nothing. s126 money jumps to 1000 and is spent
-        (106 at s135), s136 +200 to 250, s138 兵营 1 -> 0 (sold?), money 3 from s139 to the end. Not read why
-        (a cancelled refinery's refund and a sale are guesses).
+        (106 at s135), s136 +200 to 250, s138 兵营 1 -> 0 (sold?), money 3 from s139 to the end. Read 11-26
+        (aiopenpoort): the no-income emergency -- it cancels the stalled builds (the refund), then sells to make 100.
     """
     from parts import Script, Test, counted, status
 
@@ -903,7 +903,7 @@ def engine_aiopen():
 
 
     CHECKS = {'aiopen': {'a': a, 'b': b, 'c': c, **{k: (lambda m, k=k: frames(m, k)) for k in FRAMES}},
-              'aiopenpoor': {'m': poor}, 'aiopentp': {'f1': lambda m: frames(m, 'f1')}}
+              'aiopenpoor': {'m': poor}, 'aiopenpoort': {'m': poor}, 'aiopenpoortp': {'m': poor}}
     return dict(CHECKS=CHECKS)
 
 

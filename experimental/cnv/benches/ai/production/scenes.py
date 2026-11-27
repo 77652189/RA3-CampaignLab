@@ -1038,11 +1038,15 @@ def aiopen_bench():
                'AlliedAntiInfantryVehicle_Ground', 'AlliedNavalYard', 'AlliedMiner')
 
 
-    def mission(name='CampAIOpen', money=MONEY, armydef=None):
+    def mission(name='CampAIOpen', money=MONEY, armydef=None, observe=False):
         m = Mission(name=name, map=resources.measured(niagara), facts={'wake at': WAKE_AT, 'money': money})
-        if armydef:                      # aiopentp: an ArmyDefinition rewritten (missions/aiskirm_bench.AIDataPack)
+        if armydef:                      # aiopenpoortp: an ArmyDefinition rewritten (missions/aiskirm_bench.AIDataPack)
             from missions.aiskirm_bench import AIDataPack
             m.statics = [AIDataPack({}, armydef)]
+        if observe:                      # aiopenpoor*: cmd: lines (the yard is the host) + the no-income emergency's hits
+            from missions.aiskirm_bench import teams_yard
+            teams_yard(m)
+            m.ext_logs = ('entryemergency1126',)
         m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
         m.spawns |= set(COUNTED)
         s1 = m.player('s1')
@@ -1060,10 +1064,12 @@ def aiopen_bench():
 
 
     # the builds this module makes (cnv/registry.py): build name -> mission factory
-    # aiopentp: AlliedArmy's PrimaryResourceThingToBuild (what the no-income emergency orders, work/re b1126_armydef)
-    # made the power plant -- the AI starts at 0 money with no miner, so the emergency is on before the wake
+    # aiopenpoort / aiopenpoortp (B 11-26): aiopenpoor observed (cmd: lines + the no-income emergency's entry hits),
+    # stock / AlliedArmy's PrimaryResourceThingToBuild (what that emergency orders, work/re b1126_armydef) made the
+    # power plant. With 50000 (aiopen) the emergency is never entered: it wants under 5000.
     MISSION = {'aiopen': mission, 'aiopenpoor': lambda: mission('CampAIPoor', money=POOR),
-               'aiopentp': lambda: mission('CampAIOpenTP', armydef={
+               'aiopenpoort':lambda: mission('CampAIPoorT', money=POOR, observe=True),
+               'aiopenpoortp': lambda: mission('CampAIPoorTP', money=POOR, observe=True, armydef={
                    'AlliedArmy': {'PrimaryResourceThingToBuild': 'AlliedPowerPlant'}})}
     return dict(MISSION=MISSION, shared=SimpleNamespace(mission=mission))
 

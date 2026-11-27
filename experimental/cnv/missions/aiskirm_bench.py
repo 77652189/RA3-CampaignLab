@@ -583,6 +583,29 @@ def side_xml(skirmish):
         '</AssetDeclaration>', ''])
 
 
+def _yard_xml():
+    with open(os.path.join(labpaths.SDK3, 'SageXML', 'Allied', 'Structures', 'AlliedConstructionYard.xml'),
+              encoding='utf-8') as f:
+        xml = f.read()
+    assert xml.count('<Behaviors>') == 1 and xml.count('id="AlliedConstructionYard"') == 1
+    return xml
+
+
+def teams_yard(m):
+    """Observe on the existing Allied yard (ra3ext team: / cmd: lines of the AI owning it): no extra structure, power or
+    AI candidate. D round 105: the yard keeps its retail id (recompiled over retail's with the passive CNVTeams behavior
+    added) -- a renamed copy (CNVSkirmTeamsYard, before) changed the AI: retail data names AlliedConstructionYard
+    (AlliedPowerPlant's GameDependency, the budget states' ObjectOfTypeExists, ...), and aiskxn (the rename alone, no
+    ra3ext) kept AlliedScout dogless like the carrier while aiskxo (ra3ext, no host) matched stock. The player's yard
+    gets the behavior too; ra3ext's CNVTeams skips a host whose owner has no AI."""
+    xml = _yard_xml().replace('<Behaviors>', '<Behaviors>\n'
+                              '  <DeletionUpdate id="ModuleTag_CNVTeams" MinFrames="15" MaxFrames="4000"/>')
+    link = 'GameObject:AlliedConstructionYard'
+    m.assets.append(('CNVSkirmTeamsYard.xml', xml, link))
+    m.replaces.append(link)
+    m.ext = True
+
+
 ARMY_INF, ARMY_VEH ='SovietAntiInfantryInfantry', 'SovietAntiVehicleVehicleTech1'   # conscript / Hammer tank
 ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the player owns, idle behind its yard
 
@@ -710,29 +733,13 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
     yard = 'AlliedConstructionYard'
     if carrier == 'ext':                 # aiskxo (D round 105): the stock yard, ra3ext loaded, no CNVTeams host
         m.ext = True
-    if observe or carrier == 'name':
-        with open(os.path.join(labpaths.SDK3, 'SageXML', 'Allied', 'Structures',
-                               'AlliedConstructionYard.xml'), encoding='utf-8') as f:
-            xml = f.read()
-        assert xml.count('<Behaviors>') == 1 and xml.count('id="AlliedConstructionYard"') == 1
     if observe:
-        # Observe on the existing yard: no extra structure, power or AI candidate. D round 105: the yard keeps its
-        # retail id (recompiled over retail's with the passive CNVTeams behavior added) -- a renamed copy
-        # (CNVSkirmTeamsYard, before) changed the AI: retail data names AlliedConstructionYard (AlliedPowerPlant's
-        # GameDependency, the budget states' ObjectOfTypeExists, ...), and aiskxn (the rename alone, no ra3ext) kept
-        # AlliedScout dogless like the carrier while aiskxo (ra3ext, no host) matched stock. The player's yard gets
-        # the behavior too; ra3ext's CNVTeams skips a host whose owner has no AI.
-        xml = xml.replace('<Behaviors>', '<Behaviors>\n'
-                          '  <DeletionUpdate id="ModuleTag_CNVTeams" MinFrames="15" MaxFrames="4000"/>')
-        link = f'GameObject:{yard}'
-        m.assets.append(('CNVSkirmTeamsYard.xml', xml, link))
-        m.replaces.append(link)
-        m.ext = True
+        teams_yard(m)
         m.name += 'C'  # keep the opt-in carrier's mod separate from the stock bench
     if carrier == 'name':
         # aiskxn (D round 105): the old carrier's rename alone -- a copy under its own id, no behavior, no ra3ext.
         yard = 'CNVSkirmTeamsYard'
-        xml = xml.replace('id="AlliedConstructionYard"', f'id="{yard}"')
+        xml = _yard_xml().replace('id="AlliedConstructionYard"', f'id="{yard}"')
         m.units.append(Unit(yard, xml, names=dict(unit=yard), what='原建造厂改名复制（对照）', params=dict(every=15)))
     m.put(yard, 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
     m.put('AlliedConstructionYard', 'base yard', name='UNIT - CNV AI Player Yard', role='player yard')

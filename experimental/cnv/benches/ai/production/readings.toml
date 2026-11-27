@@ -419,17 +419,19 @@ expect = ["all(0 <= d <= 8 for d in late)", "all(0 <= d <= 15 for d in rip)"]
 
 [[reading]]
 bench_id = "engine_aiopen"
-id = "a_power_plant_as_the_no_income_build_leaves_the_opening_as_stock"
+id = "out_of_money_the_no_income_emergency_cancels_sells_and_builds_its_thing"
 item = "AI 阵营/ArmyDefinition.PrimaryResourceThingToBuild"
-scene = {build = "aiopentp", check = "f1", until = 160, blocks = []}
+scenes = {t = {build = "aiopenpoort", check = "m", until = 170, blocks = []}, tp = {build = "aiopenpoortp", check = "m", until = 170, blocks = []}}
 bench = """\
-B 11-26 aiopentp__f1 (AlliedArmy's PrimaryResourceThingToBuild made the power plant; the no-income emergency that \
-orders it is on in 1AlliedBalanced, and the AI sits at 0 money with no miner before the wake) beside aiopen__f1, same \
-HEAD: 兵营 152, 电厂1 305, 精炼厂1 607 in both -- the emergency's order does not jump the opening's list. Whether \
-the emergency was entered here was not read (D42 saw it set at frame 4 on a 0-money AI)"""
-proves = "simai: no PrimaryResourceThingToBuild is read -- the opening comes as stock, barracks first"
-let = {late = "[counter(c) - b for c, b in (('CNV_AO_F_Barracks', 152), ('CNV_AO_F_Power1', 305), ('CNV_AO_F_Ref1', 607))]"}
-expect = "all(0 <= d <= 8 for d in late)"
+B 11-26 aiopenpoort__m / aiopenpoortp__m (aiopenpoor + cmd: lines + the emergency's entry hits; tp: AlliedArmy's \
+PrimaryResourceThingToBuild made the power plant). Both: the opening stalls at 0 money from s40, the no-income emergency \
+(1AlliedBalanced inherits it on) is entered only at f1952, ~120 s after the wake (not while the opening runs); that frame \
+the stalled refinery and the barracks' queued unit are cancelled (money 0 -> 1000 at s130) and the thing to build is \
+ordered (t: the refinery, tp: the power plant). t: money under 100 at f2090 -> the barracks sold (20a f2091, 兵营 0 \
+from s142), 电厂 1 all run. tp: 电厂 1 -> 2 at s141 and s151, each sold again (a spare plant is the sale's first pick)"""
+proves = "simai has no no-income emergency (player.py: NO_INCOME_NO_SHARE only): money stays 0, nothing cancelled, sold or built"
+expect = ["max(r['资金'] for r in t[120:]) >= 900", "t[-1]['兵营'] == 0", "all(r['电厂'] <= 1 for r in t)", "max(r['电厂'] for r in tp) == 2"]
+mismatch = "sim: money 0 from s40 to the end in both, 兵营 1, 电厂 1; bench: 1000 at s130, the barracks sold s142 (t), a second power plant s141 (tp)"
 
 [[reading]]
 bench_id = "engine_aiopen"
