@@ -11,6 +11,7 @@ Script content (Condition / ScriptAction / ScriptActionFalse): u32 content type,
 the name table, e.g. CONDITION_TRUE), u32 argument count, arguments: u32 type, then 3 x f32 for a 3D coordinate
 (type 16) or i32 + f32 + u16-prefixed string.
 """
+import copy
 import os
 import struct
 import sys
@@ -102,10 +103,22 @@ class MapFile:
         compressed (refpack_lz; LightAll, 27 relit maps: 154 MB -> 19 MB, loads in game), the outer one stored.
         The size is that of the uncompressed chunk file (retail: Heidelberg's 5363142 bytes); with the
         compressed length there instead the game hangs at ~60 % of the loading screen."""
-        import refpack_lz       # real compression (11-15 % of the chunk file, a few seconds per map)
-        chunks = self.chunk_file()
-        inner = refpack_lz.compress(chunks)
-        return refpack.compress_literal(b'EAR\0' + struct.pack('<I', len(chunks)) + inner)
+        return refpack.compress_literal(self._ear(self.chunk_file()))
+
+    @staticmethod
+    def _ear(chunks):
+        import refpack_lz
+        return b'EAR\0' + struct.pack('<I', len(chunks)) + refpack_lz.compress(chunks)
+
+    def editor_file(self):
+        """WorldBuilder's single layer, with the empty GlobalVersion v1 seen in a saved blank map."""
+        editor = copy.copy(self)
+        editor.ids, editor.table = self.ids.copy(), self.table.copy()
+        editor.name_id('GlobalVersion')
+        editor.nodes = [n for n in self.nodes if n.name != 'GlobalVersion']
+        at = next(i for i, n in enumerate(editor.nodes) if n.name == 'HeightMapData')
+        editor.nodes.insert(at, Node('GlobalVersion', 1, b'', []))
+        return self._ear(editor.chunk_file())
 
     def walk(self, nodes=None, depth=0):
         for n in self.nodes if nodes is None else nodes:

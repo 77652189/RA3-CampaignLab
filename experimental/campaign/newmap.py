@@ -177,8 +177,13 @@ def paint_grid(tiles, grid, rank=None):
 
 def set_water(m, x0, y0, x1, y1):
     """The (single) standing water area becomes the rectangle (x0, y0)-(x1, y1); its other settings stay."""
+    pts = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
     node = next(n for _, n in m.walk() if n.name == 'StandingWaterAreas')
-    d = node.head
+    p, tail = _water_style(node.head)
+    node.head = node.head[:p] + _water_points(pts) + tail
+
+
+def _water_style(d):
     p = 8
     for _ in range(2):
         p += 2 + struct.unpack_from('<H', d, p)[0]
@@ -186,9 +191,28 @@ def set_water(m, x0, y0, x1, y1):
     for _ in range(2):
         p += 2 + struct.unpack_from('<H', d, p)[0]
     k = struct.unpack_from('<I', d, p)[0]
-    pts = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
-    node.head = (d[:p] + struct.pack('<I', len(pts)) + b''.join(struct.pack('<ff', *q) for q in pts)
-                 + d[p + 4 + 8 * k:])
+    return p, d[p + 4 + 8 * k:]
+
+
+def _water_points(points):
+    return struct.pack('<I', len(points)) + b''.join(struct.pack('<ff', *q) for q in points)
+
+
+def set_water_area(m, points, level):
+    """Write the global plane and its standing-water polygon, using the container's water style."""
+    standing = next(n for _, n in m.walk() if n.name == 'StandingWaterAreas')
+    if points:
+        if struct.unpack_from('<I', standing.head)[0] != 1:
+            raise ValueError('standing water needs a container with one water style')
+        p, tail = _water_style(standing.head)
+        standing.head = standing.head[:p] + _water_points(points) + struct.pack('<I', level) + tail[4:]
+    else:
+        standing.head = struct.pack('<I', 0)
+    for _, node in m.walk():
+        if node.name == 'GlobalWaterSettings':
+            node.head = struct.pack('<If', bool(points), level)
+        elif node.name in ('RiverAreas', 'StandingWaveAreas'):
+            node.head = struct.pack('<I', 0)
 
 
 def object_node(m, like_props, flags, template, x, y, z=0.0, angle=0.0, **props):

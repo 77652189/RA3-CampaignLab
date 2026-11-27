@@ -43,6 +43,7 @@ import importlib.util
 import json
 import math
 import os
+from pathlib import Path
 import subprocess
 import sys
 sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
@@ -793,6 +794,15 @@ def build_map(m):
     mf = MapFile(data)
     parts.write_map(mf, m)
     return mf
+
+
+def write_map_pair(mission, game_path, editor_path):
+    """Write both wrappers around the same assembled map (including its terrain and objects)."""
+    mf = build_map(parts.merged(mission))
+    for path, data in ((game_path, mf.map_file()), (editor_path, mf.editor_file())):
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
 
 
 def map_module(name):
