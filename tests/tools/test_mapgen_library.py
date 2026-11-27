@@ -38,6 +38,9 @@ def test_library_groups_inherits_and_reports_missing_sources(tmp_path, monkeypat
          "sx": {"-20": 78.4, "20": 78.4}, "sy": {"-20": 0, "0": 78.4, "20": 78.4}}
         for x in range(0, 1600, 100)
     ]))
+    write(work / "mapgen_probe/cliff_borrowing.json", json.dumps([
+        {"kit": "First_AA", "from": "Second_BB", "template": "AA_Wall", "map": "game/sample"},
+    ]))
     write(work / "mapgen_probe/setpieces.json", '{"units": {}, "groups": [{"id": "sample", "style_kit": "Second_BB"}]}')
     monkeypatch.setattr(library.labpaths, "SDK3", sdk)
     monkeypatch.setattr(library.labpaths, "WORK", work)
@@ -66,6 +69,9 @@ def test_library_groups_inherits_and_reports_missing_sources(tmp_path, monkeypat
     cliff, = second["cliffs"]
     assert (cliff["height_steps"], cliff["length"], cliff["offset_y"]) == (1, 100, -10)
     assert cliff["evidence"] == "measured_from_maps"
+    assert data["kits"]["First_AA"]["cliffs"] == [{**cliff, "borrowing": {
+        "from": "Second_BB", "map": "game/sample", "source": "work/mapgen_probe/cliff_borrowing.json",
+    }}]
     assert [t["id"] for t in data["texture_kits"]["First"]["Road"]] == ["Paving"]
     assert [t["id"] for t in data["texture_kits"]["First"]["Grass"]] == ["Grass"]
     assert data["setpieces"]["groups"][0]["source"] == "work/mapgen_probe/setpieces.json"

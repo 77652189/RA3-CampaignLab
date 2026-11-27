@@ -231,6 +231,19 @@ def _add_cliffs(kits, rows, source):
             kit["cliffs"].append(cliff)
 
 
+def _borrow_cliffs(kits, rows, source, issues):
+    native = {(kit, cliff["template"]): cliff for kit, style in kits.items() for cliff in style["cliffs"]}
+    for row in rows:
+        kit, donor, template, retail_map = (row[key] for key in ("kit", "from", "template", "map"))
+        cliff = native.get((donor, template))
+        if (kit not in kits or (kit, template) in native or not cliff or
+                not cliff["height_steps"] or not cliff["length"] or cliff["offset_y"] is None or
+                retail_map not in cliff["maps"]):
+            issues.add(("invalid_cliff_borrowing", source, f"{kit}: {donor}/{template} on {retail_map}"))
+            continue
+        kits[kit]["cliffs"].append({**cliff, "borrowing": {"from": donor, "map": retail_map, "source": source}})
+
+
 def _blocking(rows, source, issues):
     table = {}
     for row in rows:
@@ -259,6 +272,11 @@ def build_library(sage, work):
     cliffs, source = probe("mapgen_probe/cliffs.json")
     if cliffs is not None:
         _add_cliffs(kits, cliffs, source)
+    borrowing_path = "mapgen_probe/cliff_borrowing.json"
+    if (work / borrowing_path).is_file():
+        borrowing, source = probe(borrowing_path)
+        if borrowing is not None:
+            _borrow_cliffs(kits, borrowing, source, issues)
     setpieces, source = probe("mapgen_probe/setpieces.json")
     if setpieces is not None:
         setpieces = {"units": setpieces["units"], "groups": [
