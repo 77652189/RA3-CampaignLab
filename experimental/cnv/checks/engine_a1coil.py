@@ -347,7 +347,8 @@ def gate_check(m):
                                  once=False) for cond, v in rows]
     for lane, label in (('base', '宫墙'), ('removed', '敌墙')):
         counted('Gate hp ' + lane, label, t, health='Gate ' + lane)
-    t.bench = [('bench_watch', dict(seconds=RUN['h'], every=1, sheet=False, lines=4))]
+    m.ext = True           # ra3ext's clock, a logic frame for each archived frame (11-25's sN ran ~2 s behind, E265)
+    t.bench = [('bench_watch', dict(seconds=RUN['h'], every=0.5, sheet=False, lines=4))]
     return t
 
 

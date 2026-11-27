@@ -50,10 +50,10 @@ expect = "[v % 100 for v in win(9, 30, '乙')] == [66] * 22"
 [[reading]]
 id = "h_c_tanya_goes_for_enemies_by_herself_before_the_order"
 scene = {build = "engine_a1gate", check = "h", until = 31, shot_clock = true}
-bench = "CampA1GateH (as h_b): low's tank dead by s2, before the 3 s order; she is back home from s5 (low 0)"
+bench = "CampA1GateH_mcp_1126_161525 (E265, ra3ext clock, logic seconds; 11-25's wall-clock sN ran ~2 s behind): 乙 711 at 2.93-3.4, 655 at 3.93-4.4, 677 at 4.87, 477 at 5.4-5.87, 66 from 6.47 -- low's tank dead by 3.93, she is home by 6.47"
 proves = "an idle Tanya takes an enemy past her C4's reach (1) by herself and walks to it; the order on the dead tank finds nothing and she goes back to where she stood (INFERRED)"
-mismatch = "sim 乙 711 at s2, 677 at s5-6, 477 at s7, 66 from s8: idle she now goes for the tank by herself (E263: her slot's C4 line) and comes home, but all three lanes settle 3 s after the bench's s5 (the ordered two as well)"
-expect = "win(5, 30, '乙') == [66] * 26"
+mismatch = "sim 乙 711 at 2.5-3.5, 755 at 4-4.5, 677 at 5-6, 477 at 6.5-7, 66 from 7.5: each charge goes off ~1 s after the bench's -- the C4 sticks the 0.5 s tick after she is on it, the detonation's 1 s pre-attack starts a tick after that (on it -> blown: bench ~1 s, sim 1.5-2)"
+expect = "win(7, 30, '乙') == [66] * 24"
 
 [[reading]]
 id = "g_a_chronosphere_charges_180_s_and_waits_while_its_owner_is_dark"
