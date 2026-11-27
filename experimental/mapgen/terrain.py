@@ -8,6 +8,7 @@ from dataclasses import dataclass, replace
 import math
 
 import numpy as np
+from scipy.ndimage import distance_transform_edt
 
 from experimental.mapgen.design import LAND, STEP_WORLD, DesignError, face_rings, on_segment, point_in_ring
 from experimental.mapgen.campaign_writer import RAMP_MAX, mapterrain, newmap, rules
@@ -209,10 +210,10 @@ def _design_water(sketch):
 
 
 def frame_apron(sketch, plan, size):
-    """Continue the grade at each side of a rectangular dry cut into the camera margin."""
+    """Continue land grades and open water past a rectangular playable edge."""
     rim = [(a, b, left or right) for (a, b), (left, right) in sketch.sides.items()
            if bool(left) != bool(right)]
-    if not rim or any(sketch.medium(face) != LAND for _, _, face in rim):
+    if not rim:
         return plan
     axes = tuple(zip(*(p for a, b, _ in rim for p in (a, b))))
     lo, hi = tuple(map(min, axes)), tuple(map(max, axes))
@@ -221,18 +222,21 @@ def frame_apron(sketch, plan, size):
     outside = tuple((max(0., a - FRAME_MARGIN), min(cap, b + FRAME_MARGIN))
                     for a, b, cap in zip(lo, hi, far))
 
-    def extend(p):
+    def extend(p, limits=outside):
         return tuple(float(a if v == first else b if v == last else v)
-                     for v, first, last, (a, b) in zip(p, lo, hi, outside))
+                     for v, first, last, (a, b) in zip(p, lo, hi, limits))
 
+    def rim_axis(a, b):
+        return next((i for i, (u, v, bounds) in enumerate(zip(a, b, zip(lo, hi))) if u == v and u in bounds), None)
+
+    if any(rim_axis(a, b) is None for a, b, _ in rim):
+        return plan
     apron = []
     surfaces = {b.surface.id: b.surface for b in plan.blocks if b.surface is not None}
     for a, b, face in rim:
-        # A rim side must lie on the perimeter of the bounding rectangle.
-        normal = next((i for i, (u, v, bounds) in enumerate(zip(a, b, zip(lo, hi)))
-                       if u == v and u in bounds), None)
-        if normal is None:
-            return plan
+        if sketch.medium(face) != LAND:
+            continue
+        normal = rim_axis(a, b)
         a, b = tuple(map(float, a)), tuple(map(float, b))
         aa, bb = extend(a), extend(b)
         if aa[normal] != a[normal]:
@@ -246,7 +250,30 @@ def frame_apron(sketch, plan, size):
         if any(p == q and p not in bounds for p, q, bounds in zip(a, b, zip(lo, hi))):
             cliff = Cliff(aa, bb, cliff.kit)
         cliffs.append(cliff)
-    return replace(plan, blocks=(*apron, *plan.blocks), cliffs=tuple(cliffs))
+    high = max(plan.base_steps, max((spec['height'] for spec in sketch.blocks.values()
+                                    if spec.get('kind') != 'water'), default=0)) * STEP_WORLD
+
+    def open_water(water):
+        # Only the side banks belong in the scene. Put the polygon's closing
+        # edge past the raster by a full bank run, so it cannot grow a beach
+        # across an open sea lane or river mouth at the camera boundary.
+        bank_run = math.ceil(max(0, high - water.level + SUB_DEPTH) / SHORE_RISE) * CELL
+        seaward = tuple((-(pad * CELL + bank_run), cap + (pad - 1) * CELL + bank_run) for cap in far)
+        points = []
+        for i, point in enumerate(water.points):
+            prev = rim_axis(water.points[i - 1], point)
+            following = rim_axis(point, water.points[(i + 1) % len(water.points)])
+            if prev is None and following is not None:
+                points.append(point)
+            points.append(extend(point, seaward) if prev is not None or following is not None else point)
+            if prev is not None and following is None:
+                points.append(point)
+        return replace(water, points=tuple(p for i, p in enumerate(points) if p != points[i - 1]))
+
+    # A caller-supplied footprint already controls its own camera margin.
+    water = tuple(map(open_water, plan.water)) if plan.design_water is None else plan.water
+    design_water = plan.water if water != plan.water else plan.design_water
+    return replace(plan, blocks=(*apron, *plan.blocks), cliffs=tuple(cliffs), water=water, design_water=design_water)
 
 
 def _join_cliffs(cliffs):
@@ -763,7 +790,15 @@ def expand(plan, library, width, height, border):
         if np.any(np.isfinite(waterline[area])):
             raise ValueError('standing water footprints overlap')
         floor = math.floor((water.level - SUB_DEPTH) * rules.RAW_PER_WORLD)
-        bank = np.maximum(floor, base - edge * SHORE_RISE / CELL * rules.RAW_PER_WORLD)
+        # Unowned water cells continue the grade of the adjacent bank before
+        # descending. Otherwise a low beach beside a high bridge approach
+        # inherits the container grade and acquires an abrupt lip at the water.
+        unowned = area & (owners < 0) if plan.design_land_count else np.zeros_like(area)
+        grade = base
+        if unowned.any():
+            nearest = distance_transform_edt(unowned, return_distances=False, return_indices=True)
+            grade = base[tuple(nearest)]
+        bank = np.maximum(floor, grade - edge * SHORE_RISE / CELL * rules.RAW_PER_WORLD)
         if np.any(area & ramp_shoulders):
             raise ValueError('water footprint overlaps a ramp')
         for distance in _sheer_edges(plan, x, y, shifted):
@@ -774,6 +809,7 @@ def expand(plan, library, width, height, border):
         if not np.any(area & (bank == floor)):
             raise ValueError('water footprint is too narrow to reach submarine depth')
         raw[area] = np.minimum(raw[area], bank[area])
+        raw[unowned] = bank[unowned]
         waterline[area] = water.level * rules.RAW_PER_WORLD
         textures[area & (raw < base)] = plan.shore
 
@@ -784,7 +820,10 @@ def expand(plan, library, width, height, border):
     if np.any(slope[ramp_mask] > RAMP_MAX):
         raise ValueError('written ramp has a cell steeper than the existing ramp limit')
     quay_bank = rules.edit_region(sheer)
-    if np.any((slope > RAMP_MAX) & np.isfinite(waterline) & ~quay_bank):
+    # Check the authored edge. Interior grade joins can form submerged
+    # steps, or end where a sloping bank meets a sealed face.
+    bank_edge = rules.edit_region(np.isneginf(waterline)) if plan.design_land_count else True
+    if np.any((slope > RAMP_MAX) & bank_edge & np.isfinite(waterline) & ~quay_bank):
         raise ValueError('water footprint crosses ground too steep for a gentle shore')
     if waters and np.any(np.isneginf(waterline) & (raw <= waters[0].level * rules.RAW_PER_WORLD)):
         raise ValueError('ground outside the water footprints reaches the global water level')

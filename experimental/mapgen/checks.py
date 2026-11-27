@@ -259,10 +259,11 @@ class _Grid:
     def sight(self, a, b, building=None):
         if not (self.inside(a) and self.inside(b)):
             return False
-        start = self.height(*a) + EYE
+        # A ship observes from the water surface, not from the bed below it.
+        start = max(self.height(*a), self.ground.waterline[self.cell(a)] / rules.RAW_PER_WORLD) + EYE
         if building is not None:
             start = building.foundation.z + max(s.height + s.center[2] for s in building.collision)
-        end = self.height(*b) + EYE
+        end = max(self.height(*b), self.ground.waterline[self.cell(b)] / rules.RAW_PER_WORLD) + EYE
         n = max(2, ceil(2 * dist(a, b) / CELL))
         t = np.arange(1, n) / n
         x, y = (p + (q - p) * t for p, q in zip(a, b))

@@ -328,6 +328,42 @@ def test_winter_apron_keeps_the_adjacent_surface():
     assert all(block.surface == plan.blocks[0].surface for block in extended.blocks)
 
 
+def test_mixed_frame_continues_both_sides_of_the_coast():
+    sketch = Design({
+        'version': 2,
+        'blocks': {'land': {'height': 3, 'at': [600, 720], 'use': 'farm'},
+                   'sea': {'height': 3, 'at': [600, 400], 'use': 'water', 'kind': 'water'}},
+        'borders': {'frame': {'line': [[200, 200], [1200, 200], [1200, 900], [200, 900], [200, 200]]},
+                    'coast': {'line': [[200, 550], [1200, 550]]}},
+    })
+    size = (191, 161, 30)
+    plan = terrain.frame_apron(sketch, from_design(sketch, TerrainPlan(), 'Cape_Cod_CC'), size)
+    ground = expand(plan, {}, *size)
+    outside_sea = (30, 90)  # world (600, 0), at the camera boundary
+    outside_land = (132, 90)  # world (600, 1020)
+    assert ground.raw[outside_sea] == 130 * terrain_rules.RAW_PER_WORLD
+    assert ground.waterline[outside_sea] == 200 * terrain_rules.RAW_PER_WORLD
+    assert plan.blocks[ground.owners[outside_land]].surface.id == 'land'
+    frame = terrain.design_frame(sketch, ground, len(plan.blocks) - plan.design_land_count, size[2])
+    assert not frame.mask[outside_sea] and not frame.mask[outside_land]
+
+
+def test_beach_bank_descends_from_the_adjacent_grade():
+    sketch = Design({
+        'version': 2,
+        'blocks': {'beach': {'height': 3, 'at': [500, 750], 'use': 'farm'},
+                   'sea': {'height': 3, 'at': [500, 250], 'use': 'water', 'kind': 'water'}},
+        'borders': {'frame': {'line': [[0, 0], [1000, 0], [1000, 1000], [0, 1000], [0, 0]]},
+                    'shore': {'line': [[0, 600], [1000, 600]], 'pass': ['amphibian']}},
+    })
+    plan = from_design(sketch, TerrainPlan(base_steps=4), 'Cape_Cod_CC')
+    ground = expand(plan, {}, 101, 101, 0)
+    assert ground.raw[60, 50] == 210 * terrain_rules.RAW_PER_WORLD
+    assert ground.raw[59, 50] == round(206 * terrain_rules.RAW_PER_WORLD)
+    assert ground.raw[57, 50] < ground.waterline[57, 50]
+    assert not ground.blocked[57:61, 50].any()
+
+
 def test_delivery_rejects_missing_cliff_wall(tmp_path):
     from experimental.mapgen.build import MapBuild
     from experimental.mapgen.buildings import Layout

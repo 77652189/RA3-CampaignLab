@@ -102,6 +102,22 @@ def test_sketch_relations_survive_layout_and_native_build(tmp_path, monkeypatch)
     assert encoded(full, 'first') == encoded(expand('full'), 'second')
 
 
+def test_beach_observer_sees_a_boat_at_the_surface():
+    sketch = Design({
+        'version': 2,
+        'blocks': {'beach': {'height': 3, 'at': [500, 750], 'use': 'farm'},
+                   'sea': {'height': 3, 'at': [500, 250], 'use': 'water', 'kind': 'water'}},
+        'borders': {'frame': {'line': [[0, 0], [1000, 0], [1000, 1000], [0, 1000], [0, 0]]},
+                    'shore': {'line': [[0, 600], [1000, 600]], 'pass': ['amphibian']}},
+        'points': {'lookout': {'block': 'beach', 'at': [500, 670]},
+                   'boat': {'block': 'sea', 'at': [500, 250]}},
+        'relations': {'incoming': {'type': '看得见', 'from': 'lookout', 'to': 'boat', 'visible': True},
+                      'outgoing': {'type': '看得见', 'from': 'boat', 'to': 'lookout', 'visible': True}},
+    })
+    built = _expanded(sketch)
+    assert {answer.status for answer in built.check_relations().values()} == {'pass'}
+
+
 def test_harbor_order_checks_each_state_on_the_same_continuous_water():
     sketch = Design({
         'version': 2,
