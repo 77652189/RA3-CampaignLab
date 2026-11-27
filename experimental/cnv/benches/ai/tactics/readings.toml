@@ -1823,3 +1823,18 @@ proves = "simai micro state: after a round in state 1 the search reaches vision 
 item = "AI 微操/AIMicroManagerData.RetreatTempVisionRangeBonus"
 let = {st = "[r['state'] for r in teams() if r['updated']]"}
 expect = "next(s for s in st[st.index(1):] if s != 1) == after"
+
+[[reading]]
+bench_id = "engine_aimicro"
+id = "a_null_tactic_team_takes_its_units_and_never_moves_them"
+scene = {build = "aimicbuiltn", check = "w", until = 55, teams = true}
+bench = """\
+aimicbuiltn:w (aimicbuilth with Tactic NullTactic, still Targetless; 11-27, CampAIMicBltNW_mcp_1127_022200): 在家 2 \
+at s22-s52 (造出 2), 3 from s62 with the control; ext team: f345 the two warriors (3910,2930 / 3890,2930) move from the \
+default team into f678fcfb_NullTactic_0_0, the same two at the same points to f1171. Hunt beside it \
+(CampAIMicBltHR_mcp_1127_021959): 在家 2 at s21, 1 at s31, 0 at s41"""
+proves = "simai tactics: a NullTactic team recruits its units and gives them no order -- Targetless does not make it rampage as Hunt"
+item = "AI 战术/Tactic.Tactic=NullTactic"
+let = {held = "[r for r in teams() if r['state_key'] == 'CNVStateMicro' and r['members']]"}
+expect = ["win(25, 54, '在家') == win(25, 54, '造出')", "min(win(25, 54, '在家')) >= 2",
+          "bool(held) and abs(held[0]['frame'] - 345) <= 30", "all(r['phase'] == 'start' for r in held)"]

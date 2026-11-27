@@ -1167,8 +1167,8 @@ def aimicro_bench():
 
 
     def _state(micro, unit=WARRIOR, tactic='StaticDefense'):
-        """tactic 'Hunt' (round 18): the attacking control, as benches/ai/targets/scenes.py#aistate_bench _hunt (Targetless, no target heuristic)."""
-        head = HUNT_HEAD if tactic == 'Hunt' else DEFEND_HEAD
+        """tactic 'Hunt' (round 18) / 'NullTactic' (aimicbuiltn: Hunt's head, only Tactic changed): the attacking control, as benches/ai/targets/scenes.py#aistate_bench _hunt (Targetless, no target heuristic)."""
+        head = HUNT_HEAD.replace('"Hunt"', f'"{tactic}"') if tactic in ('Hunt', 'NullTactic') else DEFEND_HEAD
         return head + (
             f"""      <TeamTemplate MinUnits="2" MaxUnits="2" IncludeKindOf="CAN_ATTACK" ExcludeKindOf="IGNORES_SELECT_ALL HARVESTER"\n"""
             f"""                    AllowedLocomotorTypes="LAND AMPHIBIOUS" Priority="STANDARD" AlwaysRecruit="false"\n"""
@@ -1357,6 +1357,14 @@ def aimicro_bench():
                   role=f'conscript {k + 1}')
         m.scripts.append(Script('CNV AM - Go', [('COUNTER', 'CNV_AI_Owned', 3, 2)],
                                 m.order('attack_move', names, m.mark('factory spot'), 'p1')))
+        return m
+
+
+    def observed(m):
+        """The CNVTeams carrier on s1 (ra3ext team: lines), as update_time's observe."""
+        m.units.append(aiteams_bench()["shared"].host_unit())
+        m.put(aiteams_bench()["shared"].HOST, 'east base', 250.0, 400.0, side='s1', role='teams host')
+        m.ext = True
         return m
 
 
@@ -1552,6 +1560,7 @@ def aimicro_bench():
                'aidodgetwo': lambda: dodge('CampDodgeTwo', True, 2),
                'aimicbuilt': lambda: built('CampAIMicBuilt'),
                'aimicbuilth': lambda: built('CampAIMicBltH', tactic='Hunt'),
+               'aimicbuiltn': lambda: observed(built('CampAIMicBltN', tactic='NullTactic', foes=False)),
                'aimicbuiltf': lambda: built('CampAIMicBltF', tactic='Hunt', foes=True),
                'aimicspon': lambda: built('CampAIMicSpOn', tactic='Hunt', foes=True, spow=True),
                'aimicspoff': lambda: built('CampAIMicSpOff', tactic='Hunt', foes=True, spow=False),

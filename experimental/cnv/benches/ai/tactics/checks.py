@@ -1436,7 +1436,7 @@ def engine_aimicro():
     # what the model (RA3-EngineModel ra3model/ai/micro.py) expects of each build: does each warrior charge within the run
     FIRES = {'aimicpre': False, 'aimicnear': True, 'aimicmed': True, 'aimicfar': False, 'aimichurt': True,
              'aimicmade': True, 'aimichunt': True, 'aimicxfer': True, 'aimicnearx': True, 'aimicbuilt': True,
-             'aimicbuilth': False, 'aimicbuiltf': True,
+             'aimicbuilth': False, 'aimicbuiltn': False, 'aimicbuiltf': True,
              'aimicspon': True, 'aimicspoff': False,
              'aimicengoff': True}   # round 115: aimicspon, EngageHostileTargets off -- predicted False, the bench charges
              # round 113 (aimicspon / aimicspoff): aimicbuiltf on this probe's micro manager, UseSpecialPowers on / off; builth: the Hunt walks them off to no infantry -- nothing to charge at
@@ -1578,6 +1578,7 @@ def engine_aimicro():
     CHECKS['aimicbuilt'] = {'r': probe_built}
     CHECKS['aimicbuilth'] = {'r': lambda m: probe_built(m, 'aimicbuilth')}
     CHECKS['aimicbuiltf'] = {'r': lambda m: probe_built(m, 'aimicbuiltf')}
+    CHECKS['aimicbuiltn'] = {'w': lambda m: probe_built(m, 'aimicbuiltn', where=True)}
     CHECKS['aimicspon'] = {'r': lambda m: probe_built(m, 'aimicspon')}
     CHECKS['aimicspoff'] = {'r': lambda m: probe_built(m, 'aimicspoff')}
     CHECKS['aimicengoff'] = {'r': lambda m: probe_built(m, 'aimicengoff'),
