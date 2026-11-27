@@ -682,7 +682,7 @@ class Sim:
         self.heal = simheal.Heal()          # AutoHeal / PassiveAreaEffect (L2)
         self.hunts = []                     # TEAM_HUNT's crews: [movers, target, frame to re-pick at] (Sim.hunt_due)
         self.garrison = simgarrison.Garrisons(self, functools.partial(     # GarrisonContain /
-            simorder.order_move, self, simorder.Peers(self)))                  # ContestableGarrisonContain; its walk
+            simorder.order_move, self, simorder.Peers(self)), self.own, self.world.kill, self.wallet.credit)
         self.infiltrators = siminfiltrator.Infiltrators(self, siminfiltrator.Peers(self), self.wallet)
         self.bodies = {}                    # name -> Body (named ones), plus unnamed under '#k'
         self.attachments = {}              # child serial -> (child, parent, module rule): by the thing (11-19 sweep)

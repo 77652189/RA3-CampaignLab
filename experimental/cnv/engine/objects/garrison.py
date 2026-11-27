@@ -125,8 +125,9 @@ def _at(g, seat):
 
 
 class Garrisons:
-    def __init__(self, world, move):
+    def __init__(self, world, move, templates, kill, credit):
         self.world, self.move = world, move     # WORLD_API only; L5's order_move
+        self.templates, self.kill, self.credit = templates, kill, credit
         self.boxes = {}             # host serial (Thing.serial) -> its contain module (interfaces.Contain: the
                                     # passengers, the owner before, the listener's upgrades), in the order first put
                                     # into (the cell's order); by the thing, not its name: a thing made under a taken
@@ -136,6 +137,7 @@ class Garrisons:
         self.going = {}             # serial -> (the body, the building body it was sent into) (the AI's walk); both
                                     # by the thing picked, not its name (11-19 same-name sweep: a thing made under the
                                     # name since is neither inside nor on its way, INFERRED)
+                                    # a recycling order also keeps the approach path so a new order can cancel it
         self.log = []               # (sim seconds, passenger name, building name, script)
         self.ejecting = {}          # host serial -> [the spot, seconds between, reach, next out at]: by the thing, as
                                     # boxes (B5 review g #1: a thing made under its name since neither drops nor takes
@@ -228,6 +230,28 @@ class Garrisons:
             self.move(u, (g.x, g.y), False)
             return True
         return False                        # one of them dead: not sent (the port answers so: review 11-19 k #4)
+
+    def recycle_refund(self, u, g):
+        """E308: the named enter order for a retail Hammer and its owner's Soviet Crane."""
+        if (u.template != 'SovietAntiVehicleVehicleTech1' or g.template != 'SovietCrane'
+                or u.owner != g.owner or 'AIRBORNE_TARGET' in (set(u.status) | u.script_status)):
+            return None
+
+        def read(xml):
+            return next((simunits._attr(head, 'CashBackPercent')
+                         for head, _ in simunits._blocks(xml, 'SlaughterHordeContain')), None)
+
+        if simunits._chain(g.template, self.templates, read) != '75%':
+            return None
+        cost, _ = simunits.production(u.template, self.templates)
+        return cost * 3 // 4
+
+    def send_recycle(self, u, g):
+        if self.recycle_refund(u, g) is None or not self.send(u, g):
+            return False
+        # INFERRED: replacing the approach path cancels this pending entry.
+        self.going[u.serial] = (u, g, u.path)
+        return True
 
     def busy(self, u):
         return u.serial in self.going or u.serial in self.where
@@ -490,21 +514,31 @@ class Garrisons:
         """Once a frame: the ones sent in that have got there; a building at or under its REALLYDAMAGED line empties;
         the dead inside are let go of."""
         world = self.world
-        for key, (u, g) in list(self.going.items()):
+        for key, (u, g, *recycle) in list(self.going.items()):
             if not u.alive or not g.alive or world.bodies.get(u.name) is not u:     # dead, or out of the world
+                del self.going[key]
+                continue
+            if recycle and u.path is not recycle[0]:
                 del self.going[key]
                 continue
             sh = world.blocks(g)
             r = (sh[2] if sh and len(sh) == 3 else 40.0) + ENTER_REACH
             d = math.hypot(g.x - u.x, g.y - u.y)
             if d > r and (u.path or d > 2 * r):
-                if not u.path and u.goal is None:
+                if not recycle and not u.path and u.goal is None:
                     self.move(u, (g.x, g.y), False)          # stopped short (a fight): on its way again
                 elif u.path and math.hypot(u.path[-1][0] - g.x, u.path[-1][1] - g.y) > r and contain(g, TRANSPORT):
                     self.move(u, (g.x, g.y), False)          # a transport moved off (coming to its riders): after it
                 continue                                     # (INFERRED, bench aitranst1: all four in 4 s)
             del self.going[key]
-            self.put(u, g)
+            if recycle:
+                refund = self.recycle_refund(u, g)
+                if refund is not None:
+                    # INFERRED: use the garrison reach and ordinary death dispatch.
+                    self.kill(u, '起重机回收')
+                    self.credit(g.owner, refund)
+            else:
+                self.put(u, g)
         for box in list(self.boxes.values()):
             g, held = box.thing, box.passengers()       # the host itself (a thing made under its name since: not it)
             for u in [u for u in held if not u.alive]:

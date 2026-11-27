@@ -258,10 +258,12 @@ def named_garrison_specific_building(sim, name, a, script):
     b, g = sim.body(a[0]), sim.body(a[1])
     if b and g and 'INFILTRATOR' in b.kinds and sim.infiltrators.spec(g) is not None:
         sim.infiltrators.send(b, g)
+    elif b and g and sim.garrison.send_recycle(b, g):
+        return
     elif b and g and simunits.engineer_contain(g.template, sim.own) is not None:
         simorder.order_capture(sim, simorder.Peers(sim), b, g)         # the building looked at above, not its name read again (same-name sweep)
-    elif b and g and sim.garrison.spec(g) is not None:      # walks to it, in if it may (simgarrison; INFERRED)
-        sim.garrison.send(b, g)
+    elif b and g and (garrisons := sim.garrison).spec(g) is not None:  # walks to it, in if it may (INFERRED)
+        garrisons.send(b, g)
     elif b and g:
         # a transport: walked to only. The team's version goes in (bench engine_acts_tel); this one too in the
         # game, but s01's intro then needs CONTAINER_OCCUPIED, the eject and the flyby's relation, not modelled

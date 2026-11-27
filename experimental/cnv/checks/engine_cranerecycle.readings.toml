@@ -1,0 +1,10 @@
+[[reading]]
+id = "a_named_enter_order_recycles_a_hammer_for_750_at_its_own_crane"
+scene = {build = "engine_cranerecycle", check = "a", until = 15.5}
+bench = "E308 CampRecycleA_mcp_1127_151430: Frame / Alive / Approach / Wallet f45–68 3/0/0, f75–90 3/1/0, f98–225 2/1/750"
+proves = "The owner's Hammer approaches the retail Soviet Crane, is lost, and credits 750. With only SlaughterHordeContain removed, the tank stays outside the approach area and survives."
+expect = """
+(any(45 <= r['Frame'] <= 68 and (r['Alive'], r['Approach'], r['Wallet']) == (3, 0, 0) for r in rows)
+and any(75 <= r['Frame'] <= 90 and (r['Alive'], r['Approach'], r['Wallet']) == (3, 1, 0) for r in rows)
+and (rows[-1]['Frame'], rows[-1]['Alive'], rows[-1]['Approach'], rows[-1]['Wallet']) == (225, 2, 1, 750))
+"""
