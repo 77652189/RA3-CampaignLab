@@ -34,3 +34,18 @@ proves = """ObjectCreationUpgrade: the Hammer killed by script takes its leeched
 DieOnMastersDeath="true" taken out changes nothing (INFERRED: the made slave dies with its master unconditionally)"""
 expect = ["on[-1]['机'] == 0 and nd[-1]['机'] == 0 and on[-1]['升'] == 0",
           "all((r['机'] == 0) == (r['升'] == 0) for r in on[2:] + nd[2:])"]
+
+[[reading]]
+id = "leash_probe_makes_one_drone_and_moves_the_hammer_to_the_goal"
+scenes = {stock = {build = "engine_leechdrone_leash", check = "l", until = 25}, long = {build = "engine_leechdrone_longleash", check = "l", until = 25}}
+bench = "E294 CampLeechLsL_mcp_1127_082847 / CampLeechLlL_mcp_1127_082728: both 机/起/到/车 1/1/0/0 s1-s8, 1/0/0/0 s9-s12, 1/0/1/1 s13-s26"
+proves = "Both arms spawn one aircraft near the start and the Hammer reaches the goal region."
+expect = "all(any((r['机'], r['起'], r['到'], r['车']) == (1, 1, 0, 0) for r in rows) and (rows[-1]['机'], rows[-1]['车']) == (1, 1) for rows in (stock, long))"
+
+[[reading]]
+id = "the_leeched_drone_reaches_the_goal_with_either_leash"
+scenes = {stock = {build = "engine_leechdrone_leash", check = "l", until = 25}, long = {build = "engine_leechdrone_longleash", check = "l", until = 25}}
+bench = "E294 CampLeechLsL_mcp_1127_082847 / CampLeechLlL_mcp_1127_082728: both 起/到 0/1 s13-s26"
+proves = "The drone reaches the goal region in this drive with either leash. The comparison does not isolate what issued the follow order."
+expect = "all((rows[-1]['起'], rows[-1]['到']) == (0, 1) for rows in (stock, long))"
+mismatch = "The replay keeps the drone at the start in both arms (起/到 1/0). See work/re/e294_slaved_follow.md."

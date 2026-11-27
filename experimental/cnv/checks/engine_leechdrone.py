@@ -27,7 +27,7 @@ from checks import engine_scripts8 as s8
 HAMMER, DRONE, UP = 'SovietAntiVehicleVehicleTech1', 'AlliedAttackDrone_Leeched', 'Leech_AircraftCarrier_Upgrade'
 NAME, FROG = 'UNIT - E244 Hammer', 'UNIT - E244 Frog'
 AA = [f'UNIT - E245 AA{i}' for i in range(4)]       # flak troopers (YES: 25 FLAK at the air, reach 300)
-TAG = {'on': 'On', 'nowatch': 'Nw', 'nocreate': 'Nc', 'nodie': 'Nd'}      # mod names stay within 15 characters
+TAG = {'on': 'On', 'nowatch': 'Nw', 'nocreate': 'Nc', 'nodie': 'Nd', 'leash': 'Ls', 'longleash': 'Ll'}
 CUT = {'nowatch': r'<SlaveWatcherBehavior\b[^>]*/>',
        'nocreate': r'<ObjectCreationUpgrade\b.*?</ObjectCreationUpgrade>'}
 
@@ -40,9 +40,12 @@ def mission(arm='on'):
         assert count == 1
     m.assets.append(('E244Hammer.xml', source, f'GameObject:{HAMMER}'))
     m.replaces.append(f'GameObject:{HAMMER}')
-    if arm == 'nodie':          # the drone's SlavedUpdate without DieOnMastersDeath="true" (the schema's default false)
+    if arm in ('nodie', 'longleash'):
         drone = (Path(labpaths.SDK3) / f'SageXML/Allied/Units/{DRONE}.xml').read_text(encoding='utf-8-sig')
-        drone, count = re.subn(r'\s+DieOnMastersDeath="true"', '', drone)
+        if arm == 'nodie':      # the schema default for DieOnMastersDeath is false
+            drone, count = re.subn(r'\s+DieOnMastersDeath="true"', '', drone)
+        else:
+            drone, count = re.subn(r'(<SlavedUpdate\b[^>]*\bLeashRange=")300(")', r'\g<1>3000\2', drone)
         assert count == 1
         m.assets.append(('E247Drone.xml', drone, f'GameObject:{DRONE}'))
         m.replaces.append(f'GameObject:{DRONE}')
@@ -52,6 +55,8 @@ def mission(arm='on'):
     for i, name in enumerate(AA):                   # 1500 from the Hammer: idle in check a
         m.put('SovietAntiVehicleInfantry', 'order gun', 20.0 * i, role=f'aa{i}', side='s2', name=name)
     m.waypoint('near', 'E244 near', 'high gun', 150.0)
+    if arm in ('leash', 'longleash'):
+        m.waypoint('leash goal', 'E294 leash goal', 'high gun', 1000.0)
     return m
 
 
@@ -114,6 +119,27 @@ def check_master(m):
     return t
 
 
-MISSION = {f'engine_leechdrone_{arm}': (lambda arm=arm: mission(arm)) for arm in ('on', 'nowatch', 'nocreate', 'nodie')}
-CHECKS = {name: {'a': check, 'b': check_flak, 'c': check_master} for name in MISSION}
+def check_leash(m):
+    """E294: move the Hammer 1000 away on flat ground, with a 300 or 3000 leash on its drone. The original
+    prediction was that the longer leash would leave the drone at the start. Both reached the goal region with
+    their Hammer instead (see readings). These expectations check the spawn and move prerequisites."""
+    t = Test()
+    p1 = m.player('p1')
+    t.areas['E294 Start'] = square(*m.site('high gun'), 350.0)
+    t.areas['E294 Goal'] = square(*m.point('leash goal'), 350.0)
+    t.areas['E294 All'] = square(2500.0, 2500.0, 2700.0)
+    s8.at(t, 'leash grant', 1.0, [('NAMED_RECEIVE_UPGRADE', UP, NAME)])
+    s8.at(t, 'leash drive', 5.0, [('MOVE_NAMED_UNIT_TO', NAME, m.mark('leash goal'))])
+    counted('E294Air', '机', t, kind=kindof('AIRCRAFT'), area='E294 All', player=p1, most=2)
+    counted('E294Start', '起', t, kind=kindof('AIRCRAFT'), area='E294 Start', player=p1, most=2)
+    counted('E294Goal', '到', t, kind=kindof('AIRCRAFT'), area='E294 Goal', player=p1, most=2)
+    counted('E294Tank', '车', t, named=NAME, area='E294 Goal')
+    t.expect = [('机', 3, '==', 1), ('起', 3, '==', 1, 5), ('车', 24, '==', 1)]
+    s8.watch(t, 25.0)
+    return t
+
+
+MISSION = {f'engine_leechdrone_{arm}': (lambda arm=arm: mission(arm)) for arm in TAG}
+CHECKS = {f'engine_leechdrone_{arm}': ({'l': check_leash} if arm.endswith('leash') else
+                                    {'a': check, 'b': check_flak, 'c': check_master}) for arm in TAG}
 CONTROLS = {'engine_leechdrone_nowatch': 'engine_leechdrone_on', 'engine_leechdrone_nocreate': 'engine_leechdrone_on'}
