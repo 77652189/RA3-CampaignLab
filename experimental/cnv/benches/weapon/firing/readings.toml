@@ -129,6 +129,53 @@ proves = "sim order_guard: a guard walking home fires on the move and does not s
 expect = ["[list(r.values()) for r in rt] == [list(r.values()) for r in rs]", "hurt(rt) < home(rt) <= 12",
           "all(r['起点'] == 1 and r['坦克血'] == rt[home(rt)]['坦克血'] for r in rt[home(rt):])", "rt[-1]['坦克血'] > 0"]
 
+[[reading]]
+bench_id = "engine_acquire"
+id = "guard_return_scan_rate_an_hour_leaves_a_conscript_s_walk_home_as_stock"
+item = "AI 全局常量/AIData.GuardEnemyReturnScanRate"
+scenes = {ri = {build = "acquire_gri400", check = "frames", until = 33}, rj = {build = "acquire_grj400", check = "frames", until = 33}}
+let = {home = "lambda r: next(i for i, x in enumerate(r) if x['起点'] == 1)"}
+bench = """\
+11-27 (CampAqG20/21Frames_mcp_1127_092149 / 092330), the guard a conscript (cannot fire on the move): both runs \
+the same -- off 远 by s3-4, past T (近敌 to s8-9), home 起点 1 from s13 and stays; 坦克血 100 all along: it never \
+stops for T 80 beside its way, the return scan an hour or a second"""
+proves = "sim order_guard: a guard walking home (one that has to stop to fire) does not stop for an enemy beside its way -- GuardEnemyReturnScanRate is not read"
+expect = ["[list(r.values()) for r in ri] == [list(r.values()) for r in rj]", "12 <= home(ri) <= 15",
+          "all(r['起点'] == 1 for r in ri[home(ri):])", "all(r['远'] == 0 for r in ri[5:])"]
+
+[[reading]]
+bench_id = "engine_acquire"
+id = "a_conscript_walking_home_on_guard_fires_at_nothing"
+scene = {build = "acquire_gri400", check = "frames", until = 33}
+bench = "11-27 (CampAqG20Frames_mcp_1127_092149): 坦克血 100 all along -- the conscript walks past T 80 off and never fires"
+proves = "sim weapons: a weapon with CanFireWhileMoving false does not fire while its unit walks (INFERRED: the bench does not tell this from the return state not acquiring)"
+expect = ["all(r['坦克血'] == 100 for r in rows)"]
+mismatch = "sim fires on the walk home (CanFireWhileMoving is not read): 坦克血 97 at s6, 92 from s12; bench 100"
+
+[[reading]]
+bench_id = "engine_acquire"
+id = "melee_approach_distances_leave_a_conscript_s_attack_as_stock"
+item = ["AI 全局常量/AIData.MeleeApproachTolerance", "AI 全局常量/AIData.MeleeApproachDist"]
+scenes = {di = {build = "acquire_idi220", check = "frames", until = 34}, dm = {build = "acquire_idm220", check = "frames", until = 34}}
+let = {hurt = "lambda r: next(i for i, x in enumerate(r) if x['坦克血'] < 100)"}
+bench = """\
+11-27 (CampAqI22/23Frames_mcp_1127_092502 / 092636), an idle conscript (AK 150, vision 200) with the tank 220 north: \
+both the same to a second -- it steps in (原地 0 from s1, 起点 1: within 60 of S all along), fires from s2, 坦克血 \
+-1.2 a second to 62-63 at s33. The two fields (their sum is the attack approach states' close-enough distance, work/re \
+l4_aidata_readers.md) at 2000 against 68 change nothing for a ranged unit"""
+proves = "sim idle_chase: an idle conscript walks in on an enemy 220 off and fires -- the MeleeApproach distances are not read"
+expect = ["[(r['原地'], r['近敌'], r['坦克血']) for r in di] == [(r['原地'], r['近敌'], r['坦克血']) for r in dm]",
+          "hurt(di) <= 3", "all(r['原地'] == 0 and r['近敌'] == 1 for r in di[2:])", "55 <= di[-1]['坦克血'] <= 70"]
+
+[[reading]]
+bench_id = "engine_acquire"
+id = "an_idle_conscript_steps_in_only_to_its_range"
+scene = {build = "acquire_idi220", check = "frames", until = 34}
+bench = "11-27 (CampAqI22Frames_mcp_1127_092502): 起点 1 all along -- the conscript stops within 60 of S (at its range of the tank 220 off)"
+proves = "sim idle_chase: a unit walking in on an enemy stops once the enemy is in its range"
+expect = ["all(r['起点'] == 1 for r in rows[1:])"]
+mismatch = "sim walks on past 60 from S (起点 0 from s3); bench 起点 1 all along"
+
 # Bench readings of benches/weapon/firing/checks.py#engine_bezier_e (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]

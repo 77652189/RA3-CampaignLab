@@ -756,6 +756,9 @@ NOTES.update({f'全局常量/AIData.{f}': (NA, '程序不读：解析进 AIData�
               for f in ('WallHeight', 'MinDistanceForGroup', 'FormationEnemyDistance', 'FormationColumnWidth',
                         'FormationSquadSpacing', 'MaxSquadWidth', 'ChaseFromBehindLimit', 'RotateSkirmishBases',
                         'AICrushesInfantry')})
+NOTES['全局常量/AIData.SupplyCenterSafeRadius'] = (NA, '只有一个脚本条件读（条件号 77，同《将军》SKIRMISH_SUPPLY_SOURCE_SAFE，'
+                                                 'work/re/l4_aidata_readers.md）；原版 27 关没用过它，脚本目录里也没有，'
+                                                 '我们的关卡写不出来')
 
 
 def need(path, what):

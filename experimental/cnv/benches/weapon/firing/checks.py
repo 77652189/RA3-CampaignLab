@@ -44,9 +44,11 @@ def engine_acquire():
     from parts import Script, Test, counted, square
 
     VARIANTS = ('idle180', 'idle260', 'idle400', 'guard260', 'guard400', 'am260', 'am400', 'idle200', 'idle220', 'idle240',
-                'hold180', 'hold220', 'agg220', 'agg240', 'agg260', 'gst450', 'gsc450', 'gch450', 'grt400', 'grs400')
+                'hold180', 'hold220', 'agg220', 'agg240', 'agg260', 'gst450', 'gsc450', 'gch450', 'grt400', 'grs400',
+                'gri400', 'grj400', 'idi220', 'idm220')
     ATK, TANK = 'UNIT - CNV Aq Atk', 'UNIT - CNV Aq Tank'
     RUN = 25.0
+    INF = ('gri', 'grj', 'idi', 'idm')  # a conscript (vision 200, AK 150, walks 50, cannot fire on the move)
     STANCE = {'hol': 2, 'agg': 1}   # UNIT_SET_STANCE at birth: HOLD_POSITION / AGGRESSIVE (GUARD 0 is the default)
 
 
@@ -67,7 +69,8 @@ def engine_acquire():
                                                      ('SET_MILLISECOND_TIMER', 'Test Make', 1.0),
                                                      ('SET_MILLISECOND_TIMER', 'Test Go', 2.0)]))
         t.scripts.append(Script('Test - make', [('TIMER_EXPIRED', 'Test Make')],
-                                [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', ATK, 'AlliedAntiVehicleVehicleTech1',
+                                [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', ATK, 'SovietAntiInfantryInfantry' if v[:3] in INF
+                                  else 'AlliedAntiVehicleVehicleTech1',
                                   m.team('s1'), m.mark('f' if r else 's')), ('UNIT_SET_TEAM', ATK, team)]
                                 + ([('UNIT_SET_STANCE', ATK, STANCE[v[:3]])] if v[:3] in STANCE else [])
                                 + (m.order('guard', [ATK], 'Test Guard', 's1', crew='Aq') if g or r else [])))

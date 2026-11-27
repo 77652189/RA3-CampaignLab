@@ -21,13 +21,17 @@ def engine_acquire():
     TANK = 'AlliedAntiVehicleVehicleTech1'
     S, E = (0.0, -400.0), (600.0, -400.0)
     VARIANTS = ('idle180', 'idle260', 'idle400', 'guard260', 'guard400', 'am260', 'am400', 'idle200', 'idle220', 'idle240',
-                'hold180', 'hold220', 'agg220', 'agg240', 'agg260', 'gst450', 'gsc450', 'gch450', 'grt400', 'grs400')
+                'hold180', 'hold220', 'agg220', 'agg240', 'agg260', 'gst450', 'gsc450', 'gch450', 'grt400', 'grs400',
+                'gri400', 'grj400', 'idi220', 'idm220')
     # gst / gsc / gch: guarding from birth, the tank driven in to N then off to F; gsc / gch with one AIData field
     # spliced into the global stream (missions/aiskirm_bench.AIDataPack)
     # grt / grs: born at F and told to guard S at once (the walk back is the guard's return state), T 80 beside the
     # walk 400 north of S; grs with GuardEnemyReturnScanRate an hour
+    # gri / grj / idi / idm: a conscript (cannot fire on the move) for the attacker -- gri / grj as grt / grs, idi as
+    # idle220, idm with MeleeApproachTolerance + MeleeApproachDist 2000 (the attack approach's close-enough distance)
     AIDATA = {'gsc': {'GuardEnemyScanRate': '60000'}, 'gch': {'GuardChaseUnitFrames': '30'},
-              'grs': {'GuardEnemyReturnScanRate': '3600000'}}
+              'grs': {'GuardEnemyReturnScanRate': '3600000'}, 'grj': {'GuardEnemyReturnScanRate': '3600000'},
+              'idm': {'MeleeApproachTolerance': '1000', 'MeleeApproachDist': '1000'}}
     N, F = (0.0, S[1] + 180.0), (0.0, S[1] + 700.0)
 
 
