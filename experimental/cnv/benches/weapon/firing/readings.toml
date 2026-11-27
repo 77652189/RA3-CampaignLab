@@ -148,9 +148,8 @@ bench_id = "engine_acquire"
 id = "a_conscript_walking_home_on_guard_fires_at_nothing"
 scene = {build = "acquire_gri400", check = "frames", until = 33}
 bench = "11-27 (CampAqG20Frames_mcp_1127_092149): 坦克血 100 all along -- the conscript walks past T 80 off and never fires"
-proves = "sim weapons: a weapon with CanFireWhileMoving false does not fire while its unit walks (INFERRED: the bench does not tell this from the return state not acquiring)"
+proves = "sim Sim.aim: a weapon with CanFireWhileMoving false does not fire while its unit walks (INFERRED: the bench does not tell this from the return state not acquiring)"
 expect = ["all(r['坦克血'] == 100 for r in rows)"]
-mismatch = "sim fires on the walk home (CanFireWhileMoving is not read): 坦克血 97 at s6, 92 from s12; bench 100"
 
 [[reading]]
 bench_id = "engine_acquire"
@@ -172,9 +171,8 @@ bench_id = "engine_acquire"
 id = "an_idle_conscript_steps_in_only_to_its_range"
 scene = {build = "acquire_idi220", check = "frames", until = 34}
 bench = "11-27 (CampAqI22Frames_mcp_1127_092502): 起点 1 all along -- the conscript stops within 60 of S (at its range of the tank 220 off)"
-proves = "sim idle_chase: a unit walking in on an enemy stops once the enemy is in its range"
+proves = "sim path.within: a unit walking in on an enemy stops where the enemy comes in its range, not on the grid cell past it"
 expect = ["all(r['起点'] == 1 for r in rows[1:])"]
-mismatch = "sim walks on past 60 from S (起点 0 from s3); bench 起点 1 all along"
 
 # Bench readings of benches/weapon/firing/checks.py#engine_bezier_e (format: experimental/cnv/readings.py; runner: tests/conformance).
 

@@ -1782,8 +1782,8 @@ class Sim:
         if got is None:
             return None
         fired = False
-        for w, pick in zip(got[3], got[2]):         # the line each slot fires at its pick
-            if pick is None:
+        for w, pick in zip(got[3], got[2]):         # the line each slot fires at its pick; CanFireWhileMoving false
+            if pick is None or w.get('still') and a.path and a.mode != 'attack':     # walking: none (gri400)
                 continue
             if a.vision and w['range'] > a.vision:
                 a.fired_at = self.t                 # a bombarder firing shows itself

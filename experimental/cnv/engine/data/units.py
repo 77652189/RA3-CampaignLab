@@ -278,7 +278,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v54.json')    # v54: direct DeathType (E280); v53: King Oni's arc shocks (A393); v52: PsyonicBlast's infantry shock (A391); v51: inherited armour (A387 h); v50: the dog's pounce (A386); v49: the SPN's StatusBitFlagsExclude (A374); v48: the shotgun's self-centred arc shock (A363); v47: the grapple nugget (E226); v46: the lift's retail filter; v45: the link guns' ally filter; v44: + taper (DamageDealtAtSelfPosition); v43: weapons from the data port (W1), the cache keeps `sets`; v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v55.json')    # v55: CanFireWhileMoving (A405); v54: direct DeathType (E280); v53: King Oni's arc shocks (A393); v52: PsyonicBlast's infantry shock (A391); v51: inherited armour (A387 h); v50: the dog's pounce (A386); v49: the SPN's StatusBitFlagsExclude (A374); v48: the shotgun's self-centred arc shock (A363); v47: the grapple nugget (E226); v46: the lift's retail filter; v45: the link guns' ally filter; v44: + taper (DamageDealtAtSelfPosition); v43: weapons from the data port (W1), the cache keeps `sets`; v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
 ARMOR_DEFAULT = 100.0           # a damage type an armour does not name: taken in full (a guess)
@@ -741,6 +741,8 @@ def _weapons(texts, base_table=None):
             if _attr(head, 'ProjectileSelf') is not None:     # a melee one flies its shooter (the dog's pounce)
                 got['pounce'] = _attr(head, 'ProjectileSelf') == 'true' and _attr(head, 'MeleeWeapon') == 'true'
             got['weapon_key'] = wid
+            if _attr(head, 'CanFireWhileMoving') is not None:     # schema default false (Sim.aim)
+                got['fire_moving'] = _attr(head, 'CanFireWhileMoving') == 'true'
             if _attr(head, 'AttackRange'):
                 got['range'] = _num(_attr(head, 'AttackRange'))
             if dmg:
@@ -852,6 +854,7 @@ def _resolve(w, weapons):
                 inform=w.get('inform', []), weapon_speed=w.get('weapon_speed', 999999.0),
                 weapon_key=w.get('weapon_key'), **({'taper': w['taper']} if w.get('taper') else {}),
                 **({'at_self': True} if w.get('at_self') else {}),
+                **({'still': True} if not w.get('fire_moving') else {}),     # not on its way (Sim.aim)
                 **({'pounce': dict(speed=w['weapon_speed'], dmg=weapons[w['warhead']]['damage'],
                                    type=weapons[w['warhead']]['type'], weapon_key=w['warhead'],
                                    landed=[m['modifier'] for m in special_weapon(w['warhead'])['modifiers']])}

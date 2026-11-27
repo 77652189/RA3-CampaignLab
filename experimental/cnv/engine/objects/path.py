@@ -854,4 +854,11 @@ class Ground:
             return None
         k = int(np.flatnonzero(ok)[np.argmin(cost[jj[ok], ii[ok]])])
         end = (int(jj[k]), int(ii[k]))
-        return [self.world(c) for c in pull(self.sight(surface), m.traceback(end))] or [self.world(end)]
+        way = [self.world(c) for c in pull(self.sight(surface), m.traceback(end))] or [self.world(end)]
+        for i, (x1, y1) in enumerate(way):      # it stops where q comes in reach, not on the cell past it (bench
+            x0, y0 = way[i - 1] if i else p     # engine_acquire idi220: a conscript 220 off its foe stays within 60)
+            dx, dy, fx, fy = x1 - x0, y1 - y0, x0 - q[0], y0 - q[1]
+            aa, half, c = dx * dx + dy * dy, fx * dx + fy * dy, fx * fx + fy * fy - (reach - 1e-6) ** 2
+            if aa > 0 and half * half - aa * c >= 0 and 0 <= (s := (-half - math.sqrt(half * half - aa * c)) / aa) <= 1:
+                return way[:i] + [(x0 + dx * s, y0 + dy * s)]
+        return way
