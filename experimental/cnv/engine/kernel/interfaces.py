@@ -430,6 +430,14 @@ class Collide(Interface):
         raise NotImplementedError
 
 
+class CrateCollect(Interface):
+    """Apply a crate effect on contact and report whether the collector qualified."""
+    __slots__ = ()
+
+    def collect(self, collector, allied):
+        raise NotImplementedError
+
+
 class Production(Interface):
     __slots__ = ()
 

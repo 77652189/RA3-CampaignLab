@@ -26,7 +26,7 @@ import engine.data.units as simunits
 import engine.objects.locomotion as simlocomotion
 import engine.objects.path as simpath
 from engine.kernel import interfaces
-from engine.modules import healcrate, locomotor, weaponset
+from engine.modules import locomotor, weaponset
 from engine.orders import ability as simability
 from engine.orders import target as simtarget
 from engine.world.handle import GRID, held, inside
@@ -166,9 +166,9 @@ def order_capture(world, peers, b, target_name):
 
 
 def order_collect_crate(world, peers, b, crate, owner):
-    """Only replay the measured kind of pickup: the human sends a mobile unit to a heal crate."""
+    """Send a human player's mobile unit to a crate with a pickup effect."""
     if (not b or not b.alive or b.owner != owner or b.speed <= 0 or 'IMMOBILE' in b.status
-            or not crate or not crate.alive or not crate.find(healcrate.HealCrate)):
+            or not crate or not crate.alive or not crate.find(interfaces.CrateCollect)):
         return False
     order_move(world, peers, b, (crate.x, crate.y), False, exact=True)
     b.goal, b.mode = crate, 'collect_crate'
@@ -181,10 +181,16 @@ def collect_crate_due(world, kernel, b, crate):
         return
     # INFERRED: sample contact after movement, using the two bounding circles.
     if math.hypot(crate.x - b.x, crate.y - b.y) <= crate.radius + b.radius:
-        for effect in crate.find(healcrate.HealCrate):
-            effect.heal(lambda recipient: _relation(world, b, recipient) == 'ALLIES')
-        kernel.remove(crate, '拾取医疗箱')
-        stand(b)
+        def allied(recipient):
+            return _relation(world, b, recipient) == 'ALLIES'
+
+        collected = False
+        for effect in crate.find(interfaces.CrateCollect):
+            if effect.collect(b, allied):
+                collected = True
+        if collected:
+            kernel.remove(crate, '拾取医疗箱')
+            stand(b)
 
 
 def capture_due(world, peers):

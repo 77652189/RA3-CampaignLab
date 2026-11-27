@@ -23,8 +23,15 @@ class HealCrateData(module.ModuleData):
 
 
 @factory.module('HealCrateCollide')
-class HealCrate(module.Module):
+class HealCrate(module.Module, interfaces.CrateCollect):
     DATA = HealCrateData
+
+    def collect(self, collector, allied):
+        # The active order represents the crate's collector registration.
+        if collector.mode != 'collect_crate' or collector.goal is not self.thing:
+            return False
+        self.heal(allied)
+        return True
 
     def heal(self, allied):
         crate, d = self.thing, self.data
