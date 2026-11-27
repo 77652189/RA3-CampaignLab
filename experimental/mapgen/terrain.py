@@ -10,12 +10,13 @@ import math
 
 import numpy as np
 
-from experimental.mapgen.design import LAND, STEP_WORLD, DesignError, face_rings, point_in_ring
+from experimental.mapgen.design import LAND, STEP_WORLD, DesignError, face_rings, on_segment, point_in_ring
 from experimental.mapgen.campaign_writer import RAMP_MAX, mapterrain, newmap, rules
 from experimental.mapgen.library import CLIFF_STEP_RAW
 
 CELL = rules.CELL
 RAMP_LENGTH = 180
+FRAME_MARGIN = 400  # clear the visible edge at the stock camera framing
 SUB_DEPTH = 70              # WorldBuilder manual, docs/research/first-party.md
 SHORE_RISE = 4              # world units per cell: 6.4 writer units, below the ramp limit of 6.5
 VISIBLE = rules.FIELDS.index('visible')
@@ -109,6 +110,7 @@ class Ground:
     ramp: np.ndarray
     shore: np.ndarray
     waterline: np.ndarray
+    ramp_edges: np.ndarray
     rank: tuple = ()
     edge_texture: Callable[[int, int, int, int, str], str | None] | None = None
 
@@ -124,9 +126,12 @@ class DesignFrame:
     def map_borders(self, padding):
         height, width = self.mask.shape
         whole = (0, 0, width - 2 * padding, height - 2 * padding)
-        # The engine initializes the terrain from border zero, then a script
-        # can activate a smaller playable rectangle without changing its origin.
-        return [whole] if self.bounds == whole else [whole, self.bounds]
+        # The active border clips the scene as well as the camera. Movement
+        # still stops at the design faces via close().
+        x0, y0, x1, y1 = self.bounds
+        pad = int(FRAME_MARGIN / CELL)
+        view = (max(0, x0 - pad), max(0, y0 - pad), min(whole[2], x1 + pad), min(whole[3], y1 + pad))
+        return [whole] if view == whole else [whole, view]
 
 
 def design_frame(sketch, ground, background_count, border):
@@ -168,6 +173,63 @@ def _design_water(sketch):
     return tuple(Water(points(rim), islands=tuple(map(points, holes))) for rim, holes in islands.items())
 
 
+def frame_apron(sketch, plan, kit, size):
+    """Continue the grade at each side of a rectangular dry cut into the camera margin."""
+    rim = [(a, b, left or right) for (a, b), (left, right) in sketch.sides.items()
+           if bool(left) != bool(right)]
+    if not rim or any(sketch.medium(face) != LAND for _, _, face in rim):
+        return plan
+    axes = tuple(zip(*(p for a, b, _ in rim for p in (a, b))))
+    lo, hi = tuple(map(min, axes)), tuple(map(max, axes))
+    w, h, pad = size
+    far = ((w - 2 * pad) * CELL, (h - 2 * pad) * CELL)
+    outside = tuple((max(0., a - FRAME_MARGIN), min(cap, b + FRAME_MARGIN))
+                    for a, b, cap in zip(lo, hi, far))
+
+    def extend(p):
+        return tuple(float(a if v == first else b if v == last else v)
+                     for v, first, last, (a, b) in zip(p, lo, hi, outside))
+
+    apron = []
+    surface = Surface('backdrop', 'park', kit, ground_texture=plan.ground)
+    for a, b, face in rim:
+        # A rim side must lie on the perimeter of the bounding rectangle.
+        normal = next((i for i, (u, v, bounds) in enumerate(zip(a, b, zip(lo, hi)))
+                       if u == v and u in bounds), None)
+        if normal is None:
+            return plan
+        a, b = tuple(map(float, a)), tuple(map(float, b))
+        aa, bb = extend(a), extend(b)
+        if aa[normal] != a[normal]:
+            apron.append(Block((a, b, bb, aa), sketch.blocks[face]['height'], surface=surface))
+    cliffs = []
+    for cliff in plan.cliffs:
+        a, b = cliff.start, cliff.end
+        aa, bb = extend(a), extend(b)
+        # Continue a cardinal cliff where it crosses the rim perpendicular
+        # to the new strips. Leave unrelated and diagonal runs as drawn.
+        if any(p == q and p not in bounds for p, q, bounds in zip(a, b, zip(lo, hi))):
+            cliff = Cliff(aa, bb, cliff.kit)
+        cliffs.append(cliff)
+    return replace(plan, blocks=(*apron, *plan.blocks), cliffs=tuple(cliffs))
+
+
+def _join_cliffs(cliffs):
+    """A straight cliff can be split by a street or a face name without a physical joint."""
+    merged = []
+    for cliff in cliffs:
+        for i in reversed(range(len(merged))):
+            other = merged[i]
+            if cliff.kit != other.kit:
+                continue
+            first, second = (other, cliff) if other.end == cliff.start else (cliff, other)
+            if first.end == second.start and on_segment(first.end, first.start, second.end):
+                cliff = Cliff(first.start, second.end, cliff.kit)
+                del merged[i]
+        merged.append(cliff)
+    return tuple(merged)
+
+
 def from_design(sketch, plan, kit):
     """Lay out the v2 faces and explicit land openings using the measured cliff and ramp rules."""
     def depth(name):
@@ -181,7 +243,7 @@ def from_design(sketch, plan, kit):
                                          spec.get('ground_texture')))
                    for name, points in faces.items() if (spec := sketch.blocks[name]).get('kind') != 'water')
     water = plan.water or _design_water(sketch)
-    cliffs, ramps, quays, closed_edges = [], [], [], []
+    cliffs, ramps, quays, closed_edges = {}, [], [], []
     for border in sketch.borders:
         for (a, b), _, _ in sketch.border_edges[border]:
             left, right = sketch.sides[a, b]
@@ -196,7 +258,8 @@ def from_design(sketch, plan, kit):
             if diff and not plan.cliffs:
                 points = tuple(tuple(map(float, p)) for p in ((a, b) if diff > 0 else (b, a)))
                 high = left if diff > 0 else right
-                cliffs.append(Cliff(*points, sketch.blocks[high].get('kit', kit)))
+                grades = tuple(sorted((sketch.blocks[left]['height'], sketch.blocks[right]['height'])))
+                cliffs.setdefault(grades, []).append(Cliff(*points, sketch.blocks[high].get('kit', kit)))
         sections = []
         for a, b, left, right, name in sketch.border_sections(border):
             if left and right and sketch.medium(left) == sketch.medium(right) == LAND:
@@ -226,7 +289,8 @@ def from_design(sketch, plan, kit):
             low = (np.add(a, b) / 2) - uphill * (RAMP_LENGTH * abs(diff) / 2)
             ramps.append(Ramp(tuple(low), tuple(uphill), abs(diff), width, narrow))
     return replace(plan, blocks=(*plan.blocks, *blocks), water=water, quays=(*plan.quays, *quays),
-                   cliffs=plan.cliffs or tuple(cliffs), ramps=plan.ramps or tuple(ramps),
+                   cliffs=plan.cliffs or tuple(c for group in cliffs.values() for c in _join_cliffs(group)),
+                   ramps=plan.ramps or tuple(ramps),
                    closed_edges=(*plan.closed_edges, *closed_edges))
 
 
@@ -439,6 +503,7 @@ def expand(plan, library, width, height, border):
     base = raw.copy()
     ramps, ramp_mask = [], np.zeros(x.shape, bool)
     ramp_shoulders = np.zeros(x.shape, bool)
+    ramp_edges = np.zeros(x.shape, bool)
     foot_ramp_sides = np.zeros(x.shape, bool)
     for ramp in plan.ramps:
         uphill = unit_direction(ramp.uphill)
@@ -464,6 +529,8 @@ def expand(plan, library, width, height, border):
         raw[shoulder] = lo + along[shoulder] * rise / run
         ramp_mask |= on & core
         ramp_shoulders |= shoulder
+        edge = abs(abs(cross) - ramp.width / 2 - CELL)
+        ramp_edges |= (edge <= CELL) & (along >= -CELL) & (along <= run + CELL)
         ramps.append((ramp, uphill, run))
 
     if len({water.level for water in plan.water}) > 1:
@@ -525,7 +592,7 @@ def expand(plan, library, width, height, border):
         issues += ('ramp sides: exposed steep cells outside the travel lane have no measured edge fitting',)
     shore = np.abs(raw - waterline) <= ON_SHORE * rules.RAW_PER_WORLD
     return Ground(raw, blocked, textures, cover & blocked, pieces, issues, owners, ramp_shoulders, shore,
-                  waterline)
+                  waterline, ramp_edges)
 
 
 def apply(m, plan, ground):

@@ -37,6 +37,7 @@ WINTER_SURFACES = {
     'snow_woodland': ('Snow_Solvang08', 'Snow_Solvang10', 'Snow_Solvang01'),
     'ice': ('Snow_Solvang02', 'Snow_Solvang09', 'Snow_Solvang03'),
 }
+HEIDELBERG_ASPHALT = {'Pavement_Heidel07', 'Pavement_Heidel08', 'Pavement_Heidel09'}
 
 
 def _asset(label, asset):
@@ -52,7 +53,8 @@ def _palette(kits, kit, kind, label, rng, count):
     # Transition and Reef tiles are authored for specific edges, rather than a field.
     for source in dict.fromkeys((kit, fallback)):
         entries = kits.get(source, {}).get(kind, ())
-        choices = sorted((entry for entry in entries if not entry['id'].startswith(('Transition', 'Reef'))),
+        choices = sorted((entry for entry in entries if not entry['id'].startswith(('Transition', 'Reef'))
+                          and entry['id'] not in HEIDELBERG_ASPHALT),
                          key=lambda entry: entry['id'])
         if choices:
             rng.shuffle(choices)
@@ -118,8 +120,13 @@ def paint(plan, library, ground, roadbed=None):
                 textures[cells] = name
                 if role == 'ramp' and surface is None:
                     ramp_material = name
+        shoulder = mask & ground.ramp_edges & ~ground.hidden
+        if shoulder.any():
+            name, = _palette(kits, kit, 'Dirt' if kind == 'Dirt' else 'Grass', label,
+                             Random(f'{kit}:ramp verge'), 1)
+            textures[shoulder] = surface.ground_texture if surface and surface.ground_texture else name
 
-    road_material = None
+    road_material = asphalt = None
     if roadbed is not None and roadbed.paved.any():
         kit = KIT_ALIASES.get(roadbed.kit, roadbed.kit.rsplit('_', 1)[0])
         # The Heidelberg sample reads this exact substrate beneath the HV street meshes.
@@ -127,6 +134,14 @@ def paint(plan, library, ground, roadbed=None):
         road_material, = ([_asset('roadbed', paving[2])] if paving else
                           _palette(kits, kit, 'Road', 'roadbed', Random(0), 1))
         textures[roadbed.paved] = road_material
+        if kit == 'Heidelberg' and roadbed.infill.any():
+            # Heidelberg uses Havana street meshes. Use their smooth grey
+            # road material at exposed joins, where the brick base shows.
+            entry = catalogue.get('Pavement_Havana03')
+            if entry is None:
+                raise ValueError('road infill: missing texture Pavement_Havana03')
+            asphalt = _asset('road infill', entry[2])
+            textures[roadbed.infill] = asphalt
         ground = replace(ground, hidden=ground.hidden | roadbed.hidden)
 
     def edge_texture(i, j, ni, nj, name):
@@ -134,19 +149,20 @@ def paint(plan, library, ground, roadbed=None):
         # out of neighbouring blends, and leave visible cliff faces exposed.
         if ground.hidden[j, i] or ground.hidden[nj, ni]:
             return None
-        if road_material in (textures[j, i], textures[nj, ni]):
+        materials = (textures[j, i], textures[nj, ni])
+        if road_material in materials or asphalt in materials:
             return name
         if ground.owners[j, i] == ground.owners[nj, ni]:
             return name
         if ground.blocked[j, i] or ground.blocked[nj, ni]:
-            return None
+            return name if ground.ramp_edges[j, i] or ground.ramp_edges[nj, ni] else None
         if ground.ramp[j, i] and ground.ramp[nj, ni]:
             return ramp_material
         return plan.ground
 
     # Global ordering is independent of block order and the palette picked by
     # any neighbour. At a three-material corner the writer takes one winner.
-    fixed = {name for name in (plan.ground, ramp_material, road_material) if name is not None}
+    fixed = {name for name in (plan.ground, ramp_material, road_material, asphalt) if name is not None}
 
     def priority(name):
         kind = catalogue[name][1]

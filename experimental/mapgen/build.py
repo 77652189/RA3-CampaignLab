@@ -97,11 +97,10 @@ def retail_atmosphere(mood, library):
 
 
 def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, road_kit=None, fronts=None):
-    """Expand a v2 design, with an optional terrain plan for the surrounding context.
+    """Expand a v2 design or terrain-only plan against the asset library.
 
-    A terrain-only plan has no design file. With a design, the plan's blocks
-    supply the backdrop and the design faces define the playable ground. A
-    Design blocks can override the default kit for their surfaces, buildings
+    Design faces define the playable ground and supply the grade at a dry
+    rectangular frame. Blocks can override the default kit for their surfaces, buildings
     and scenery. Road_kit supplies model roads; fronts gives measured civilian
     front angles in radians.
     """
@@ -114,6 +113,10 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
         if kit is None:
             raise ValueError('building from a design requires a civilian kit')
         plan = terrain.from_design(sketch, plan, kit)
+        if not background_count:
+            expanded = terrain.frame_apron(sketch, plan, kit, CONTAINER)
+            background_count = len(expanded.blocks) - len(plan.blocks)
+            plan = expanded
     ground = terrain.expand(plan, library, *CONTAINER)
     layout, roadbed = buildings.Layout(()), None
     frame, scenery = None, ()
@@ -128,6 +131,6 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
     if sketch is not None:
         # Roads and paint see the real backdrop before the frame closes it to movement.
         frame = terrain.design_frame(sketch, ground, background_count, border)
-        dressed = dressing.expand(sketch, frame.close(ground), roadbed, layout, library, kits, sage, border)
+        dressed = dressing.expand(sketch, frame.close(ground), roadbed, layout, library, kits, sage, border, frame)
         ground, scenery = dressed.ground, dressed.pieces
     return MapBuild(plan, ground, roadbed, layout, sketch, frame, scenery, atmosphere)

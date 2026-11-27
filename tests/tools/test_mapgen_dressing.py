@@ -4,7 +4,7 @@ from dataclasses import asdict
 import numpy as np
 import pytest
 
-from experimental.mapgen import build, dressing, paint
+from experimental.mapgen import build, dressing, paint, terrain
 from experimental.mapgen.buildings import Building, Foundation, Layout, Shape
 from experimental.mapgen.design import Design, DesignError
 from experimental.mapgen.roads import Roadbed
@@ -31,7 +31,7 @@ def slice_inputs(tmp_path):
     ]}}, 'blocking': {'t_tree': {'cls': 'topple'}, 't_bush': {'cls': 'none'}, 't_wall': {'cls': 'all'}}}
     ground = expand(TerrainPlan(), library, 331, 51, 0)
     empty = np.zeros_like(ground.blocked)
-    roads = Roadbed('Town_T', (), (), empty, empty.copy())
+    roads = Roadbed('Town_T', (), (), empty, empty.copy(), empty.copy())
     return sketch, ground, roads, layout, library, dict.fromkeys(sketch.blocks, 'Town_T'), tmp_path, 0
 
 
@@ -65,6 +65,56 @@ def test_busy_frontage_stops_at_its_budget(slice_inputs):
     assert counts['north', 'lane'] == (12, 12)
     assert counts['south', 'lane'] == (6, 6)
     assert sum(used for _, used in counts.values()) == len(result.pieces)
+
+
+def test_bluff_corners_and_camera_margin_get_kit_planting(slice_inputs):
+    _, _, _, _, library, _, sage, _ = slice_inputs
+    sketch = Design({
+        'version': 2,
+        'blocks': {'foot': {'at': [250, 250], 'height': 3, 'use': 'woodland'},
+                   'top': {'at': [450, 450], 'height': 4, 'use': 'woodland'}},
+        'borders': {
+            'frame': {'line': [[200, 200], [900, 200], [900, 900], [200, 900], [200, 200]]},
+            'rim': {'line': [[300, 300], [600, 300], [600, 600], [300, 600], [300, 300]],
+                    'closed_reason': 'bluff'},
+        },
+    })
+    kit = 'Town_T'
+    plan = terrain.from_design(sketch, TerrainPlan(), kit)
+    ground = expand(plan, library, 111, 111, 0)
+    frame = terrain.design_frame(sketch, ground, 0, 0)
+    result = dressing.expand(sketch, frame.close(ground), None, Layout(()), library,
+                             dict.fromkeys(sketch.blocks, kit), sage, 0, frame)
+    # The high face makes four bends, and each puts plants within the face.
+    corners = [count for block, name, _, count in result.facades
+               if block == 'top' and name.startswith('cliff corner')]
+    assert len(corners) == 4 and all(corners)
+    assert any(block is None and count for block, _, _, count in result.facades)
+    assert result.ground.blocked[50, 18]  # dressing does not open the visible backdrop
+
+
+def test_ramp_scrub_follows_steep_shoulders_outside_opening(slice_inputs):
+    _, _, _, _, library, _, sage, _ = slice_inputs
+    sketch = Design({
+        'version': 2,
+        'blocks': {'low': {'at': [450, 200], 'height': 3, 'use': 'park'},
+                   'high': {'at': [450, 600], 'height': 4, 'use': 'park'}},
+        'borders': {
+            'frame': {'line': [[0, 0], [900, 0], [900, 800], [0, 800], [0, 0]]},
+            'cliff': {'line': [[0, 400], [900, 400]], 'closed_reason': 'scarp',
+                      'segments': {'ramp': {'from': 'foot', 'to': 'crest',
+                                            'pass': ['foot', 'vehicle', 'amphibian']}}},
+        },
+        'points': {'foot': {'block': 'low', 'at': [450, 270]},
+                   'crest': {'block': 'high', 'at': [450, 530]}},
+    })
+    kit = 'Town_T'
+    ground = expand(terrain.from_design(sketch, TerrainPlan(), kit), library, 91, 81, 0)
+    result = dressing.expand(sketch, ground, None, Layout(()), library,
+                             dict.fromkeys(sketch.blocks, kit), sage, 0)
+    cells = [(round(p.y / 10), round(p.x / 10)) for p in result.pieces if p.template == 't_bush']
+    steep_sides = {i * 10 for j, i in cells if ground.ramp_edges[j, i] and ground.blocked[j, i]}
+    assert min(steep_sides) < 360 and max(steep_sides) > 540
 
 
 def test_block_kit_selects_ground_buildings_and_scenery(tmp_path, monkeypatch):

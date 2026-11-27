@@ -410,21 +410,24 @@ class BuildingPlanner:
                 raise DesignError(block, 'buildings', f'{request!r}: tightest miss {template}, {reason}, {amount:.3f} world units')
         if town:
             rows = [t for t in palette if 'house' in t.name.casefold()]
-            rows.sort(key=lambda t: -t.area)
             coverage = COVER * (signed_area_twice(ring) - sum(map(signed_area_twice, rings[1:]))) / 2
             used = Counter(b.template for b in placed)
             built = sum(t.area for t in palette if used[t.name])
             for f in frontage:
+                previous = None
                 for kerb, normal in f.slots():
                     if built >= coverage:
                         break
-                    for t in rows:
+                    # The palette already has a seeded order. Reuse it to break
+                    # ties, while taking turns among the facades that really fit.
+                    for t in sorted(rows, key=lambda t: (t.name == previous, used[t.name])):
                         if used[t.name] >= 3:
                             continue
                         b, _ = self._fit(block, rings, placed, t, f, kerb, normal, 0., clear_corners=True)
                         if b is not None:
                             placed.append(replace(b, protagonist=False))
                             used[t.name] += 1
+                            previous = t.name
                             built += t.area
                             break
         return tuple(placed)

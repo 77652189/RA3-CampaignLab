@@ -63,6 +63,7 @@ class Roadbed:
     bridges: tuple
     paved: np.ndarray
     hidden: np.ndarray
+    infill: np.ndarray
 
 
 @dataclass(frozen=True)
@@ -207,6 +208,8 @@ class _Layout:
         self.bridges = []
         self.paved = np.zeros(x.shape, bool)
         self.models = np.zeros(x.shape, bool)
+        self.infill = np.zeros(x.shape, bool)
+        self.model_gaps = np.zeros(x.shape, bool)
 
     def region(self, points, mask):
         px, py = zip(*points)
@@ -257,9 +260,10 @@ class _Layout:
         # Compute this after union so an internal model seam never leaves a band.
         model = np.pad(self.models, ((0, 1), (0, 1)))
         hidden = model[:-1, :-1] & model[1:, :-1] & model[:-1, 1:] & model[1:, 1:]
+        hidden &= ~self.model_gaps  # a gap smaller than a quad can have four model-covered corners
         g = self.ground
         paved = (self.paved | self.models) & ~g.blocked & (g.raw > g.waterline)
-        return Roadbed(self.kit, tuple(self.objects), tuple(self.bridges), paved, hidden)
+        return Roadbed(self.kit, tuple(self.objects), tuple(self.bridges), paved, hidden, self.infill & paved)
 
 
 def _junction_verges(layout, ports, width):
@@ -450,16 +454,58 @@ def _straight_run(layout, road, a, b, start, end, tier, bends):
         if remaining <= size + PORT_TOLERANCE:
             break
     if math.dist(cursor, q) > PORT_TOLERANCE:
-        name, size, offsets = SURFACES[tier]
-        for offset in offsets:
-            tool_line(name, size, offset, cursor)
+        if layout.kit == 'Heidelberg_HB':
+            # Continue the carriageway material under the end of each mesh.
+            # Terrain interpolates between vertices, so a sub-cell seam still
+            # needs a sample on both sides of the gap.
+            _, breadth, offsets = SURFACES[tier]
+            for offset in offsets:
+                a1 = offset_end(cursor, offset, a, b, True)
+                b1 = offset_end(q, offset, b, a, False)
+                layout.region(_ribbon((_move(a1, heading, -CELL_MARGIN),
+                                       _move(b1, heading, CELL_MARGIN)), breadth), layout.infill)
+            # Field 4 addresses the quad at (i,j), not the sample vertex.
+            # Unhide only quads whose footprint crosses the exposed span.
+            half = terrain.CELL / 2
+            pad = half * sum(map(abs, _unit(heading))) - 1e-5  # exclude boundary-only contact
+            at = (_move(cursor, heading, -pad), _move(q, heading, pad))
+            quad_origins = tuple(design.subtract(p, (half, half)) for p in _ribbon(at, width))
+            layout.region(quad_origins, layout.model_gaps)
+        else:
+            name, size, offsets = SURFACES[tier]
+            for offset in offsets:
+                tool_line(name, size, offset, cursor)
+
+
+def _frame_streets(sketch, links, layout, border):
+    rim = {p for edge, sides in sketch.sides.items() if None in sides for p in edge}
+    limit = tuple(axis[-1 - border] for axis in (layout.x[0], layout.y[:, 0]))
+    for point in sorted(rim & links.keys()):
+        adjacent = links[point]
+        if len(adjacent) != 1:
+            continue
+        other, road = next(iter(adjacent.items()))
+        heading = _heading(other, point)
+        tier = sketch.roads[road]['width']
+        end = point
+        for distance in range(50, terrain.FRAME_MARGIN, 50):
+            ahead = _move(point, heading, distance)
+            if not all(0 <= p <= cap for p, cap in zip(ahead, limit)):
+                break
+            polygon = _ribbon((point, ahead), ROAD_WIDTH[tier])
+            cells = layout.covered(polygon)
+            if (layout.ground.owners[cells] < 0).any() or not layout.dry_flat(polygon):
+                break
+            end = ahead
+        if end != point:
+            _straight_run(layout, road, point, end, Port(point, heading), Port(end, heading + math.pi), tier, {})
 
 
 def expand(sketch, ground, border, kit):
     """Return native object placements and two ground masks for a validated v2 design."""
     if not sketch.roads:
         empty = np.zeros_like(ground.blocked)
-        return Roadbed(kit, (), (), empty, empty.copy())
+        return Roadbed(kit, (), (), empty, empty.copy(), empty.copy())
     if kit not in VERGES:
         first = next(iter(sketch.roads))
         _error(first, sketch.lines[first][0], f'no measured street kit for {kit}')
@@ -565,4 +611,5 @@ def expand(sketch, ground, border, kit):
                 start = ends.get((a, b), Port(a, heading))
                 end = ends.get((b, a), Port(b, heading + math.pi))
                 _straight_run(layout, name, a, b, start, end, spec['width'], tool_nodes)
+    _frame_streets(sketch, links, layout, border)
     return layout.finish()

@@ -7,7 +7,7 @@ import numpy as np
 
 from experimental.campaign.mapscript import MapFile
 from experimental.mapgen.design import Design
-from experimental.mapgen.terrain import Block, Cliff, Ramp, TerrainPlan, Water, apply, expand, from_design
+from experimental.mapgen.terrain import Block, Cliff, Ramp, Surface, TerrainPlan, Water, apply, expand, from_design
 from experimental.mapgen.build import build
 from experimental.mapgen import paint
 from experimental.mappage import sketch2map
@@ -76,6 +76,52 @@ def test_mapgen_terrain_geometry_and_both_files(tmp_path, monkeypatch):
     assert struct.unpack('<If', next(n.head for n in game.nodes if n.name == 'GlobalWaterSettings')) == (1, 200)
     standing = next(n.head for n in game.nodes if n.name == 'StandingWaterAreas')
     assert struct.unpack_from('<I8fI', standing, 21) == (4, 0., 0., 1000., 0., 1000., 400., 0., 400., 200)
+
+
+def test_exposed_ramp_verge_is_grass_without_opening_the_steep_side(tmp_path, monkeypatch):
+    monkeypatch.setattr(paint, 'ART', tmp_path)
+    (tmp_path / 'surface').touch()
+
+    def tiles(name):
+        return [dict(id=name, Texture='surface', BumpTexture='surface')]
+
+    kit = 'Heidelberg_HB'
+    library = {'kits': {kit: {}}, 'texture_kits': {
+        'Heidelberg': {'Grass': tiles('Grass_Heidelberg01'), 'Dirt': tiles('Dirt_Heidelberg01')},
+        'Gibraltar': {'Cliff': tiles('Cliff_Gibraltar1')},
+    }}
+    plan = TerrainPlan(
+        blocks=(Block(((0, 500), (1000, 500), (1000, 1000), (0, 1000)), 4,
+                      surface=Surface('top', 'park', kit)),),
+        ramps=(Ramp((500, 410), (0, 1), 1, 180),),
+    )
+    ground = expand(plan, library, 101, 101, 0)
+    dressed = paint.paint(plan, library, ground)
+    # The one-cell shoulder ends at x400. The drop still blocks at x390.
+    assert ground.blocked[47, 39] and not ground.blocked[47, 50]
+    assert dressed.blocked is ground.blocked and dressed.raw is ground.raw
+    assert dressed.textures[47, 39] == 'Grass_Heidelberg01'
+    assert dressed.textures[47, 50] == 'Dirt_Heidelberg01'
+    assert dressed.textures[49, 20] == 'Cliff_Gibraltar1'
+
+
+def test_straight_cliff_continues_across_a_face_split():
+    sketch = Design({
+        'version': 2,
+        'blocks': {
+            'low': {'at': [200, 200], 'height': 3, 'use': 'park'},
+            'highWest': {'at': [200, 500], 'height': 4, 'use': 'park'},
+            'highEast': {'at': [600, 500], 'height': 4, 'use': 'park'},
+        },
+        'borders': {
+            'frame': {'line': [[0, 0], [800, 0], [800, 800], [0, 800], [0, 0]]},
+            'cliff': {'line': [[0, 400], [800, 400]], 'closed_reason': 'scarp'},
+            'edge': {'line': [[430, 400], [430, 800]]},
+        },
+    })
+    # A boundary between two same-height high blocks cuts the sketch's line
+    # at x430. The 100-unit wall modules still fit the full 800-unit run.
+    assert from_design(sketch, TerrainPlan(), 'HB').cliffs == (Cliff((0, 400), (800, 400), 'HB'),)
 
 
 def _container(w, h, border):

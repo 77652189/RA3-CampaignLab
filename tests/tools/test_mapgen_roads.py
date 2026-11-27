@@ -58,8 +58,8 @@ def test_unjoinable_names_road_and_location():
         roads.expand(sketch([[50, 400], [750, 400]], [[400, 400], [500, 750]]), ground, 0, KIT)
 
 
-def test_road_to_frame_uses_apron_grade_without_opening_the_backdrop(tmp_path, monkeypatch):
-    monkeypatch.setattr(build, 'CONTAINER', (81, 81, 0))
+def test_road_to_frame_derives_apron_grade_without_opening_the_backdrop(tmp_path, monkeypatch):
+    monkeypatch.setattr(build, 'CONTAINER', (131, 131, 0))
     monkeypatch.setattr(paint, 'ART', tmp_path)
     (tmp_path / 'surface.tga').touch()
 
@@ -84,14 +84,42 @@ def test_road_to_frame_uses_apron_grade_without_opening_the_backdrop(tmp_path, m
         'borders': {'frame': {'line': (*frame, frame[0]), 'closed_reason': 'slice boundary'}},
         'roads': {'street': {'line': [(100, 400), (700, 400)], 'width': 'street'}},
     }), encoding='utf8')
-    apron = terrain.Block(((50, 150), (750, 150), (750, 650), (50, 650)), 4,
-                          surface=terrain.Surface('apron', 'park', KIT))
-    result = build.build(design_file, library, terrain.TerrainPlan(blocks=(apron,)), kit=KIT, road_kit=KIT)
-    assert result.frame.map_borders(0) == [(0, 0, 81, 81), (10, 20, 70, 60)]
+    result = build.build(design_file, library, kit=KIT, road_kit=KIT)
+    assert result.frame.bounds == (10, 20, 70, 60)
+    assert result.frame.map_borders(0) == [(0, 0, 131, 131), (0, 0, 110, 100)]
     assert result.border_index == 1
     assert result.roadbed.paved[40, 10] and not result.ground.blocked[40, 10]
+    assert result.roadbed.paved[40, 8] and result.ground.blocked[40, 8]
     assert result.ground.raw[40, 9] == result.ground.raw[40, 10] == 4 * terrain.CLIFF_STEP_RAW
-    assert result.ground.blocked[40, 9] and result.ground.textures[40, 9] == 'Grass_Heidelberg01'
+    assert result.ground.blocked[51, 9] and result.ground.textures[51, 9] == 'Grass_Heidelberg01'
+
+
+def test_sub_cell_s_bend_join_exposes_only_the_crossing_quad(tmp_path, monkeypatch):
+    monkeypatch.setattr(paint, 'ART', tmp_path)
+    (tmp_path / 'surface').touch()
+
+    def materials(*names):
+        return [dict(id=name, Texture='surface', BumpTexture='surface') for name in names]
+
+    library = {'kits': {KIT: {}}, 'texture_kits': {
+        'Heidelberg': {'Grass': materials('Grass_Heidelberg01'),
+                       'Road': materials('Pavement_Heidelberg10', 'Pavement_Heidel08')},
+        'Havana': {'Road': materials('Pavement_Havana03')},
+    }}
+    plan = terrain.TerrainPlan(blocks=(terrain.Block(((0, 0), (800, 0), (800, 800), (0, 800)), 3,
+                                                     surface=terrain.Surface('city', 'oldtown', KIT, 1)),))
+    ground = terrain.expand(plan, library, 81, 81, 0)
+    network = roads.expand(sketch([[90, 350], [520, 350], [620, 400], [795, 400]]), ground, 0, KIT)
+    bend, = (p for p in network.placements if p.template == 'HV_StreetSegment14')
+    # Four 100-unit straights end at x490; the S-fitting starts at x495.
+    assert bend.ports[0].xy == (495, 350)
+    assert not any(p.template == 'MtRushmoreRoad01' for p in network.placements)
+    assert not network.hidden[35, 49]
+    assert network.hidden[35, 48] and network.hidden[35, 50]
+    tiles = paint.paint(plan, library, ground, network).textures
+    assert (tiles[35, 49], tiles[35, 50]) == ('Pavement_Havana03', 'Pavement_Havana03')
+    assert tiles[31, 49] == 'Pavement_Heidelberg10'  # the curb stays brick
+    assert tiles[20, 49] == 'Pavement_Heidelberg10'  # the asphalt is not a courtyard palette
 
 
 def test_same_design_same_map_bytes(tmp_path, monkeypatch):

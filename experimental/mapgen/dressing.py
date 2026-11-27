@@ -281,7 +281,7 @@ def _group(group, at, angle, locked=False, depth=1.):
 
 
 class _Finish:
-    def __init__(self, sketch, ground, roadbed, layout, library, kits, sage, border):
+    def __init__(self, sketch, ground, roadbed, layout, library, kits, sage, border, frame):
         self.sketch, self.ground, self.roadbed, self.library = sketch, ground, roadbed, library
         self.kits, self.border = kits, border
         self.assets = _Assets(library, sage)
@@ -291,12 +291,13 @@ class _Finish:
         self.props, self.counts = [], {}
         self.texture = ground.textures.copy()
         self.dry = (ground.raw > ground.waterline) & ~ground.blocked
+        self.frame = frame
         self.groups = defaultdict(list)
         for group in (library.get('setpieces') or {}).get('groups', ()):
             if len(group['relative_transforms']) <= SET_PIECE_BUDGET:
                 self.groups[group['style_kit']].append(group)
 
-    def put(self, block, facade, budget, props):
+    def put(self, block, facade, budget, props, *, shoulder=False):
         key = block, facade
         used = self.counts.setdefault(key, (budget, 0))[1]
         props = tuple(props)
@@ -308,7 +309,9 @@ class _Finish:
                 return False
             kind, footprint = _posed(self.assets, prop)
             point = (prop.x, prop.y)
-            if not self.fits(block, point) or any(not self.fits(block, s.center[:2]) for s in footprint):
+            on_edge = shoulder and kind in NO_PATH_BLOCK
+            if not self.fits(block, point, shoulder=on_edge) or any(
+                    not self.fits(block, s.center[:2], shoulder=on_edge) for s in footprint):
                 return False
             if any(s.gap(b) <= 0 for s in footprint for b in self.obstacles
                    if math.dist(s.center[:2], b.center[:2]) <= math.hypot(s.half_x, s.half_y)
@@ -324,10 +327,17 @@ class _Finish:
         self.counts[key] = budget, used + len(props)
         return True
 
-    def fits(self, block, point):
+    def fits(self, block, point, *, shoulder=False):
         x, y = point
         i, j = round(x / CELL) + self.border, round(y / CELL) + self.border
-        return (0 <= j < self.dry.shape[0] and 0 <= i < self.dry.shape[1] and self.dry[j, i]
+        if block is None:
+            pad = max(1, self.border)
+            return (pad <= j < self.dry.shape[0] - pad and pad <= i < self.dry.shape[1] - pad
+                    and not self.frame.mask[j, i] and self.ground.raw[j, i] > self.ground.waterline[j, i]
+                    and (self.roadbed is None or not self.roadbed.paved[j, i])
+                    and np.ptp(self.ground.raw[j - 1:j + 2, i - 1:i + 2]) == 0)
+        return (0 <= j < self.dry.shape[0] and 0 <= i < self.dry.shape[1]
+                and (self.dry[j, i] or (shoulder and self.ground.ramp_edges[j, i]))
                 and not self.ground.hidden[j, i] and point_in_ring(point, self.sketch.rings[block]) == 1
                 and not any(point_in_ring(point, self.sketch.rings[child]) >= 0
                             for child, spec in self.sketch.blocks.items() if spec.get('parent') == block))
@@ -417,6 +427,7 @@ def _front(finish, block, groups, palette, rng):
 def _edges(finish, block, spans, groups, cover, rocks, trees, rng):
     sketch = finish.sketch
     heights = sketch.state_heights['base']
+    corners = defaultdict(list)
     for _, name, left, right, a, b in spans:
         other = right if left == block else left
         if other is None:
@@ -442,6 +453,9 @@ def _edges(finish, block, spans, groups, cover, rocks, trees, rng):
             finish.put(block, facade, SET_PIECE_BUDGET,
                        _sprigs(cover, rng, at, angle, [(-30, 15), (20, 0), (40, 16)]))
             continue
+        if not opened:
+            corners[a].append(angle)
+            corners[b].append(angle)
 
         # End clumps turn square corners and bracket ramp mouths. The crest
         # gets foliage behind the rock lip; the toe gets low scree and scrub.
@@ -461,6 +475,29 @@ def _edges(finish, block, spans, groups, cover, rocks, trees, rng):
             if high and not opened:
                 tree = (3 * CELL, rng.uniform(1.5, 5.5) * CELL)
                 finish.put(block, facade, budget, _sprigs(trees, rng, at, angle, [tree]))
+        if opened:
+            # Follow the raised banks beyond the mouth on both sides. Low
+            # scrub can sit on the non-travel slope, but cannot enter a lane.
+            for point, sign in ((a, -1), (b, 1)):
+                for i in range(1, 4):
+                    at = _offset(point, angle, sign * rng.uniform(1.2, 2.1) * CELL, i * 2 * CELL)
+                    finish.put(block, facade, budget, _sprigs(cover, rng, at, angle, [(0, 0)]), shoulder=True)
+
+    for point, angles in corners.items():
+        if len(angles) != 2 or abs(math.sin(angles[1] - angles[0])) < 1e-8:
+            continue
+        # A real change in cliff direction gets one cluster across the bend.
+        # Split face names on a straight cliff do not create a new cluster.
+        a, b = angles
+        bisector = math.atan2(math.cos(a) + math.cos(b), -math.sin(a) - math.sin(b))
+        at = _offset(point, bisector, 4 * CELL, 0)
+        key = f'cliff corner {point}'
+        finish.patch(block, at, bisector, 4 * CELL, 2 * CELL, 'Dirt')
+        for palette, offsets in ((trees, [(2 * CELL, 0)]),
+                                 (cover, [(0, -CELL), (0, CELL)]),
+                                 (rocks, [(-CELL, 0)])):
+            for prop in _sprigs(palette, rng, at, bisector, offsets):
+                finish.put(block, key, SET_PIECE_BUDGET, (prop,))
 
 
 def _woodland(finish, block, trees, rng):
@@ -477,9 +514,25 @@ def _woodland(finish, block, trees, rng):
                 finish.put(block, f'woods {a} {station} {layer}', SET_PIECE_BUDGET, group)
 
 
-def expand(sketch, ground, roadbed, layout, library, kits, sage, border):
+def _dress_frame(finish, block, cover, trees, rng):
+    for edge, sides in finish.sketch.sides.items():
+        if set(sides) != {block, None}:
+            continue
+        a, b = edge if sides[0] == block else edge[::-1]
+        _, _, angle, length = _axes(a, b)
+        for start in range(0, int(length / CELL) - 6, 18):
+            along = min((start + rng.uniform(4, 12)) * CELL, length - 3 * CELL)
+            at = _offset(a, angle, along, -rng.uniform(6, 13) * CELL)
+            key = f'frame grove {a} {start}'
+            for palette, offsets in ((trees, [(-30, -20), (0, 0), (25, -40)]),
+                                     (cover, [(12, 24), (-26, 4)])):
+                for prop in _sprigs(palette, rng, at, angle, offsets):
+                    finish.put(None, key, SET_PIECE_BUDGET, (prop,))
+
+
+def expand(sketch, ground, roadbed, layout, library, kits, sage, border, frame=None):
     """Place kit scenery after ground, roads, paint and building lock have been resolved."""
-    finish = _Finish(sketch, ground, roadbed, layout, library, kits, sage, border)
+    finish = _Finish(sketch, ground, roadbed, layout, library, kits, sage, border, frame)
     edges = defaultdict(list)
     for span in _passage_edges(sketch):
         for block in span[2:4]:
@@ -509,6 +562,8 @@ def expand(sketch, ground, roadbed, layout, library, kits, sage, border):
                            _sprigs(trees, rng, center, angle, [(-30, 30), (15, 45), (30, -15)]))
                 finish.put(block, 'open lot', SET_PIECE_BUDGET,
                            _sprigs(cover, rng, center, angle, [(-27, 12), (18, -20)]))
+        if frame is not None:
+            _dress_frame(finish, block, cover, trees, Random(f'{sketch.block_seed(block)}:frame'))
     result = finish.dressing()
     check_lanes(sketch, roadbed, layout, result.pieces, library, sage)
     _check_routes(finish, layout, result.pieces)

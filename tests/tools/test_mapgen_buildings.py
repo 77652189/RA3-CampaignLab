@@ -28,15 +28,17 @@ def planner(tmp_path):
     (entries / 'Buildings.xml').write_text('''
         <AssetDeclaration>
           <GameObject id="T_House" inheritFrom="BaseHouse" />
+          <GameObject id="T_HouseAlt" inheritFrom="BaseHouse" />
           <GameObject id="T_Shop">
             <Geometry><Shape Type="BOX" MajorRadius="13" MinorRadius="15" /></Geometry>
           </GameObject>
         </AssetDeclaration>''', encoding='utf8')
     library = {'kits': _civilian(tmp_path, set()), 'blocking': {'t_house': {'cls': 'all'}}}
 
-    def make(depth=130, south='T_House', *, junction=False):
+    def make(depth=130, south='T_House', *, junction=False, seed=0):
         sketch = {
             'version': 2,
+            'seed': seed,
             'blocks': {
                 'south': {'at': [120, 50], 'height': 3, 'use': 'square', 'protagonist': south},
                 'north': {'at': [120, 200], 'height': 3, 'use': 'square', 'protagonist': 'T_Shop'},
@@ -51,7 +53,7 @@ def planner(tmp_path):
         design = Design(sketch)
         ground = expand(TerrainPlan(), library, 25, 33, 0)
         return BuildingPlanner(design, ground, library, dict.fromkeys(design.blocks, 'Town_T'),
-                               {'T_House': 0., 'T_Shop': 0.}, tmp_path, 0)
+                               {'T_House': 0., 'T_HouseAlt': 0., 'T_Shop': 0.}, tmp_path, 0)
 
     return make
 
@@ -91,3 +93,11 @@ def test_rowhouses_leave_an_alley_wide_view_across_junction(planner):
     assert {h.x > 120 for h in houses} == {False, True}
     assert all(abs(s.center[0] - 120) - s.support(1, 0) >= ROAD_WIDTH['alley'] / 2
                for h in houses for s in h.placement + h.collision)
+
+
+def test_seeded_facades_take_turns_when_both_fit(planner):
+    sequences = {tuple(h.template for h in sorted(planner(junction=True, seed=seed).lock_block('north'),
+                                                   key=lambda h: h.x))
+                 for seed in range(8)}
+    assert sequences == {('T_House', 'T_HouseAlt', 'T_House'),
+                         ('T_HouseAlt', 'T_House', 'T_HouseAlt')}
