@@ -1873,6 +1873,8 @@ def aipullback_bench():
                                            # far inside the reverse gate d < R - 10 (cannon AttackRange 150: R 145)
     BEAR = 'SovietScoutInfantry'           # airevb*: war bears, they bite infantry only (no hostile can fire at a tank)
     BEAR_AT = ((-200.0, 320.0), (-320.0, 320.0))   # north of the column (-260, -90..90), 230+ off its nearest tank
+    BEAR_WAY_AT = ((-430.0, -350.0), (-430.0, -450.0))   # airevs*: west of the tanks' way south (x -250..-150 off
+                                           # 'east base'), in their search (vision 200 x 1.5) before the far plant is
 
 
     def repair_moved(m, army='SovietArmy', **fields):
@@ -1896,8 +1898,8 @@ def aipullback_bench():
         if close:
             m.objects = [o for o in m.objects if not o.name.startswith('UNIT - CNV AI Guard')]
             m.cast = {k: r for k, r in m.cast.items() if not k.startswith('guard ')}
-        if close in ('unit', 'bear'):
-            foe, at = (FOE, FOE_AT) if close == 'unit' else (BEAR, BEAR_AT)
+        if close in ('unit', 'bear', 'bearway'):
+            foe, at = {'unit': (FOE, FOE_AT), 'bear': (BEAR, BEAR_AT), 'bearway': (BEAR, BEAR_WAY_AT)}[close]
             m.spawns |= {foe}
             for k, (dx, dy) in enumerate(at):
                 m.put(foe, 'east base', dx, dy, angle=0.0, name=f'UNIT - CNV AI Rev Foe {k + 1}', role=f'rev foe {k + 1}')
@@ -2102,6 +2104,14 @@ def aipullback_bench():
         # at 1000 no siege, UseGatherState on: state 5
         'airevb1': lambda: mission('CampAIRevB1', close='bear', observe=True, CleanupPowerAdvantage='1000.0'),
         'airevb0': lambda: mission('CampAIRevB0', close='bear', observe=True, CleanupPowerAdvantage='1000.0',
+                                   SiegeWeaponBuffer='1000.0'),
+        # B 11-27 CanUseSiegeState: the bears by the tanks' way south (BEAR_WAY_AT), in their search before the far
+        # plant is (no current enemy, so the state pick reaches its siege test): s1 state 4, the tanks shoot the
+        # nearest bear; s0 (CanUseSiegeState false) and sb (1000 x the maul's 20 is past the cannon) gather (5)
+        'airevs1': lambda: mission('CampAIRevS1', close='bearway', observe=True, CleanupPowerAdvantage='1000.0'),
+        'airevs0': lambda: mission('CampAIRevS0', close='bearway', observe=True, CleanupPowerAdvantage='1000.0',
+                                   CanUseSiegeState='false'),
+        'airevsb': lambda: mission('CampAIRevSB', close='bearway', observe=True, CleanupPowerAdvantage='1000.0',
                                    SiegeWeaponBuffer='1000.0'),
     }
     return dict(MISSION=MISSION, shared=SimpleNamespace(mission=mission))

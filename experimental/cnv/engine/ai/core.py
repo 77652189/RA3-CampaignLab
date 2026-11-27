@@ -376,7 +376,7 @@ class Brain:
         self.view = tg.View(player, [], enemies=self.foes(), waypoints=self.world.waypoints,
                             # E81/E87: Location uses terrain, including stationary water structures.
                             # INFERRED at shorelines, bridges and for airborne targets.
-                            water_at=lambda x, y: self.world.ground.z(x, y) < self.world.ground.water,
+                            water_at=lambda x, y: (g := self.world.ground).z(x, y) < g.water,
                             expansion_candidates=(self.expansion_candidates
                                                   if (self.settings.facts.get('dual bases')
                                                       or self.settings.facts.get('expansion')) else None))

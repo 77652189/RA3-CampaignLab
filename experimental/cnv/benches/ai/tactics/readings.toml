@@ -1226,6 +1226,10 @@ then 0 and 2; never 4 (siege) in either"""
 proves = "simai team states: with only war bears (no hostile fires at a tank) near, the siege buffer changes nothing and no team goes to state 4"
 let = {st = "lambda s: [(r['frame'], r['state']) for r in teams(s) if r['members']]"}
 expect = ["st('a') == st('b')", "4 not in {x for _, x in st('a')}"]
+mismatch = """\
+simai: a 4 (siege) from f30, b 5 -- the model takes the bears (238 off the nearest tank at the start, inside the \
+search 300) into the hostile list at the first update; the bench stays 8 until the far plant is in reach (see the \
+reading below). By the way south (airevs*) the bench does go to 4 and the model matches"""
 
 [[reading]]
 bench_id = "engine_aipullback"
@@ -1235,14 +1239,37 @@ bench = """\
 B 11-24 airevb1 (CampAIRevB1A_mcp_1124_214511 tstate lines): the attack team in state 8 to f196, 6 aiming the far \
 plant from f200; no 4 and no 5 to s40"""
 proves = "simai team states: the team stays idle until it attacks the far plant (no gather, no siege)"
-item = "AI 微操/AIMicroManagerData.SiegeWeaponBuffer"
 let = {st = "[(r['frame'], r['state']) for r in teams() if r['members']]"}
 expect = ["{x for f, x in st if f < 196} == {8}", "not {4, 5} & {x for _, x in st}"]
 mismatch = """\
-simai: 5 (gather) at f30, 6 at f60, 0 at f180; the bench waits in 8 to f196 -- the model takes the war bears into the \
-hostile list from f30, the bench (by its states) not until f200; the siege rule (SiegeWeaponBuffer, state 4) is read \
-(work/re l4_micro_retreat.md 1.1) but not modelled: this scene never reaches it on the bench (model try kept in \
-work/re/b_wip/siege_state4_model.diff)"""
+simai: 4 (siege) from f30 on, the tanks shooting the healed bears; the bench waits in 8 to f196 -- the model takes the war bears into the \
+hostile list from f30, the bench (by its states) not until f200 (the siege rule itself: the airevs* readings below)"""
+
+[[reading]]
+bench_id = "engine_aipullback"
+id = "by_the_war_bears_on_the_way_the_team_besieges_the_nearest_bear"
+scene = {build = "airevs1", check = "a", until = 10.0, teams = true}
+bench = """\
+B 11-27 airevs1 (CampAIRevS1A_mcp_1126_232430 tstate lines): the attack team 8 at f17 / f51, 4 (siege) at f80 with \
+no current enemy, all four tanks aiming bear 1 (3420, 3050: the nearer of the two to the team's centre), 2 from f110; \
+bear 1 dies s12.7 (healed every frame)"""
+proves = "simai team states: a hostile that cannot reach the team, outranged past SiegeWeaponBuffer, takes the team to state 4 and every member to the hostile nearest the centre"
+item = ["AI 微操/AIMicroManagerData.CanUseSiegeState", "AI 微操/AIMicroManagerData.SiegeWeaponBuffer"]
+let = {row = "next(r for r in teams() if r['members'] and r['state'] != 8)"}
+expect = ["row['state'] == 4", "[m['aim'] for m in row['members']] == ['UNIT - CNV AI Rev Foe 1'] * 4"]
+
+[[reading]]
+bench_id = "engine_aipullback"
+id = "by_the_war_bears_on_the_way_no_siege_state_or_a_wide_buffer_gathers_instead"
+scenes = {a = {build = "airevs0", check = "a", until = 40.0, teams = true}, b = {build = "airevsb", check = "a", until = 40.0, teams = true}}
+bench = """\
+B 11-27 airevs0 (CanUseSiegeState false) / airevsb (SiegeWeaponBuffer 1000), CampAIRevS0A_mcp_1126_232309 / \
+CampAIRevSBA_mcp_1126_232552 tstate lines: both 8 at f17 / f51, 5 (gather) at f80 where airevs1 goes 4, then frame \
+for frame the same (6 f110, 2 f140, ... 5 f770, 6 f1190); both bears alive to s40"""
+proves = "simai team states: without the siege state, or with the buffer past the members' reach, the same team gathers (5)"
+item = ["AI 微操/AIMicroManagerData.CanUseSiegeState", "AI 微操/AIMicroManagerData.SiegeWeaponBuffer"]
+let = {st = "lambda s: [r['state'] for r in teams(s) if r['members']]"}
+expect = ["[x for x in st('a') if x != 8][0] == 5", "4 not in st('a')", "st('a') == st('b')"]
 
 # Bench readings of benches/ai/tactics/checks.py#engine_aipullpct (format: experimental/cnv/readings.py; runner: tests/conformance).
 # PullbackInjuredHealthPct 0.2 / 0.5, the same 30 % Soviet tanks and Crane (bench 2026-11-11).

@@ -1943,7 +1943,7 @@ def engine_aipullback():
             t.counters.append(('CNV_PB_Health', '血量'))
             t.scripts.append(Script('Test - health', [], [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', tanks[0],
                                                            'CNV_PB_Health')], once=False))
-        elif not build.startswith(('airevp', 'airevt', 'airevk', 'airevb')):  # no guards
+        elif not build.startswith(('airevp', 'airevt', 'airevk', 'airevb', 'airevs')):  # no guards
             counted('CNV_PB_Guards', '守军数', t, template=inf, player=p1, most=13)
         if build != 'airevkh':               # airevkh: the foes' two health % instead (four counters at most)
             counted('CNV_PB_Tanks', '坦克数', t, template=tank, player=s1)
@@ -1970,7 +1970,7 @@ def engine_aipullback():
                 t.expect += [('回家', wake + (5.0 if build in IDLE else LATE), 'ever>=', 1, end)]
             else:
                 t.expect += [('回家', wake + LATE, '==', 0, end)]
-        elif build.startswith('airevb'):
+        elif build.startswith(('airevb', 'airevs')):
             # B 11-24 SiegeWeaponBuffer: the bears (healed every frame) stay; the result is the host's team states
             # (readings: never 4, b1 = b0); the tanks die s65-s77 on the bench (the bears or the turret reach them)
             bears = [m.role(f'rev foe {k}').name for k in (1, 2)]
@@ -2051,7 +2051,7 @@ def engine_aipullback():
     CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aipull1', 'aipull0', 'aipullh1', 'aipullh0', 'aipullga', 'aipulli1', 'aipullr1', 'aipullp1', 'aipullbig', 'aipullsov', 'aipullsvx', 'aipulljp', 'aipullsnx', 'aipullsny',
                                                                'aipullav', 'aipullax', 'aipullavt', 'aipullavc', 'aipullavn', 'aipullwt', 'aipullavp', 'aipullaxp', 'airev1', 'airev0', 'airev1t', 'airev0t', 'airevidx', 'airevgt', 'airevat', 'airevit', 'airevp1', 'airevp0', 'airevp1t', 'airevt1', 'airevt0',
                                                                'airevk1', 'airevk0', 'airevkg1', 'airevk2', 'airevk2o', 'airevkp1', 'airevkp0', 'airevkh',
-                                                               'airevb1', 'airevb0')}
+                                                               'airevb1', 'airevb0', 'airevs1', 'airevs0', 'airevsb')}
     return dict(CHECKS=CHECKS, shared=SimpleNamespace(a=a))
 
 
