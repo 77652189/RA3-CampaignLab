@@ -157,7 +157,7 @@ class EffectHost:
 
     def attach(self, child, parent, rule):
         """Chain `child` to `parent` and place it at once (Sim.attachment_tick)."""
-        self.peers.attachments[child.serial] = (child, parent, rule)
+        self.attachments[child.serial] = (child, parent, rule)
         self.peers.attachment_tick()
 
 
@@ -483,9 +483,10 @@ class Damage:
                 h = hurt.setdefault(t.serial, [t, 0.0, by])
                 h[1] += rate * dt
                 h[2] = by
-        for t, w, by in peers.volleys:           # engine line C round 2: a shot lands when its clock says (shots_due)
+        volleys, shots_due = peers.volleys, peers.shots_due
+        for index, (t, w, by) in enumerate(volleys):  # engine line C round 2: a shot lands when its clock says
             if t.alive and fires(by) and world.t >= weaponset.gate(by, t) - 1e-9:
-                n = peers.shots_due(by, w, dt, t)
+                n = shots_due(by, w, dt, t)
                 if n:
                     self.inform_launch(world, t, by, w, n)
                     # the volley's nugget handlers (engine/combat, registry.ORDER): a launch may take it over
@@ -513,6 +514,17 @@ class Damage:
                         if not projectile:
                             instant[victim.serial] = instant.get(victim.serial, 0.0) + h[1] - before
                     registry.run('effect', ctx)           # the lift, the attachment, the power, the modifier (registry.ORDER)
+                    if w.get('weapon_key') == 'AlliedCommandoAttachWeapon':
+                        chain = peers.attachments.get(by.serial)
+                        if chain and chain[1] is t:
+                            for gun in by.weapons:
+                                if (gun.get('weapon_key') == 'AlliedCommandoDetonationWeapon'
+                                        and gun.get('sched') and min(gun['sched']) >= dt):
+                                    # E265 h: contact to explosion is about one second. The same-frame handoff is
+                                    # INFERRED; only a delayed detonation can start here without an immediate hit.
+                                    volleys[index] = (t, gun, by)
+                                    shots_due(by, gun, dt, t)
+                                    break
                     shocks = not projectile and (w.get('meta_impacts') or w.get('delayed_meta_impacts'))
                     if shocks and w.get('at_self'):
                         # the shotgun's shocks (A363) and Omega's delayed ones (A381) from its feet at the shot
