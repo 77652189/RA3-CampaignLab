@@ -578,6 +578,8 @@ def engine_ainodesfull():
         if m.facts.get('share'):     # ains*: home (4) iff own / known x 8 players >= the percent, known 2 x (nodes - 1)
             share = 100 * m.facts['ai refineries'] / (2 * (m.facts['ore nodes'] - 1)) * 8
             later = tuple(4 * (share >= p) for p in m.facts['share'])
+        if m.facts.get('surface'):   # aicb* as benched 11-27: LAND ~2000..12499 cells, some WATER cell at the east base
+            later = {'W': (4, 0), 'M': (4, 4)}.get(m.name[-1], (0, 4))
         windows = ((8, (4, 4), 13), (60, later, 70), (110, later, 120))
         if m.facts.get('income'):    # aiinc*: woken at 100 s, own / enemy ~1 (a refinery each) or 0; home iff not passed
             above, values, kill = m.facts['income']
@@ -595,7 +597,7 @@ def engine_ainodesfull():
 
     CHECKS = {k: {'a': a} for k in ('ainf0', 'ainf1', 'ainf2', 'ainf3', 'ainf4', 'ainf5', 'aiopn1900', 'aiopn2250',
                                     'ains1', 'ains2', 'ains2l', 'ains2a', 'ains2b', 'ains2c', 'ains2d', 'ains2n',
-                                    'aiinca', 'aiincb', 'aiincc')}
+                                    'aiinca', 'aiincb', 'aiincc', 'aicbl', 'aicbw', 'aicbn', 'aicbm')}
     return dict(CHECKS=CHECKS)
 
 

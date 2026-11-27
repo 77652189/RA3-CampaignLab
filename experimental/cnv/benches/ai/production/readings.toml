@@ -374,6 +374,37 @@ Above; both 0 passes. aiincc's own is two refineries' worth in simai (ratio 2, a
 both ratios between the Values"""
 expect = "[[win(a, a + 7, k) for k in ('满态在家', '常量在家')] for a in (110, 225, 254)] == [[[h] * 8 for h in hs] for hs in home]"
 
+[[reading]]
+bench_id = "engine_ainodesfull"
+id = "can_build_on_surface_counts_the_own_build_area_cells_of_the_surfaces"
+item = ["AI 启发条件/CanBuildBuildingsOnSurfaceHeuristic",
+        "AI 启发条件/CanBuildBuildingsOnSurfaceHeuristic.MinPlacementGridCells",
+        "AI 启发条件/CanBuildBuildingsOnSurfaceHeuristic.MaxPlacementGridCells"]
+scene = {build = "aicbl", check = "a", until = 70.0}
+each = [{build = "aicbl", home = [0, 4]}, {build = "aicbn", home = [0, 4]}, {build = "aicbm", home = [4, 4]}]
+bench = """\
+B 11-27 (CampCanBuildL / N / M, bench_results 11-27; work/re/b1127_cbbos.md): Niagara, the AI's yard on the east \
+bank, both states CanBuildBuildingsOnSurface. aicbl LAND (Min 1) / LAND Min 0 Max 0: 0 / 4 from s15; aicbn LAND \
+Min 2000 / 30000: 0 / 4; aicbm LAND Min 12500 / 16000: 4 / 4 -- the land count is 2000..12499 (the yard's radius \
+600 holds ~11300 cells)"""
+proves = """\
+simai Brain.placeable_cells: the CELL cells of the surface's mask inside the own build radii, off what placement \
+sees taken (11061 LAND at the east base); Min <= count <= Max"""
+expect = "[win(60, 69, k) for k in ('满态在家', '常量在家')] == [[h] * 10 for h in home]"
+
+[[reading]]
+bench_id = "engine_ainodesfull"
+id = "can_build_on_water_finds_water_cells_at_the_east_base"
+item = ["AI 启发条件/CanBuildBuildingsOnSurfaceHeuristic.Surfaces"]
+scene = {build = "aicbw", check = "a", until = 70.0}
+bench = """\
+B 11-27 (CampCanBuildW, bench_results 11-27): the retail NavalBase gate (WATER DEEP_WATER, Min 0 Max 0) / WATER \
+DEEP_WATER Min 1: 4 / 0 from s15 -- the engine finds at least one water cell where the simulator's nearest water \
+is 875 from the yard (radius 600)"""
+proves = "simai Brain.placeable_cells for WATER: the routing water mask inside the build radii"
+expect = "[win(60, 69, k) for k in ('满态在家', '常量在家')] == [[4] * 10, [0] * 10]"
+mismatch = "sim 0 / 4 (no water cell within 600 of the yard): how the cell check passes the WATER / DEEP_WATER bits is unread (the cell's surface test, work/re/b1127_cbbos.md hypotheses)"
+
 # Bench readings of benches/ai/production/checks.py#engine_aiomove (format: experimental/cnv/readings.py; runner: tests/conformance).
 # What an OpeningMove line builds (bench 2026-11-09, rounds 83-90).
 

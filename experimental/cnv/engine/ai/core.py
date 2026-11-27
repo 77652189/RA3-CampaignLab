@@ -893,6 +893,7 @@ class Brain:
                'tech buildings': (tech := self.tech_buildings()), 'nodes': self.node_share(tech[2]),
                'nodes full': not self.open_nodes(miners=True),            # AllNearbyNodesFull (B208 / B210)
                'open node': self.open_node,                               # OpenNodeHeuristic
+               'placeable cells': self.placeable_cells,                   # CanBuildBuildingsOnSurface
                'attacked': self.attacked, 'energy': self.energy,
                # the private AIPlayer.available: no income -> the budget share pays nothing (bench engine_aitower e).
                # A refinery counts: the retail one brings its own miner (SpawnBehavior SpawnOnUnpack), which the
@@ -1933,9 +1934,41 @@ class Brain:
         distance from the node (open_nodes' clear). The search's edge (< or <=) INFERRED."""
         return bool(self.open_nodes(miners=True, near=False, clear=distance))
 
+    def placeable_cells(self, surfaces):
+        """ctx 'placeable cells' (CanBuildBuildingsOnSurface, B 11-27 read, work/re/b1127_cbbos.md): the engine counts
+        the pathfinding cells (CELL) whose buildable-area record passes the Surfaces mask, on the map and level with
+        their neighbours, and nothing standing on them. Here: the CELL cells within an own build-radius structure's
+        radius, of the surface's routing mask (LAND 'ground', WATER / DEEP_WATER 'water', INFERRED the same), and
+        off what a placement sees as taken."""
+        import numpy as np
+        import platmap
+        g = self.ground
+        want = {s.upper() for s in str(surfaces).split()}
+        keys = ['ground'] * ('LAND' in want) + ['water'] * bool(want & {'WATER', 'DEEP_WATER'})
+        if not keys:
+            return 0
+        fine = np.logical_or.reduce([g.fine[k] for k in keys])
+        fine = fine & ~g.placed.repeat(g.d, 0).repeat(g.d, 1)[:fine.shape[0], :fine.shape[1]]
+        jj, ii = np.mgrid[0:fine.shape[0], 0:fine.shape[1]]
+        x, y = (ii - g.b) * platmap.CELL, (jj - g.b) * platmap.CELL
+        area = np.zeros(fine.shape, bool)
+        for b, r in self._radii():
+            if b.owner == self.player:
+                area |= (x - b.x) ** 2 + (y - b.y) ** 2 < r * r
+        return int((fine & area).sum())
+
+    @property
+    def ground(self):
+        """The world's ground: the one access point of the cell tests (open_at, placeable_cells)."""
+        return self.world.ground
+
     def open_at(self, x, y):
         """A footprint's centre on open ground (the placement searches' cell test)."""
-        return self.world.ground.open('ground', x, y, place=True)
+        return self.ground.open('ground', x, y, place=True)
+
+    def _radii(self):
+        """(structure, its build radius) for every living structure that has one (any owner)."""
+        return [(b, br) for b in self.world.living() if 'STRUCTURE' in b.kinds and (br := self._build_radius(b.template)) > 0]
 
     def allied_ok(self, x, y):
         """CanBuildInAlliedBuildRadii (B212 read, work/re l4_allied_radii.md): unless the personality says true, the
@@ -1951,8 +1984,7 @@ class Brain:
         if not memo['on']:
             return True
         world = self.world
-        near = [(b, self._build_radius(b.template)) for b in world.living() if 'STRUCTURE' in b.kinds]
-        near = [(b, br) for b, br in near if br > 0 and math.hypot(b.x - x, b.y - y) < br]
+        near = [(b, br) for b, br in self._radii() if math.hypot(b.x - x, b.y - y) < br]
         if not any(b.owner != self.player and world.relations.get((self.player, b.owner)) == 'Friend' for b, _ in near):
             return True
         return ALLY_OVERLAP_OK and any(b.owner == self.player for b, _ in near)

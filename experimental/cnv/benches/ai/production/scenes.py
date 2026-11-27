@@ -626,6 +626,9 @@ def ainodesfull_bench():
     either one alone paid nothing, 11-25; simai 2: a world gap in the notes, Values 0.5 / 3 hold on both). The AI wakes at INCOME_WAKE (both well into mining,
     so no first-deposit race). kill: the player's refinery is deleted then -- its deposits leave the window 90 s later
     (both 0: the heuristic passes whatever the Value, bench aiinca 11-25).
+    aicb* (B 11-27, CanBuildBuildingsOnSurfaceHeuristic on both states, SURFACES; work/re b1127_cbbos.md): Min <= the
+    AI's placeable cells of the Surfaces <= Max. aicbl LAND any / none, aicbw the retail NavalBase form (WATER none) /
+    WATER any, aicbn LAND at least 2000 / 30000 cells (the scale: the yard's radius 600 holds ~11300 cells).
     """
     import math
 
@@ -637,7 +640,13 @@ def ainodesfull_bench():
     PAD2 = (150.0 * math.sqrt(0.5), 150.0 * math.sqrt(0.5))   # the side node's pad: PAIR_GAP beside the field's pad
 
 
-    def mission(name, refineries, miners=0, open_node=None, share=None, extra=False, income=None):
+    SURFACES = {'aicbl': ('Surfaces="LAND"', 'Surfaces="LAND" MinPlacementGridCells="0" MaxPlacementGridCells="0"'),
+                'aicbw': ('Surfaces="WATER DEEP_WATER" MinPlacementGridCells="0" MaxPlacementGridCells="0"',
+                          'Surfaces="WATER DEEP_WATER"'),
+                'aicbn': ('Surfaces="LAND" MinPlacementGridCells="2000"', 'Surfaces="LAND" MinPlacementGridCells="30000"'),
+                'aicbm': ('Surfaces="LAND" MinPlacementGridCells="12500"', 'Surfaces="LAND" MinPlacementGridCells="16000"')}
+
+    def mission(name, refineries, miners=0, open_node=None, share=None, extra=False, income=None, surface=None):
         m = setup.mission(name, near=True)
         filename, xml, asset = m.assets[0]
         states = [setup._state('CNVNodesFull', '', setup.INF, gate='const').replace(
@@ -647,6 +656,7 @@ def ainodesfull_bench():
             states[0] = states[0].replace('<AllNearbyNodesFullHeuristic/>',
                                           f'<OpenNodeHeuristic Exists="true" MinDistanceFromEnemy="{open_node}"/>')
         gates = [f'<ResourceNodeShareHeuristic PercentOfFairShare="{p}%" Above="false"/>' for p in share or ()]
+        gates += [f'<CanBuildBuildingsOnSurfaceHeuristic {g}/>' for g in surface or ()]
         if income is not None:
             above, values, kill = income
             gates = [f'<IncomeAdvantageHeuristic Value="{v}" Above="{above}"/>' for v in values]
@@ -686,6 +696,7 @@ def ainodesfull_bench():
         m.facts['ai miners'] = miners
         m.facts['open node'] = open_node
         m.facts['share'] = share
+        m.facts['surface'] = surface
         m.facts['ore nodes'] = 11 if extra else 9
         if extra:                    # ains2n: two more map nodes in the west field
             import types
@@ -721,7 +732,8 @@ def ainodesfull_bench():
                'ains2n': lambda: mission('CampNodeShr2N', 2, share=(84, 95), extra=True),
                'aiinca': lambda: mission('CampIncomeA', 0, income=('true', (0.5, 1.5), 150.0)),
                'aiincb': lambda: mission('CampIncomeB', 0, income=('false', (0.5, 1.5), None)),
-               'aiincc': lambda: mission('CampIncomeC', 2, income=('true', (0.5, 3.0), None))}
+               'aiincc': lambda: mission('CampIncomeC', 2, income=('true', (0.5, 3.0), None)),
+               **{b: (lambda b=b: mission(f'CampCanBuild{b[-1].upper()}', 0, surface=SURFACES[b])) for b in SURFACES}}
     return dict(MISSION=MISSION)
 
 
