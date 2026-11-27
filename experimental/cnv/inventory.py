@@ -277,6 +277,9 @@ NOTES = {
     (MODULE, 'Behaviors/CaptureSpecialAbilityUpdate'): (NA, '没人触发（A403）：它的特殊能力只收 KindOf CAPTURABLE，'
         '原版只有 CaptureFlag / ControlPoint，原版 27 关和我们 9 关都没摆；谭雅没有占领键。台上原版 / 只删本模块的工程师'
         '按占领键或进驻占建筑一样（checks/engine_capture.readings.toml）。E151 对旗子下令没换主，没追'),
+    (MODULE, 'Behaviors/EmotionTrackerUpdate'): (NA, '没人触发（A404，读程序）：每帧只挑被强制过的情绪，不自发；'
+        '宿主只挂 CHEER 两个模板，强制来源只有 PLAYER/TEAM/UNIT_FORCE_EMOTION、IDLE_ALL_UNITS、TEAM_PANIC 和'
+        ' BezierProjectile 的落地情绪，原版 27 关和我们 9 关都没用、原版数据都没填。脚本直接设 EMOTION_CELEBRATING 是模型状态，不经本模块'),
     (MODULE, 'Behaviors/AttributeCrateCollide'): (BENCHED, '例子密件箱1/2是起义时刻数据（RA3流和27关都没有），按RA3写法克隆（无ApplyToSelf/KillOnPickup）。engine_secretfile_e:a 脚本移动不捡；b 右键点箱：箱消失、捡箱人戴上修正器USER_1到底，同箱的HealCrateCollide不回血（一次拾取一个效果）。engine_secretfile_s:b 两模块换序后回血、不戴修正器：一次拾取跑XML里写在前的那个。只核对无Duration的ModelConditionsSet，其他修正项gap。'),
     (MODULE, 'Behaviors/HealCrateCollide'): (BENCHED, 'E283 原版医疗箱右键拾取与脚本移动对照，回放末读数14/1/100/50与15/0/50/50。只核对玩家拾取、箱消失和回血筛选。碰撞形状、精确帧和距离口径 INFERRED；其他拾取资格、AI、音效和自定义筛选仍 gap。'),
     (NUGGET, 'ReportWeaponFiredStatNugget'): (NA, '纯统计（C线工单允许排除）：只记录玩家武器开火次数；原版两份空配置附于SovietVacuumBomb / ParticleCannonWeapon，伤害与创建物体由独立WeaponOCLNugget负责。保留用量2，不登记已对拍；未上台，不模拟战后统计；证据见work/re/c_reportstat_report.md'),
