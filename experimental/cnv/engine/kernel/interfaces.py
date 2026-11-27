@@ -441,6 +441,10 @@ class CrateCollect(Interface):
         """The AttributeModifier the collector takes (the order layer hangs it), None: none."""
         return None
 
+    def promotions(self, collector):
+        """(recipient, rank cap) pairs whose promotion the order layer applies."""
+        return ()
+
 
 class Production(Interface):
     __slots__ = ()

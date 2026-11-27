@@ -1,5 +1,6 @@
 """Crate effects on a human player's pickup: heal (engine_healcrate_r b), attribute modifier
-(engine_secretfile_e b, hung by the order layer) and cash (engine_moneycrate_e a).
+(engine_secretfile_e b, hung by the order layer), cash (engine_moneycrate_e a) and
+veterancy (engine_vetcrate_e a).
 
 ObjectFilter selects recipients. The bench backs fully healing nearby units of the collector's owner and
 excluding a nearby enemy. INFERRED: centre-to-centre healing range, the exact collision shape/timing and
@@ -89,3 +90,36 @@ class MoneyCrate(module.Module, interfaces.CrateCollect):
         # INFERRED: a pickup pays directly, bypassing income sharing and the money cap.
         self.world.pay(collector, self.data.amount)
         return True
+
+
+class VeterancyCrateData(module.ModuleData):
+    def __init__(self, radius, cap, special):
+        self.radius, self.cap, self.special = radius, cap, special
+
+    @classmethod
+    def parse(cls, head, inner):
+        return cls(templates.num(templates.attr(head, 'RangeOfEffect')),
+                   int(templates.num(templates.attr(head, 'AffectsUpToLevel'))),
+                   any(templates.attr(head, field) in ('true', '1') for field in ('AddsOwnerVeterancy', 'IsPilot')))
+
+
+@factory.module('VeterancyCrateCollide')
+class VeterancyCrate(module.Module, interfaces.CrateCollect):
+    DATA = VeterancyCrateData
+
+    def collect(self, collector, allied):
+        if not _collecting(self, collector):
+            return False
+        if self.data.special or self.data.cap <= 0:
+            self.world.gap('物体模块', 'VeterancyCrateCollide/variant', '全局、驾驶员或默认等级上限未对拍')
+            return False
+        return True
+
+    def promotions(self, collector):
+        crate, d = self.thing, self.data
+        yield collector, d.cap
+        # INFERRED: same owner only, centre-to-centre from the crate; other owners and the exact boundary are gaps.
+        for unit in self.world.living():
+            if (unit is not collector and unit.owner == collector.owner
+                    and math.hypot(unit.x - crate.x, unit.y - crate.y) <= d.radius):
+                yield unit, d.cap

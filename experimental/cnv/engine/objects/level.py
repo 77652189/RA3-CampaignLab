@@ -115,6 +115,14 @@ def rank_up(world, b, profile, new):
             b.up_since[upgrade] = world.frame_now()
 
 
+def promote(world, b, cap):
+    """Veterancy crate: a veteran became elite. INFERRED: one table step for other ranks, capped by the crate."""
+    profile = profiles().get(b.template.lower(), {})
+    new = b.level_rank + 1
+    if new <= cap and new in profile:
+        rank_up(world, b, profile, new)
+
+
 def damage_modifiers(world, b, xml):
     """Measured rank damage/range, Mirage shroud/sight query and discrete ROF."""
     if b.level_rank <= 1:

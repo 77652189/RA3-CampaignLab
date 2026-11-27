@@ -279,18 +279,32 @@ def collect_file(m):
     return t
 
 
-def money_mission():
-    m = Mission(name='CampMoneyCrate', map=probe_range, units=[])
+def pickup_mission(veterancy=False):
+    m = Mission(name='CampVetCrate' if veterancy else 'CampMoneyCrate', map=probe_range, units=[])
     m.ext = True
     for lane in ('switch', 'low'):
-        m.put('MoneyCrate', lane + ' gun', side='neutral', role=lane + ' cash', name=lane + ' cash')
+        m.put('VeterancyCrate' if veterancy else 'MoneyCrate', lane + ' gun',
+              side='neutral', role=lane + ' cash', name=lane + ' cash')
         m.put(MAN, lane + ' gun', -130, side='p1', role=lane + ' man', name=lane + ' man')
+    if veterancy:
+        m.put(MAN, 'switch gun', 0, 40, side='p1', role='near', name='near')
     return m
 
 
 def money_pickup(m):
     """Retail MoneyProvided=1000. Predict the clicked crate pays p1 once and disappears.
     A script move across the identical control crate leaves it standing and pays nothing."""
+    t = pickup(m)
+    for side, label, counter in (('p1', '玩家资金', 'CashOwn'), ('s2', '对手资金', 'CashOther')):
+        t.counters.append((counter, label))
+        t.scripts.append(Script(f'Test - {counter}', [],
+                                [('SET_PLAYER_MONEY_TO_COUNTER', m.player(side), counter)], once=False))
+    t.expect += [('玩家资金', 0, 'ever==', 1000), ('对手资金', 0, '==', 0)]
+    pickup_view(m, t)
+    return t
+
+
+def pickup(m):
     t = Test()
     p1, s2 = m.player('p1'), m.player('s2')
     x, y = m.site('switch gun')
@@ -309,24 +323,46 @@ def money_pickup(m):
     s8.total(t, 'CashLive', '箱位', [(2**k, ('NAMED_NOT_DESTROYED', m.role(lane + ' cash').name))
                                    for k, lane in enumerate(('switch', 'low'))])
     t.counters.append(('CashCross', '过点'))
-    for player, label, counter in ((p1, '玩家资金', 'CashOwn'), (s2, '对手资金', 'CashOther')):
-        t.counters.append((counter, label))
-        t.scripts.append(Script(f'Test - {counter}', [], [('SET_PLAYER_MONEY_TO_COUNTER', player, counter)], once=False))
+    t.expect = [('箱位', 0, 'ever==', 3), ('箱位', 0, 'ever==', 2), ('过点', 0, 'ever==', 1)]
+    return t
+
+
+def pickup_view(m, t):
+    x, y = m.site('switch gun')
     s8.watch(t, 16., .5)
     watch = t.bench[0][1]
     t.bench = [('bench_watch', dict(watch, seconds=2.0)), ('bench_view', dict(x=x, y=y, look=True)),
                ('bench_box', dict(x0=x - 170, y0=y - 40, x1=x - 90, y1=y + 40, look=True)),
                ('bench_click', dict(x=640, y=346, world=False, right=True, look=True)),
                ('bench_watch', dict(watch, seconds=14.0))]
-    t.expect = [('箱位', 0, 'ever==', 3), ('箱位', 0, 'ever==', 2), ('过点', 0, 'ever==', 1),
-                ('玩家资金', 0, 'ever==', 1000), ('对手资金', 0, '==', 0)]
+
+
+def veterancy_pickup(m):
+    """Predict one rank on pickup for the veteran collector and the ally within RangeOfEffect=50.
+    A veteran with 150 HP reads 80% after 30 script damage; an elite with 187.5 HP reads 84%.
+    The scripted walker crosses its crate and remains a veteran."""
+    t = pickup(m)
+    start, damage = [], []
+    for role in ('switch man', 'near', 'low man'):
+        unit = m.role(role).name
+        start += [('UNIT_GIVE_EXPERIENCE_POINTS', unit, 600), ('SET_COUNTER', role, -1)]
+        damage += [('NAMED_DAMAGE', unit, 30), ('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', unit, role)]
+    t.counters.append(('switch man', '拾取血量'))
+    t.scripts += [Script('Test - start veteran', [], start),
+                  Script('Test - measure rank', [('NAMED_DESTROYED', m.role('switch cash').name)], damage)]
+    # Four HUD lines fit. Encode the near ally and walker separately in one line.
+    s8.total(t, 'Other ranks', '旁证', [(1, ('COUNTER', 'near', 2, 84)), (2, ('COUNTER', 'low man', 2, 80)),
+                                    (4, ('COUNTER', 'near', 2, 80)), (8, ('COUNTER', 'low man', 2, 84))])
+    t.expect += [('拾取血量', 0, 'ever==', 84), ('旁证', 0, 'ever==', 3)]
+    pickup_view(m, t)
     return t
 
 
 MISSION = {'engine_healcrate': mission, 'engine_healcrate_r': lambda: mission(True), 'engine_healcrate_h': hypotheses,
            'engine_healcrate_v': lambda: hypotheses(True), 'engine_secretfile_e': secret_files_mission,
-           'engine_moneycrate_e': money_mission}
+           'engine_moneycrate_e': pickup_mission, 'engine_vetcrate_e': lambda: pickup_mission(True)}
 CHECKS = {'engine_healcrate': {'a': check, 'b': passed, 'c': ordered}, 'engine_healcrate_r': {'a': check, 'b': collect, 'c': recalled},
           'engine_healcrate_h': {'a': hyp_check}, 'engine_healcrate_v': {'a': hyp_check},
-          'engine_secretfile_e': {'a': secret_files, 'b': collect_file}, 'engine_moneycrate_e': {'a': money_pickup}}
+          'engine_secretfile_e': {'a': secret_files, 'b': collect_file}, 'engine_moneycrate_e': {'a': money_pickup},
+          'engine_vetcrate_e': {'a': veterancy_pickup}}
 CONTROL_ARMS = {'engine_healcrate': ('On', 'Off')}

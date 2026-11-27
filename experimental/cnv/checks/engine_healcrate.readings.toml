@@ -121,3 +121,16 @@ The control crate and the other player's balance remain unchanged. Replay checks
 expect = """any(r['箱位'] == 3 and r['过点'] == 1 for r in rows) and \
 all(r['对手资金'] == 0 and (r['箱位'], r['玩家资金']) in ((3, 0), (2, 1000)) for r in rows) and \
 rows[-1]['箱位'] == 2 and rows[-1]['过点'] == 1"""
+
+[[reading]]
+id = "retail_veterancy_crate_promotes_the_collector_and_a_nearby_unit"
+scene = {build = "engine_vetcrate_e", check = "a", until = 16, script = "6 拾取 switch man 去 switch cash"}
+item = "物体模块 Behaviors/VeterancyCrateCollide"
+bench = """CampVetCrateA_mcp_1127_074227, counters (箱位, 过点, 拾取血量, 旁证):
+s2.93–4.40 3/0/?/0; s4.93–26.47 3/1/?/0; s40.07–63.33 2/1/84/3."""
+proves = """Scripted movement crosses its retail crate without taking it. Right-clicking the other crate takes it
+and promotes the veteran collector and a veteran of the same owner placed 40 units from the crate to elite.
+After 30 script damage, the collector reads 84%, witness bit 1 confirms 84% for the nearby unit, and witness bit 2
+confirms 80% for the scripted walker. Replay checks states without fixing pickup time or the exact radius boundary."""
+expect = """(any(r['箱位'] == 3 and r['过点'] == 1 and r['旁证'] == 0 for r in rows) and
+(rows[-1]['箱位'], rows[-1]['过点'], rows[-1]['拾取血量'], rows[-1]['旁证']) == (2, 1, 84, 3))"""

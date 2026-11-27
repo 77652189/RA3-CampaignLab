@@ -23,6 +23,7 @@ import math
 import numpy as np
 
 import engine.data.units as simunits
+import engine.objects.level as simlevel
 import engine.objects.locomotion as simlocomotion
 import engine.objects.modifier as simmodifier
 import engine.objects.path as simpath
@@ -193,6 +194,8 @@ def collect_crate_due(world, kernel, b, crate):
                 collected = True
                 if effect.worn():
                     simmodifier.crate_wear(world, b, crate, effect.worn())
+                for recipient, cap in effect.promotions(b):
+                    simlevel.promote(world, recipient, cap)
                 break
         if collected:
             kernel.remove(crate, '拾取箱子')
