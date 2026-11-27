@@ -181,7 +181,23 @@ def engine_aiaesthetics():
         return t
 
 
-    CHECKS = {name: {'a': a} for name in ('aiaeson', 'aiaesoff')}
+    def p(m):
+        """B 11-27 patrol builds: the Guardian in 300 / 900 by the second; the stand orders are read off the ext log."""
+        t = Test()
+        name = m.role('ai guardian 1').name
+        for radius in (300, 900):
+            area = f'CNV Aes Ring {radius}'
+            t.areas[area] = square(*m.site('east base'), radius)
+            counted(f'CNV_Aes_R{radius}', f'圈{radius}', t, named=name, area=area)
+        t.scripts += [Script('Aesthetics - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))])]
+        counted('CNV_Aes_Alive', '坦克总数', t, template=m.cnv_units[0], player=m.player('s1'))
+        t.expect = [('坦克总数', 60, '==', 1, 61)]
+        t.bench = [('bench_watch', dict(seconds=64, every=1, sheet=False, lines=4))]
+        return t
+
+
+    CHECKS = {name: {'a': a} for name in ('aiaeson', 'aiaesoff')} | \
+        {name: {'p': p} for name in ('aiaesi10', 'aiaesi0', 'aiaesh300', 'aiaesh0')}
     return dict(CHECKS=CHECKS)
 
 

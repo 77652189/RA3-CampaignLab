@@ -38,6 +38,46 @@ expect = [
 
 [[reading]]
 bench_id = "engine_aiaesthetics"
+id = "the_random_stand_waits_the_patrol_idle_time_after_the_team_turns_ready"
+scenes = {a = {build = "aiaesi10", check = "p", until = 69.0, teams = true}, b = {build = "aiaesi0", check = "p", until = 69.0, teams = true}}
+bench = """\
+B 11-27 aiaesi10 / aiaesi0 (CampAIAesI10P_mcp_1127_003501, CampAIAesI0P_mcp_1127_003622, ext aes: lines; Distance 250, \
+no enemy in 375: the random stand): both ready from f250; 10 s sends its first stand (0x22c) at f400 and every later \
+one 150 after the ready stamp (460 -> 610, 655 -> 805, 865 -> 1015); 0s sends at every ready call (13 to f1015)"""
+proves = "simai Tactic.AestheticsManagerPatrolIdleTime: the first random stand comes the idle time later"
+item = "AI 战术/Tactic.AestheticsManagerPatrolIdleTime"
+let = {mv = "lambda s: [o['frame'] for o in orders(s) if o['kind'] == 'move' and o['member'].endswith('Tank 1')]"}
+expect = ["mv('a')[0] - mv('b')[0] == 150"]
+
+[[reading]]
+bench_id = "engine_aiaesthetics"
+id = "the_random_stand_never_sends_two_orders_inside_the_idle_time"
+scene = {build = "aiaesi10", check = "p", until = 69.0, teams = true}
+bench = "B 11-27 aiaesi10 (as above): the stand orders at f400 / 610 / 805 / 1015, never two within 150"
+proves = "simai Tactic.AestheticsManagerPatrolIdleTime: a team that just got its stand order is not ready again at once"
+let = {mv = "[o['frame'] for o in orders() if o['kind'] == 'move' and o['member'].endswith('Tank 1')]"}
+expect = ["min(b - a for a, b in zip(mv, mv[1:])) > 150"]
+mismatch = """\
+simai: 318 / 333 / 348 / 378, then 753 / 768 -- the model's team is ready again 15 frames after the order (the bench's \
+next call reads it not ready and drops the stamp to 0: the Guardian is moving); the ready test (idle stamp / member \
+ready) right after an order is the gap"""
+
+[[reading]]
+bench_id = "engine_aiaesthetics"
+id = "an_own_harvester_within_the_distance_of_the_stand_point_stops_the_order"
+scenes = {a = {build = "aiaesh300", check = "p", until = 69.0, teams = true}, b = {build = "aiaesh0", check = "p", until = 69.0, teams = true}}
+bench = """\
+B 11-27 aiaesh300 / aiaesh0 (CampAIAesH300P_mcp_1127_003744, CampAIAesH0P_mcp_1127_004024; PatrolIdleTime 0s, two s1 \
+Ore Collectors held 150 north and south of the yard): 300 sends no stand order at all to f1015; 0.0 sends 11 \
+(f250 ... f940)"""
+proves = "simai Tactic.AestheticsManagerMinDistanceFromHarvester: an own harvester that near the stand point stops the order"
+item = "AI 战术/Tactic.AestheticsManagerMinDistanceFromHarvester"
+let = {mv = "lambda s: [o['frame'] for o in orders(s) if o['kind'] == 'move' and o['member'].endswith('Tank 1') and o['frame'] >= 300]"}
+expect = ["mv('a') == []", "len(mv('b')) >= 5"]
+# from f300: the simulator's miners drive off to the ore until they stop (a moving unit's teleport does not hold), back by s20
+
+[[reading]]
+bench_id = "engine_aiaesthetics"
 id = "aiaeson_keeps_one_live_member_through_the_stand"
 scene = {build = "aiaeson", check = "a", until = 34, teams = true}
 bench = "E106 aiaeson:a (CampAIAesOnA_mcp_1112_155111, clock s16.1 = f270, s31.1 = f495): at f166 / 196 / 256 / 461 / 496 one team row, its one member the same tank, alive; D78 (CampAIAesOnA_mcp_1112_111517): state 8 at f166 / 196 / 256"

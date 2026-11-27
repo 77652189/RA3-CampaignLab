@@ -111,6 +111,7 @@ def aiaesthetics_bench():
     Stand-point selection is INFERRED; see work/re/c_aesthetics_report.md.
     """
     from benches.ai.tactics.scenes import aidistance_bench
+    from model import Script
     distance_mission = aidistance_bench()["shared"].mission
 
 
@@ -126,7 +127,32 @@ def aiaesthetics_bench():
         return m
 
 
-    MISSION = {'aiaeson': lambda: mission(True), 'aiaesoff': lambda: mission(False)}
+    def patrol(name, idle='', harvester='', miners=False):
+        """B 11-27: Distance 250 (enemy search 375: no player building inside, the random stand), no teleport;
+        idle / harvester: AestheticsManagerPatrolIdleTime / MinDistanceFromHarvester ('' = default 10s / 300);
+        miners: two s1 Ore Collectors 150 north and south of the yard (every stand point within 300 of one)."""
+        m = distance_mission(2000)
+        m.name = name
+        filename, xml, asset = m.assets[0]
+        extra = (f' AestheticsManagerPatrolIdleTime="{idle}"' if idle else '') + \
+            (f' AestheticsManagerMinDistanceFromHarvester="{harvester}"' if harvester else '')
+        assert xml.count('Distance="2000"') == 1
+        m.assets[0] = filename, xml.replace('Distance="2000"', f'Distance="250"{extra}'), asset
+        m.scripts = [s for s in m.scripts if not s.name.startswith('Distance - ')]
+        for k, dy in enumerate((-150.0, 150.0) if miners else ()):     # held there: they drive off to the ore
+            name = f'UNIT - CNV Aes Miner {k + 1}'
+            m.put('AlliedMiner', 'east base', 0.0, dy, side='s1', name=name, role=f'ai miner {k + 1}')
+            m.waypoint(f'aes miner {k + 1}', f'CNV Aes Miner {k + 1}', 'east base', 0.0, dy)
+            m.scripts.append(Script(f'Aesthetics - hold miner {k + 1}', [],
+                                    [('UNIT_TELEPORT_TO_WAYPOINT', name, f'CNV Aes Miner {k + 1}')], once=False))
+        m.facts |= {'distance': 250, 'miners': 2 * miners}
+        return m
+
+
+    MISSION = {'aiaeson': lambda: mission(True), 'aiaesoff': lambda: mission(False),
+               'aiaesi10': lambda: patrol('CampAIAesI10'), 'aiaesi0': lambda: patrol('CampAIAesI0', '0s'),
+               'aiaesh300': lambda: patrol('CampAIAesH300', '0s', '', True),
+               'aiaesh0': lambda: patrol('CampAIAesH0', '0s', '0.0', True)}
     return dict(MISSION=MISSION)
 
 

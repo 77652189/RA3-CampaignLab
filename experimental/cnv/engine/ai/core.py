@@ -1269,10 +1269,10 @@ class Brain:
         if run is None:
             return
         state = self.tactics.state_of(self.ai, team.state)
-        attrs = self.defense.attrs
+        attr = lambda key, default: self.defense.attrs.get(state, run.tactic.id, 'AestheticsManager' + key, default)
         self.tactics.stand(team, p, r, outer, self.frame, members, foes, harvesters,
-                           round(float(attrs.get(state, run.tactic.id, 'PatrolIdleTime', '10')) * 15),
-                           float(attrs.get(state, run.tactic.id, 'MinDistanceFromHarvester', '300')))
+                           round(self.host.mod['micro'].seconds(attr('PatrolIdleTime', '10s')) * 15),
+                           float(attr('MinDistanceFromHarvester', '300')))
 
     def radius_of(self, tid):
         b = self.body_of(tid)
