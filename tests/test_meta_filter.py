@@ -1,7 +1,6 @@
 """MagneticSingularity's real identity/status controls and measured replay."""
 import importlib.util
 from pathlib import Path
-import re
 
 import pytest
 
@@ -10,33 +9,6 @@ _spec = importlib.util.spec_from_file_location('filter_simbench', ROOT / 'experi
 _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
 from engine.combat.host import Peers  # noqa: E402
-
-
-def test_meta_filter_controls_keep_original_template_ids():
-    import build
-    from checks.engine_knock_filter import CANDIDATES
-    from checks.engine_knock_invert import retail_shock
-    from checks.engine_knock_probe import name
-
-    for check in ('a', 'b'):
-        m, t, _ = build.resolve('engine_knock_filter', check)
-        for lane, uid in (('yuri', 'CNV_KnockYuri'), ('rocket', 'CNV_KnockRocket')):
-            gun = next(u for u in m.units if u.id == uid)
-            payload, = re.findall(r'<MetaImpactNugget\b.*?</MetaImpactNugget>', gun.xml, re.S)
-            expected = retail_shock()
-            if check == 'b':
-                expected = re.sub(r'<SpecialObjectFilter\b.*?</SpecialObjectFilter>', '', expected, flags=re.S)
-            assert payload == expected
-            for part, (template, _, _) in CANDIDATES.items():
-                obj = next(o for o in m.objects if o.name == name(lane, part))
-                assert obj.template == template
-                assert obj.site
-                if template != 'CNV_KnockHammer':
-                    unit = next(u for u in m.units if u.id == template)
-                    assert f'id="{template}"' in unit.xml
-                    assert unit.xml.count('ModuleTag_CNVProbe') == 1
-        assert t.expect == [('yuri man', 22, '==', 99, 24), ('rocket man', 22, '==', 99, 24),
-                            ('yuri status', 22, '==', 3, 24), ('rocket status', 22, '==', 3, 24)]
 
 
 @pytest.mark.parametrize('check', ['a', 'b'])

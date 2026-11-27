@@ -1,0 +1,14 @@
+# Bench readings of checks/engine_knock_filter.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Counters (check c): yuri home, rocket home -- 1 Hammer + 2 infantry + 4 near + 8 Tesla Trooper for each one still
+# on its spot (a 3 box).
+# yuri carries MagneticSingularityWeapon's MetaImpactNugget verbatim (inverted, Rule ALL Exclude AIRCRAFT INFANTRY,
+# IncludeThing Terror Drone / Tesla Trooper, StatusBitFlagsExclude UNDER_IRON_CURTAIN); rocket the same without the
+# filter. 'near' is an iron-curtained Hammer 80 east of the victim.
+
+[[reading]]
+id = "c_the_magnetic_singularity_pulls_the_hammer_and_tesla_trooper_not_infantry_or_the_iron_curtain"
+scene = {build = "engine_knock_filter", check = "c", until = 24, shot_clock = true}
+bench = "CampKFilterC_mcp_1126_230211 (11-26, A394, head cd21d5a8): 15 15 to s11.53, 6 0 from s12.0 to s27.2 -- as predicted (yuri: the infantry and the iron-curtained Hammer stay; rocket: all four pulled)"
+proves = "engine/data/units MetaImpact parse + engine/combat/meta_impact.launch: InvertShockWave pulls; SpecialObjectFilter Rule ALL Exclude AIRCRAFT INFANTRY with IncludeThing (Terror Drone, Tesla Trooper) over the kind exclusion, StatusBitFlagsExclude UNDER_IRON_CURTAIN rejects the iron-curtained Hammer; without the filter all four are pulled"
+item = "武器效果 MetaImpactNugget:磁暴反向筛选"
+expect = ["vals(rows)[-1] == [6, 0]", "vals(rows)[5] == [15, 15]"]

@@ -309,7 +309,7 @@ NOTES = {
     # review 1121nn: the readings stay (checks/engine_activate / _hitreaction_e), the main behavior not modelled
     (MODULE, 'Behaviors/HitReactionBehavior'): (GUESSED, '维和举盾那条已对拍：E172受击HIT_REACTION位、engine_hitreaction_r受击转向（背后挨打后转身，原版94/删模块83，读数checks/engine_hitreaction_e.readings.toml）；征召兵BITTEN/GoIdle那条和JapanEmperor的没量，idle判定和刷新时序INFERRED'),
     (NUGGET, 'TintObjectsNugget'): (NA, '纯表现：Color及Pre/Sustained/PostColorTime、Frequency/Amplitude仅控制染色动画；engine_tint pair实测2/90/2/90，独立DamageNugget解释全部伤害，test_simbench_c重放；不声称像素已验证'),
-    (NUGGET, 'MetaImpactNugget'): (TODO, '剩余复杂写法：延迟、Arc、飞机资格等；engine_knock_filter a/b两局99/99/3/3，原版每路4次冲击、删除筛选7次。tests/test_meta_filter.py具名回放地面派发/速度/铁锤落点：恐怖机器人和磁暴步兵显式包含越过INFANTRY，铁幕状态仍拒绝；飞机两局无冲击且缺逐帧高度/拒绝原因，完整消费者不晋升，见work/re/c_filter_report.md。engine_knock_invert水平反向回放已绿；engine_knock_objectgate a/b均99/99/1/0，保留ForbiddenTargetObjectStatus拒绝脚本LEECHED_TARGET_ACTIVE邻人、仅删字段后放行，tests/test_meta_objectgate.py具名回放派发/七帧路径；该隔离台移除Arc/模型条件/步兵过滤；engine_knock_kindgate a/b均99/99/11/0，保留INFANTRY子筛选及状态门时仅无位步兵邻人冲击，删子筛选后无位合成非步兵亦冲击，带位两邻人仍拒绝。tests/test_meta_kindgate.py具名回放派发/初速度和步兵七帧路径；合成非步兵落点网格轨迹strict xfail，原生吸血生命周期及Arc/模型条件组合仍gap，见work/re/c_kindgate_report.md；普通延迟只解析及隔离队列，Physics相位未解。ShockWaveSpeed/Cyclonic、非默认Physics、坡地及V4到达仍gap'),
+    (NUGGET, 'MetaImpactNugget'): (TODO, '原版写法都已切片（A394）；落在这里的是自定义武器的新写法：先上台量清再切（inventory.nugget_form_slice）'),
     (NUGGET, 'ParalyzeNugget'): (GUESSED, '部分：engine_emp phase实测PASS16051/31066/61096、hit1；engine_empfire a实测PASS901090/901100/901080/901090，失能窗口按令不开火、到期后新令恢复；仅无筛选EMP，其他类型/筛选/装填相位未验证'),
     (NUGGET, 'StripMaxHealthPercentNugget'): (GUESSED, '部分：engine_strip exact实测PASS95/45/74，4%满血/半血与25%满血按最大血量扣减；筛选、护甲倍率、无标记伤害形式未验证，最大血量不变仍推断'),
     # Weapon round 1: scope limitations retained; explicit replay register above sets the bench state.
@@ -725,6 +725,13 @@ def nugget_form_slice(ntype, forms, at_self=False):
                 and set(n.get('ForbiddenTargetModelCondition', '').split()) == {
                     'STUNNED', 'STUNNED_STANDING_UP', 'STUNNED_FLAILING'} for n in forms):
             return ':弹体爆心弧'
+        if all(set(n.attrib) <= allowed | {'InvertShockWave'} and n.get('InvertShockWave') == 'true' and len(n) == 1
+               and n[0].tag.rsplit('}', 1)[-1] == 'SpecialObjectFilter' and n[0].attrib == dict(
+                   Rule='ALL', Exclude='AIRCRAFT INFANTRY', StatusBitFlagsExclude='UNDER_IRON_CURTAIN')
+               and [(c.tag.rsplit('}', 1)[-1], (c.text or '').strip()) for c in n[0]] == [
+                   ('IncludeThing', 'SovietScoutVehicle'), ('IncludeThing', 'SovietHeavyAntiVehicleInfantry')]
+               for n in forms):
+            return ':磁暴反向筛选'
         if all(not list(n) and set(n.attrib) <= allowed | {'ShockWaveArc', 'ForbiddenTargetModelCondition'}
                and n.get('ForbiddenTargetModelCondition') == 'STUNNED_FLAILING' and n.get('ShockWaveArc') == '5d'
                for n in forms):
@@ -778,7 +785,8 @@ NUGGET_SCOPES = {
     'MetaImpactNugget:自身延迟': '仅DamageDealtAtSelfPosition的普通延迟写法（机甲王Omega）：开火帧入队，c+D+1帧在开火那刻射手脚下派发（射手自己不受）；engine_knock_selfd a 散弹去Arc加1.2s两路，命中帧92、ra3ext冲击全在111帧，射手命中后被传送150外的一路爆心仍是原位、计数与不动的一路相同。Omega原本由特殊能力（WeaponFireSpecialAbilityUpdate）开火，那条链、它的DamageSpeed 800伤害和射手死于延迟期间未量（gap）；逐帧离位晚2帧归A363散弹轨迹（mismatch读数）',
     'MetaImpactNugget:步兵筛选延迟': '仅百合子PsyonicBlast写法（延迟1s、Z8.5、ClearRadius false=默认、Rule NONE Include INFANTRY+排除NO_COLLISIONS）：engine_knock_psy a 弹体爆心，步兵邻人冲、零抗性锤子复制不冲，去筛选两者都冲（NONE+列表=只要列表）。原版是瞬发能力开火（engine_knock_probe retail 瞬发不冲），那条开火链、敌我关系、ClearRadius true 未量（gap）',
     'MetaImpactNugget:鬼王瞬发弧': '仅鬼王近战（DamageDealtAtSelfPosition、Arc135）/冲撞（JapanAntiVehicleVehicleTech3、EmperorMecha：无 at-self、Arc180、TaperOff1）的瞬发写法（LEECHED、三种眩晕、Rule ANY Include INFANTRY±ENEMIES）：engine_knock_oni a 两道冲击都在射手脚下（无at-self的瞬发也是），135d 时偏 82° 的人也冲（半角=Arc，不是Arc/2）；去冲撞的Damage500用近战武器做底。冲撞由特殊能力冲锋触发那条链、三种眩晕=飞行或倒地起身（INFERRED，如镰刀）、吸血状态原生生命周期、EmperorMecha的ENEMIES（按镰刀的关系筛选）未单独上台（gap）',
-    'MetaImpactNugget:弹体爆心弧': '仅神风弹头写法（Arc5、半径20、LEECHED、三种眩晕、无筛选）在弹体爆心：engine_knock_kami a V4 带原文，爆心的人和东12的邻人都不冲，只删Arc两人都冲（engine_knock_arc b 同：爆心、东20、后20都不冲）。弧轴未知，"冲不到地面上的人"是INFERRED；神风机本身俯冲撞击那条链、俯冲方向上的人未量（gap）',
+    'MetaImpactNugget:磁暴反向筛选': '仅磁暴奇点写法（InvertShockWave、Z0、Rule ALL Exclude AIRCRAFT INFANTRY、IncludeThing 恐怖机器人/磁暴步兵、排除UNDER_IRON_CURTAIN）在弹体爆心：engine_knock_filter c 原位计数，原文一路普通锤子和磁暴兵被吸走、步兵和铁幕锤子不动，去筛选一路四个都被吸走（a/b 的逐速度与落点回放 tests/test_meta_filter.py、反向 tests/test_meta_invert.py）。原版由磁暴卫星特殊能力（MagneticSatelliteEffect）开火那条链、飞机（两局都无冲击，拒绝原因未知）、铁幕原生生命周期未量（gap）',
+    'MetaImpactNugget:弹体爆心弧':'仅神风弹头写法（Arc5、半径20、LEECHED、三种眩晕、无筛选）在弹体爆心：engine_knock_kami a V4 带原文，爆心的人和东12的邻人都不冲，只删Arc两人都冲（engine_knock_arc b 同：爆心、东20、后20都不冲）。弧轴未知，"冲不到地面上的人"是INFERRED；神风机本身俯冲撞击那条链、俯冲方向上的人未量（gap）',
     'MetaImpactNugget:省略Z默认值':'仅普通无延迟弹头省略ShockWaveZMult→SDK默认1及默认Physics轨迹；engine_knock_z a高度93邻人14帧落(2420,3740)、目标99%/邻人100%。碰撞时刻/爆心为台上输入；直击噪声方向/网格/选人仍INFERRED，完整曲线弹/坡地/筛选未对拍',
     'AttachNugget:恐怖机器人近战': '仅原版恐怖机器人近战附着武器（AttachNugget筛选含Relationship/ExcludeThing）+原版完整AttachUpdate块（engine/modules/attach.py TERROR整块比对）；engine_attachterror a 14s 127/127/3/3、20s 127007/127000/3006/3002：附着后子ATTACHED/ENCLOSED/UNATTACKABLE、父VEHICLE_ATTACHED/BOOBY_TRAPPED，脚本杀父子随死，删Nugget不附着。派发时Range10不当门槛（台上在武器射程25外沿派发也附着；更近处是否卡未量，INFERRED）；子随父死按"父最后伤害者不是子"判（自己杀死父时不死INFERRED）；弹跳、无人驾驶脱离、父禁用状态致死、修理中拒绝未量（gap）',
     'AttachNugget:谭雅C4': '仅原版谭雅C4附着武器（Radius 1、StatusBitFlagsExclude并入禁用状态）+原版完整AttachUpdate块（engine/modules/attach.py C4整块比对）；engine_attachc4 a 11/10024/10030/10028、b（删ForbiddenParentStatus）11/10024/15/10028：附着后父MARCH_OF_DEATH、引爆炸死父、子活着脱离；父有EXPLOSIVES_ATTACHED时照样置MARCH_OF_DEATH但不链接；删Nugget不附着。地面车辆父 + 建筑父（engine_a1gate h：s1 的宫墙、电厂各被炸、谭雅留在旁边，乙末两位 66）；引爆武器的AttributeModifierNugget（父EXPLOSIVES_ATTACHED、谭雅EXPLOSIVES_DETONATING 20s）不建（台上父命中帧即死，从未读到该位）；Range 5、DETACH_WHEN_IDLE、铁幕/空中拒绝未量（gap）',

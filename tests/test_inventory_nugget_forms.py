@@ -76,7 +76,8 @@ def test_retail_nugget_partitions_conserve_uses_and_only_register_measured_forms
     by = {i['name']: i for i in xs}
     assert 'SovietAntiStructureVehicleV4RocketWarhead' in by['MetaImpactNugget:省略Z默认值']['weapon_ids']
     assert by['MetaImpactNugget:弹体爆心弧']['weapon_ids'] == ['JapanFinalSquadronAircraftKamikazeWarhead']
-    assert by['MetaImpactNugget']['weapon_ids'] == ['MagneticSingularityWeapon']
+    assert 'MetaImpactNugget' not in by          # every retail spelling has its slice (A394)
+    assert by['MetaImpactNugget:磁暴反向筛选']['weapon_ids'] == ['MagneticSingularityWeapon']
     assert by['MetaImpactNugget:步兵筛选延迟']['weapon_ids'] == ['JapanCommandoTech1PsyonicBlast']
     assert by['MetaImpactNugget:步兵筛选延迟']['state'] == inventory.BENCHED
     assert by['MetaImpactNugget:镰刀敌我筛选']['weapon_ids'] == ['SovietAntiInfantryVehicleLandWeapon']
