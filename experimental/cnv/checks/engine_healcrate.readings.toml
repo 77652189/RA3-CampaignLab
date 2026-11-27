@@ -97,3 +97,14 @@ Peacekeeper still ends on the crate and takes it, later than b (crate standing a
 script move neither carries it past the crate nor keeps the crate (a397_crate.md G1 c predicted the crate kept)"""
 expect = "rows[0]['箱子位'] == 15 and rows[-1]['箱子位'] == 14 and rows[-1]['On 兵血'] == 100 and rows[-1]['改令位'] == 3"
 mismatch = "The simulator executes no native click here: nobody moves, 15 0 50 50 throughout. Bench ends at 14 3 100 50."
+
+[[reading]]
+id = "right_clicking_an_attribute_crate_gives_its_modifier_and_takes_it"
+scene = {build = "engine_secretfile_e", check = "b", until = 18, script = "2 拾取 File mover switch 去 File switch"}
+item = "物体模块 Behaviors/AttributeCrateCollide"
+bench = """CampSecretFileB_mcp_1127_062800, counters (存活, 兵血, 盖): s3–s26.8 7 50 0; s40.47–s61.47 6 50 1. Frame 7 \
+(s24.8) the switch lane's Peacekeeper boxed, frame 8 (s38.2) the right click on secret file 1."""
+proves = """AttributeCrateCollide (RA3's): a right-click on secret file 1 takes it (存活 7 -> 6), its collector wears the \
+crate's modifier (USER_1, no Duration) to the end (盖 1: the other lanes' movers and both files never show it). The \
+file's HealCrateCollide does not run on that pickup: the collector, at 50%, stays at 50 (one pickup, one effect)"""
+expect = "any(r['存活'] == 7 for r in rows) and rows[-1]['存活'] == 6 and rows[-1]['盖'] == 1 and all(r['兵血'] == 50 for r in rows)"

@@ -151,6 +151,21 @@ def modify(world, b):
     for bit in sorted(e['status'] - own - ACTED_STATUS - ({'UNDER_IRON_CURTAIN'} if b.shielded else set())):
         world.gap(GAP_STATUS, bit, f'{b.template} 身上的修正 / 升级给的，只记下来')
 
+
+def crate_wear(world, b, crate, mid):
+    """AttributeCrateCollide (engine_secretfile_e b): the collector wears its crate's modifier (the crate's XML, else
+    retail) as an aura's, held for good without a Duration (bench: USER_1 to its end; its ModelConditionsSet only
+    benched, modify gaps what it does not act on; INFERRED: a Duration's end as the auras')."""
+    xml = world.xml_of(crate.template)
+    m = simunits.modifier(xml, mid)
+    if m is not None:
+        until = math.inf if m['frames'] is None else world.frame_now() + m['frames']
+        b.auras_on[mid] = (until, xml)
+        for c in m['conditions']:
+            b.model_conditions[c] = None if m['frames'] is None else until
+        modify(world, b)
+
+
 def aura_tick(world):
     """Once a tick before the fight: every living aura object's aura modules (interfaces.Aura, active, holding the bits it needs)
     hangs its modifier on what its filter takes within Range, centre to centre, once every RefreshDelay (the first
@@ -166,7 +181,8 @@ def aura_tick(world):
             a = aura.rules()
             if not a['mod'] or not a['active'] or not a['needs'] <= e.status:
                 continue
-            m = simunits.modifier(world.xml_of(e.template), a['mod'])
+            xml = world.xml_of(e.template)
+            m = simunits.modifier(xml, a['mod'])
             if m is None or not aura.pulse(now):
                 continue
             until = now + (m['frames'] or a['refresh'])
@@ -179,7 +195,7 @@ def aura_tick(world):
                 if world.relation(e.owner, t.owner) not in a['relation']:
                     continue
                 if inside is not None or math.hypot(t.x - e.x, t.y - e.y) <= a['range']:
-                    t.auras_on[a['mod']] = (until, world.xml_of(e.template))
+                    t.auras_on[a['mod']] = (until, xml)
     for b in live:
         if b.auras_on or b.base is not None:
             modify(world, b)

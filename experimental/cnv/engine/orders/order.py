@@ -24,6 +24,7 @@ import numpy as np
 
 import engine.data.units as simunits
 import engine.objects.locomotion as simlocomotion
+import engine.objects.modifier as simmodifier
 import engine.objects.path as simpath
 from engine.kernel import interfaces
 from engine.modules import locomotor, weaponset
@@ -184,10 +185,15 @@ def collect_crate_due(world, kernel, b, crate):
         def allied(recipient):
             return _relation(world, b, recipient) == 'ALLIES'
 
+        # One pickup, one effect (engine_secretfile_e b: the file's AttributeCrateCollide acts, its HealCrateCollide
+        # after it in the XML heals none). INFERRED: an attribute crate before a heal crate, not XML order
         collected = False
-        for effect in crate.find(interfaces.CrateCollect):
+        for effect in sorted(crate.find(interfaces.CrateCollect), key=lambda e: not e.worn()):
             if effect.collect(b, allied):
                 collected = True
+                if effect.worn():
+                    simmodifier.crate_wear(world, b, crate, effect.worn())
+                break
         if collected:
             kernel.remove(crate, '拾取医疗箱')
             stand(b)

@@ -395,12 +395,12 @@ class Infiltrators:
                 if not self.port_entry_measured(spy):
                     world.gap('InfiltratorContain', target.template, '港口入楼时资格变化未对拍')
                     continue
-                if world.frame_now() < self.module(target).blocked_until():
+                now = world.frame_now()
+                if now < self.module(target).blocked_until():
                     continue
                 # INFERRED: XML duration beyond the measured second-entry window;
                 # E201 observes blocking through 41s, not its distant expiry.
-                self.module(target).block(world.frame_now()
-                    + simunits._frames(simunits._secs(rule['BlockedDuration'])))
+                self.module(target).block(now + simunits._frames(simunits._secs(rule['BlockedDuration'])))
                 # INFERRED: attach local sight at accepted entry; exact activation
                 # phase/observer identity were not measured. Keep ordinary yards' delay.
                 self.observers.append((spy.owner, target, world.frame_now()))

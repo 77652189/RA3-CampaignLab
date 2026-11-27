@@ -251,9 +251,37 @@ def secret_files(m):
     return t
 
 
+def collect_file(m):
+    """b: a without the script moves -- r b's camera, box and crate pixel on secret file 1 (the switch lane): its
+    Peacekeeper (set to 50%) right-clicks the file. a's 经过 and 箱盖 traded for 盖 (recounted: lane k's mover shows
+    USER_1 2**k, file k's 8 * 2**k) and 兵血 (the collector's). Predicted from the clone: that file goes (存活 6), its
+    collector wears USER_1 and keeps it (盖 1; the modifier has no Duration), its HealCrateCollide fills him (兵血 100).
+    Measured (CampSecretFileB_mcp_1127_062800): 6 and 1 as predicted, 兵血 50 throughout -- the heal did not run."""
+    t = secret_files(m)
+    t.scripts = [s for s in t.scripts if not s.name.startswith(('Test - S8 file move', 'Test - file '))]
+    t.counters = [c for c in t.counters if c[0] not in ('FileCross', 'FileLid')]
+    x, y = m.site('switch gun')
+    man = m.role('switch mover').name
+    t.scripts += [Script('Test - file hurt', [], [('UNIT_SET_HEALTH', man, 50.0)]),
+                  Script('Test - file man', [], [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', man, 'FileMan')], once=False)]
+    t.counters.append(('FileMan', '兵血'))
+    s8.total(t, 'FileWear', '盖', [(2**k, ('UNIT_HAS_MODELCONDITION', m.role(lane + ' mover').name, 'USER_1'))
+                                   for k, (_, lane) in enumerate(SECRET_FILES)] +
+             [(8 * 2**k, ('UNIT_HAS_MODELCONDITION', 'File ' + lane, 'USER_1')) for k, (_, lane) in enumerate(SECRET_FILES[:2])])
+    t.waypoints['File view'] = (x, y)
+    s8.at(t, 'file view', 1., [('MOVE_CAMERA_TO', 'File view', 0.5, 0.0, 1.0, 1.0)])
+    run = t.bench[0][1]
+    t.bench = [('bench_watch', dict(run, seconds=2.0)), ('bench_view', dict(x=x, y=y, look=True)),
+               ('bench_box', dict(x0=x - 170, y0=y - 52, x1=x - 90, y1=y + 28, look=True)),
+               ('bench_click', dict(x=640, y=346, world=False, right=True, look=True)),
+               ('bench_watch', dict(run, seconds=run['seconds'] - 2.0))]
+    t.expect = [('存活', 0, 'ever==', 6), ('盖', 0, 'ever==', 1), ('兵血', 0, '==', 50)]
+    return t
+
+
 MISSION = {'engine_healcrate': mission, 'engine_healcrate_r': lambda: mission(True), 'engine_healcrate_h': hypotheses,
            'engine_healcrate_v': lambda: hypotheses(True), 'engine_secretfile_e': secret_files_mission}
 CHECKS = {'engine_healcrate': {'a': check, 'b': passed, 'c': ordered}, 'engine_healcrate_r': {'a': check, 'b': collect, 'c': recalled},
           'engine_healcrate_h': {'a': hyp_check}, 'engine_healcrate_v': {'a': hyp_check},
-          'engine_secretfile_e': {'a': secret_files}}
+          'engine_secretfile_e': {'a': secret_files, 'b': collect_file}}
 CONTROL_ARMS = {'engine_healcrate': ('On', 'Off')}

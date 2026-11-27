@@ -437,6 +437,10 @@ class CrateCollect(Interface):
     def collect(self, collector, allied):
         raise NotImplementedError
 
+    def worn(self):
+        """The AttributeModifier the collector takes (the order layer hangs it), None: none."""
+        return None
+
 
 class Production(Interface):
     __slots__ = ()
