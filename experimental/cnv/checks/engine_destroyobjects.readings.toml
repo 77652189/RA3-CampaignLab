@@ -1,0 +1,11 @@
+[[reading]]
+id = "athena_effect_removes_only_the_nearby_civilian_present_at_start"
+scene = {build = "engine_destroyobjects", check = "a", until = 13}
+bench = "E307 CampDestroyObjA_mcp_1127_150430: effects/alive/late at f83 = 0/15/0, f90 = 3/15/0, f98 = 3/14/0, f106–113 = 3/14/1 and f121–272 = 0/14/1."
+proves = "On a script-spawned Athena effect with both damage weapons removed, the stock 500 radius and civilian filter remove the initial civilian at 150. The 700-distance civilian, nearby engineer, no-module control and a new civilian spawned at 250 while the effect is alive survive. Other spawn paths, exact scan frame, range edge, ownership and death callbacks remain gaps."
+item = "物体模块 Behaviors/DestroyObjectsUpdate"
+expect = [
+    "win(3, 5, 'effects') == [0] * 3 and win(3, 5, 'alive') == [15] * 3 and win(3, 5, 'late') == [0] * 3",
+    "win(7, 7, 'effects') == [3] and win(7, 7, 'alive') == [14] and win(7, 7, 'late') == [1]",
+    "win(9, 12, 'effects') == [0] * 4 and win(9, 12, 'alive') == [14] * 4 and win(9, 12, 'late') == [1] * 4",
+]
