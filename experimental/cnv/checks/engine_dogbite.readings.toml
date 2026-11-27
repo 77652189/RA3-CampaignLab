@@ -61,3 +61,25 @@ scene = {build = "engine_dogbite", check = "b", until = 21}
 bench = "CampDogBiteB (11-26): 娜起落 31045, 31071 ... 31344 at s1-s21 -- the dog deleted by NAMED_DELETE once Natasha is hurt (frame 31): she never goes below 50 %, the 200 never lands"
 proves = "engine/combat/projectile.arrive: a pounce whose shooter (the shell) was deleted in the air lands nothing"
 expect = "all(v % 1000 > 60 for v in win(5, 20, '娜起落'))"
+
+# c (build engine_dogbite_c): the conscript's HitReactionBehavior (2 s, RequiredDeathTypes BITTEN, GoIdleWhenDamaged),
+# On a retail clone, Off the clone less the module; each walks 400 east through its dog, deleted the frame the leap's 1
+# hurts. 起应 = until hurt x 1000 + frames without HIT_REACTION; 长到 = frames with HIT_REACTION x 1000 + frames
+# outside the goal square. CampDogBiteCC (11-27, A396, head 2e6e49c0; work/bench_results/engine_dogbite_c__c.json):
+# s1 31031 14045 31045 45, s3 31038 30068 31068 68, s11-s21 原长到 30190 ... 30342, 删长到 167.
+
+[[reading]]
+id = "c_the_bitten_conscript_reacts_two_seconds"
+scene = {build = "engine_dogbite_c", check = "c", until = 21}
+bench = "CampDogBiteCC (11-27, A396): 原起应 31031 at s1 (hurt and HIT_REACTION the same frame 31), 原长到 // 1000 = 30 from s3 on; 删 the same leap, 删长到 // 1000 = 0 throughout"
+proves = "HitReactionBehavior RequiredDeathTypes BITTEN: the dog's leap (1 UNRESISTABLE, DeathType BITTEN) sets HIT_REACTION for HeavyDamageHitReactionLifeTimer 2 s; the module-less control never"
+mismatch = "sim: damage carries no DeathType and simunits.hit_reaction refuses RequiredDeathTypes / GoIdle -- 原长到 // 1000 = 0 as the control (sim both arms 37136 / 136 at s9: the leap 6 frames late, a's)"
+expect = ["all(v // 1000 == 30 for v in win(3, 20, '原长到'))", "all(v // 1000 == 0 for v in win(3, 20, '删长到'))"]
+
+[[reading]]
+id = "c_the_bitten_conscript_goes_idle"
+scene = {build = "engine_dogbite_c", check = "c", until = 21}
+bench = "CampDogBiteCC: 原长到 % 1000 grows to 342 at s21 (never in its goal square); 删长到 % 1000 = 167 from s11 (the control walks on once the 1.5 s stun ends)"
+proves = "HitReactionBehavior GoIdleWhenDamaged: a bitten conscript drops the walk it was told before the bite; without the module the walk takes hold after the stun"
+mismatch = "sim: the module refused for GoIdle (simunits.hit_reaction) -- the On arm walks on as the control (sim both 159 from s11)"
+expect = ["win(3, 20, '原长到')[-1] % 1000 > 300", "all(150 <= v % 1000 <= 185 for v in win(12, 20, '删长到'))"]

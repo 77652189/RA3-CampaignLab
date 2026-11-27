@@ -28,9 +28,24 @@ for good, she goes the moment it ends.
     untouched (the control). Counts as a: 征起死 (base), 娜起落 (high), 控起落 (order: Natasha < 100 % / < 50 %).
 Predicted (data): the landing is the dog's own weapon's warhead (HitStoredTarget), fired by nothing once the dog is
 gone -- 征死 / 娜落 run to the end; the control 31034 as a. The simulator: the queued 200 lands all the same.
+
+  c the conscript's HitReactionBehavior (HeavyDamageHitReactionLifeTimer 2 s, RotateToSourceWhenDamaged +
+    IgnoreIdleCheck, GoIdleWhenDamaged, RequiredDeathTypes BITTEN; handoff-e.md E248), build engine_dogbite_c: two
+    arms 300 apart, On a clone of the retail conscript, Off the same less its HitReactionBehavior. Each conscript (s1,
+    NO_ATTACK) is told at 2 s to walk 400 east, through its dog (p1, 200 east, told to attack it then); the frame the
+    leap's 1 (BITTEN) hurts it, its dog is deleted (b: a deleted dog lands nothing), so it lives on at 99. Counts, two
+    to a line as a: 起应 = until hurt x 1000 + until HIT_REACTION; 长到 = frames HIT_REACTION is on x 1000 + until
+    it is inside a 30 square at its goal.
+Predicted (data): On 应 = 起 (the 1 is BITTEN), 长 = 30 (2 s), 到 runs to the end (GoIdle drops the walk); Off 应
+runs to the end, 长 = 0, 到 = 起 + the 1.5 s stun + the walk left. The simulator: no death type on damage, the
+module refused for its RequiredDeathTypes / GoIdle -- both arms as Off. The facing is not read.
 """
+import re
+from pathlib import Path
+
+import labpaths
 from maps import probe_range
-from parts import Mission, Script, Test, square
+from parts import Mission, Script, Test, Unit, square, status
 
 DOG, CON, NAT = 'AlliedScoutInfantry', 'SovietAntiInfantryInfantry', 'SovietCommandoTech1'
 LANES = {'base': CON, 'high': NAT, 'order': NAT}
@@ -91,5 +106,45 @@ def air_check(m):
     return t
 
 
-MISSION = {'engine_dogbite': mission}
-CHECKS = {'engine_dogbite': {'a': bite_check, 'b': air_check}}
+def idle_mission():
+    m = Mission(name='CampDogBiteC', map=probe_range, units=[])
+    source = (Path(labpaths.SDK3) / 'SageXML/Soviet/Units/SovietAntiInfantryInfantry.xml').read_text(encoding='utf-8-sig')
+    for tag, dy in (('On', 0), ('Off', 300)):
+        ident = 'CNVDogC' + tag
+        xml = source.replace(f'id="{CON}"', f'id="{ident}"', 1)
+        for key, value in re.findall(r'<Define\s+name="([^"]+)"\s+value="([^"]+)"\s*/>', xml):
+            xml = xml.replace('$' + key, value)
+        xml = re.sub(r'<Defines>.*?</Defines>', '', xml, flags=re.S)
+        if tag == 'Off':
+            xml, n = re.subn(r'<HitReactionBehavior\b.*?/>', '', xml, flags=re.S)
+            assert n == 1
+        m.units.append(Unit(ident, xml))
+        m.put(ident, 'base gun', 0, dy, side='s1', role='prey ' + tag, name='Prey ' + tag)
+        m.put(DOG, 'base gun', GAP, dy, role='dog ' + tag, name='Dog ' + tag)
+        m.waypoint('goal ' + tag, 'Dog Goal ' + tag, 'base gun', 2 * GAP, dy)
+    return m
+
+
+def idle_check(m):
+    t = Test()
+    t.scripts = [Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1')), ('SET_MILLISECOND_TIMER', 'Dog go', 2.0)])]
+    for tag, label in (('On', '原'), ('Off', '删')):
+        prey, dog = 'Prey ' + tag, 'Dog ' + tag
+        reaction = ('UNIT_HAS_MODELCONDITION', prey, 'HIT_REACTION')
+        t.areas['Dog Goal ' + tag] = square(*m.point('goal ' + tag), 30.0)
+        t.scripts += [Script('Test - quiet ' + tag, [], [('UNIT_CHANGE_OBJECT_STATUS', prey, status('NO_ATTACK'), 1)]),
+                      Script('Test - go ' + tag, [('TIMER_EXPIRED', 'Dog go')],
+                             [('MOVE_NAMED_UNIT_TO', prey, 'Dog Goal ' + tag), ('NAMED_ATTACK_NAMED', dog, prey)]),
+                      Script('Test - delete ' + tag, [('UNIT_HEALTH', prey, 0, 100)], [('NAMED_DELETE', dog)]),
+                      _until('Dog up ' + tag, 1000, ('UNIT_HEALTH', prey, 3, 100)),
+                      _until('Dog up ' + tag, 1, reaction + ('NOT',)),
+                      _until('Dog on ' + tag, 1000, reaction),
+                      _until('Dog on ' + tag, 1, ('NAMED_INSIDE_AREA', prey, 'Dog Goal ' + tag) + ('NOT',))]
+        t.counters += [('Dog up ' + tag, label + '起应'), ('Dog on ' + tag, label + '长到')]
+    t.bench = [('bench_watch', dict(seconds=20, every=2, sheet=False, lines=4))]
+    return t
+
+
+MISSION = {'engine_dogbite': mission, 'engine_dogbite_c': idle_mission}
+CHECKS = {'engine_dogbite': {'a': bite_check, 'b': air_check}, 'engine_dogbite_c': {'c': idle_check}}
+CONTROL_ARMS = {'engine_dogbite_c': ('On', 'Off')}
