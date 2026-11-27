@@ -155,9 +155,10 @@ ON_SCENERY_AS_BENCHED = {'aibd0', 'aibd1', 'aibdidle', 'aibdwho', 'aibdpre',
                          # (4500, 2000) stand by an MR_Tree04 as benched (tests/fixtures/<build>_target_picks.txt,
                          # aiuab*_fight.txt, underattack_*_c.txt; moving them drops the readings)
                          'aiclosest', 'aicrateoff', 'aicrateon', 'aiegarroff', 'aiegarron', 'aigarroff', 'aigarron',
-                         'aihusknamed', 'aihusknone', 'aiuabl', 'aiuabw', 'aiuagate', 'aiunderatk',
-                         # B's EnterGarrisons house on a grass tuft as benched 11-09 (engine_aigarrison readings)
-                         'aigar1', 'aigar0', 'aigar1t'}
+                         'aihusknamed', 'aihusknone', 'aiuabl', 'aiuabw', 'aiuagate', 'aiunderatk'}
+
+# B's EnterGarrisons house on this grass tuft as benched 11-09 (engine_aigarrison readings).
+GARRISON_SCENERY_PAIR = ((3740.0, 2600.0), ('CC_GRASS06', 3733.2, 2598.6))
 
 
 # AllBuild and AllFlip were measured with the same six Hammers on this scenery.
@@ -212,16 +213,20 @@ def test_nothing_a_build_places_stands_on_scenery():
         grid = {}
         for o in scenery:
             grid.setdefault((int(o.x // 200), int(o.y // 200)), []).append(o)
-        points = [(o.template, o.x, o.y, o.template == 'SovietAntiVehicleVehicleTech1') for o in mm.objects]
+        points = [(o.template, o.x, o.y, True) for o in mm.objects]
         points += [(w, x, y, False) for w, (x, y) in mm.waypoints.items()]
-        for what, x, y, is_hammer in points:
+        for what, x, y, is_object in points:
             for i in range(int(x // 200) - 1, int(x // 200) + 2):
                 for j in range(int(y // 200) - 1, int(y // 200) + 2):
                     for o in grid.get((i, j), ()):
                         if ((o.x - x) ** 2 + (o.y - y) ** 2) ** 0.5 < platprops.radius(o.template) + 20:
                             pair = ((x, y), (o.template, o.x, o.y))
-                            if n in readings and is_hammer and pair in pinned_pairs:
+                            if (n in readings and is_object and what == 'SovietAntiVehicleVehicleTech1'
+                                    and pair in pinned_pairs):
                                 seen.add((n, c, pair))
+                                continue
+                            if (n in {'aigar1', 'aigar0', 'aigar1t'} and c in ('', 'a')
+                                    and is_object and what == 'AM_Apartments_01' and pair == GARRISON_SCENERY_PAIR):
                                 continue
                             bad.append(f'{n} {c}: {what} at ({x:.0f}, {y:.0f}) on {o.template} ({o.x:.0f}, {o.y:.0f})')
     assert not bad, '\n'.join(sorted(set(bad))[:20])
