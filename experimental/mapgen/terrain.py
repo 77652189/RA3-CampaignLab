@@ -10,7 +10,7 @@ import math
 
 import numpy as np
 
-from experimental.mapgen.design import LAND, DesignError
+from experimental.mapgen.design import LAND, DesignError, face_rings, point_in_ring
 from experimental.mapgen.campaign_writer import RAMP_MAX, mapterrain, newmap, rules
 from experimental.mapgen.library import CLIFF_STEP_RAW
 
@@ -61,6 +61,7 @@ class Ramp:
 class Water:
     points: tuple            # footprint includes the sloping banks
     level: int = 200         # all footprints on a plan use the map's global water level
+    islands: tuple = ()
 
 
 @dataclass(frozen=True)
@@ -135,6 +136,25 @@ def design_frame(sketch, ground, background_count, border):
     return DesignFrame(mask, bounds)
 
 
+def _design_water(sketch):
+    wet = {name for name, spec in sketch.blocks.items() if spec.get('kind') == 'water'}
+    # A line inside continuous water (e.g. the mouth of a port) is a design
+    # boundary only. Neither face should build a bank along it.
+    edges = {(a, b) if left in wet else (b, a)
+             for (a, b), (left, right) in sketch.sides.items() if (left in wet) != (right in wet)}
+    outer, other = face_rings(sorted(edges))
+    islands = {tuple(ring): [] for ring in outer if (ring[0], ring[1]) in edges}
+    for ring in other:
+        if (ring[0], ring[1]) in edges:
+            parent = next(rim for rim in islands if point_in_ring(ring[0], rim) == 1)
+            islands[parent].append(ring)
+
+    def points(ring):
+        return tuple(tuple(map(float, point)) for point in ring[:-1])
+
+    return tuple(Water(points(rim), islands=tuple(map(points, holes))) for rim, holes in islands.items())
+
+
 def from_design(sketch, plan, kit):
     """Lay out the v2 faces and explicit land openings using the measured cliff and ramp rules."""
     def depth(name):
@@ -143,10 +163,10 @@ def from_design(sketch, plan, kit):
 
     faces = {name: tuple(tuple(map(float, p)) for p in sketch.rings[name][:-1])
              for name in sorted(sketch.blocks, key=depth)}
-    blocks = tuple(Block(points, spec['height'], surface=Surface(name, spec['use'], kit, sketch.block_seed(name)))
+    blocks = tuple(Block(points, spec['height'],
+                         surface=Surface(name, spec['use'], spec.get('kit', kit), sketch.block_seed(name)))
                    for name, points in faces.items() if (spec := sketch.blocks[name]).get('kind') != 'water')
-    water = plan.water or tuple(Water(points) for name, points in faces.items()
-                                if sketch.blocks[name].get('kind') == 'water')
+    water = plan.water or _design_water(sketch)
     cliffs, ramps = [], []
     for border in sketch.borders:
         for (a, b), _, _ in sketch.border_edges[border]:
@@ -156,7 +176,8 @@ def from_design(sketch, plan, kit):
             diff = sketch.blocks[left]['height'] - sketch.blocks[right]['height']
             if diff and not plan.cliffs:
                 points = tuple(tuple(map(float, p)) for p in ((a, b) if diff > 0 else (b, a)))
-                cliffs.append(Cliff(*points, kit))
+                high = left if diff > 0 else right
+                cliffs.append(Cliff(*points, sketch.blocks[high].get('kit', kit)))
         if plan.ramps:
             continue
         sections = []
@@ -389,6 +410,10 @@ def expand(plan, library, width, height, border):
         if type(water.level) is not int or water.level < SUB_DEPTH:
             raise ValueError('water level must be a whole world height at least 70 above zero')
         area, edge = polygon_mask(water.points, x, y, distances=True)
+        for island in water.islands:
+            dry, distance = polygon_mask(island, x, y, distances=True)
+            area &= ~dry
+            np.minimum(edge, distance, out=edge)
         if np.any(np.isfinite(waterline[area])):
             raise ValueError('standing water footprints overlap')
         floor = math.floor((water.level - SUB_DEPTH) * rules.RAW_PER_WORLD)

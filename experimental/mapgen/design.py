@@ -168,7 +168,8 @@ def _angle(a, b):
     return (x < 0 or (x == 0 and y > 0), Fraction(y, x) if x else -math.inf)
 
 
-def _face_rings(edges):
+def face_rings(edges):
+    """Trace both sides of each noded edge, returning positive and other walks."""
     neighbors = defaultdict(list)
     for a, b in edges:
         neighbors[a].append(b)
@@ -278,14 +279,14 @@ class Design:
 
     def _read_blocks(self):
         edges = [edge for line in self.edges.values() for edge in line]
-        rings, outer_walks = _face_rings(edges)
+        rings, outer_walks = face_rings(edges)
 
         def containing(point):
             return next((i for i, ring in enumerate(rings) if point_in_ring(point, ring) == 1), None)
 
         names = {}
         for item, block in self.blocks.items():
-            _fields(block, item, "at height use", "parent kind seed protagonist")
+            _fields(block, item, "at height use", "parent kind seed protagonist kit")
             at = _xy(block["at"], item)
             _need(not any(on_segment(at, a, b) for a, b in edges), item, "enclosure", "at lies on a line")
             face = containing(at)
@@ -299,6 +300,8 @@ class Design:
                 _int(block["seed"], item, "seed")
             if "protagonist" in block:
                 _text(block["protagonist"], item, "protagonist")
+            if "kit" in block:
+                _text(block["kit"], item, "kit")
             if "parent" in block:
                 _ref(block["parent"], self.blocks, item, "parent")
         _need(rings, "$", "enclosure", "no enclosed faces")
@@ -334,6 +337,8 @@ class Design:
                 spec = self.blocks[parent]
                 self.blocks[item] = dict(use=spec["use"], height=spec["height"],
                                          kind=spec.get("kind", "land"))
+                if "kit" in spec:
+                    self.blocks[item]["kit"] = spec["kit"]
             else:
                 named = min(_visit(adjacent, item) & named_faces, default=None)
                 spec = self.blocks.get(named, {})

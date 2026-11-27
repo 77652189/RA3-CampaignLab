@@ -4,7 +4,7 @@ from dataclasses import asdict
 import numpy as np
 import pytest
 
-from experimental.mapgen import dressing
+from experimental.mapgen import build, dressing, paint
 from experimental.mapgen.buildings import Building, Foundation, Layout, Shape
 from experimental.mapgen.design import Design, DesignError
 from experimental.mapgen.roads import Roadbed
@@ -65,3 +65,41 @@ def test_busy_frontage_stops_at_its_budget(slice_inputs):
     assert counts['north', 'lane'] == (12, 12)
     assert counts['south', 'lane'] == (6, 6)
     assert sum(used for _, used in counts.values()) == len(result.pieces)
+
+
+def test_block_kit_selects_ground_buildings_and_scenery(tmp_path, monkeypatch):
+    monkeypatch.setattr(paint, 'ART', tmp_path)
+    monkeypatch.setattr(build.labpaths, 'SDK3', str(tmp_path))
+    (tmp_path / 'texture').touch()
+    sdk = tmp_path / 'SageXML'
+    sdk.mkdir()
+    shape = {'Type': 'CYLINDER', 'MajorRadius': 4}
+    library = {'kits': {}, 'texture_kits': {}, 'blocking': {}}
+    for kit, prefix, tile in (('Town', 'T', 'Grass_Heidelberg01'), ('Port', 'P', 'Grass_Port')):
+        house, tree = f'{prefix}_House', f'{prefix}_Tree'
+        source = f'{house}.xml'
+        (sdk / source).write_text(f'<AssetDeclaration><GameObject id="{house}"/></AssetDeclaration>')
+        library['texture_kits'][kit] = {'Grass': [{'id': tile, 'Texture': 'texture', 'BumpTexture': 'texture'}]}
+        library['kits'][f'{kit}_{prefix}'] = {
+            'buildings': [{'template': house, 'source': source, 'geometry': {'shapes': [shape], 'footprint': [shape]}}],
+            'props': [{'template': tree, 'geometry': {'shapes': [shape]}}], 'destructibles': [],
+        }
+        library['blocking'][tree.lower()] = {'cls': 'none'}
+    data = {
+        'version': 2,
+        'blocks': {
+            'town': {'height': 3, 'use': 'woodland', 'at': [400, 350], 'protagonist': 'T_House'},
+            'port': {'height': 3, 'use': 'woodland', 'at': [1150, 350], 'protagonist': 'P_House', 'kit': 'Port_P'},
+        },
+        'borders': {
+            'frame': {'line': [[0, 0], [1500, 0], [1500, 700], [0, 700], [0, 0]]},
+            'blocks': {'line': [[750, 0], [750, 700]]},
+        },
+    }
+    design_file, library_file = tmp_path / 'design.json', tmp_path / 'library.json'
+    design_file.write_text(json.dumps(data))
+    library_file.write_text(json.dumps(library))
+    result = build.build(design_file, library_file, kit='Town_T')
+    assert {piece.template for piece in result.scenery if piece.x > 750} == {'p_tree'}
+    assert dict(result.layout.blocks)['port'][0].template == 'P_House'
+    assert result.ground.textures[65, 145] == 'Grass_Port'

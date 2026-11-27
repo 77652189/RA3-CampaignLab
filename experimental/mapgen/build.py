@@ -77,8 +77,9 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
 
     A terrain-only plan has no design file. With a design, the plan's blocks
     supply the backdrop and the design faces define the playable ground. A
-    design uses kit for its surfaces and buildings, and road_kit for model
-    roads. Fronts gives measured civilian front angles in radians.
+    Design blocks can override the default kit for their surfaces, buildings
+    and scenery. Road_kit supplies model roads; fronts gives measured civilian
+    front angles in radians.
     """
     library = json.loads(Path(library_file).read_text(encoding='utf-8'))
     sketch = design.load(design_file) if design_file is not None else None
@@ -95,7 +96,7 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
         if road_kit is not None:
             roadbed = roads.expand(sketch, ground, border, road_kit)
         sage = Path(labpaths.SDK3) / 'SageXML'
-        kits = dict.fromkeys(sketch.blocks, kit)
+        kits = {name: spec.get('kit', kit) for name, spec in sketch.blocks.items()}
         layout = buildings.BuildingPlanner(sketch, ground, library, kits,
                                            fronts or {}, sage, border).lock()
     ground = paint.paint(plan, library, ground, roadbed)
