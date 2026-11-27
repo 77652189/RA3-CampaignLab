@@ -145,11 +145,14 @@ def paint_terrain(m, hm, tiles, seed=11):
     return paint_grid(tiles, grid)
 
 
-def paint_grid(tiles, grid, rank=None):
+def paint_grid(tiles, grid, rank=None, edge_texture=None):
     """Paint {(i, j): texture} and blend each cell's edge with the highest-ranked neighbouring texture above its
-    own (RANK order; textures not in it rank last). Returns ({texture: cells}, cells blended)."""
-    rank = rank or RANK
-    order = lambda t: rank.index(t) if t in rank else len(rank)      # noqa: E731
+    own (RANK order; textures not in it rank last). edge_texture may replace or suppress a neighbour's
+    material for a directed edge. Returns ({texture: cells}, cells blended)."""
+    ranks = {}
+    for name in rank or RANK:
+        ranks.setdefault(name, len(ranks))
+    order = lambda t: ranks.get(t, len(ranks))       # noqa: E731
     by_tex = {}
     for c, t in grid.items():
         by_tex.setdefault(t, []).append(c)
@@ -158,9 +161,13 @@ def paint_grid(tiles, grid, rank=None):
     blended = 0
     for (i, j), own in grid.items():
         near = {}
+        own_rank = order(own)
         for d, (di, dj) in tiles.STEP.items():
-            t = grid.get((i + di, j + dj))
-            if t and order(t) < order(own):
+            ni, nj = i + di, j + dj
+            t = grid.get((ni, nj))
+            if t and edge_texture is not None:
+                t = edge_texture(i, j, ni, nj, t)
+            if t and order(t) < own_rank:
                 near.setdefault(t, set()).add(d)
         if not near:
             continue

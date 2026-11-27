@@ -4,6 +4,7 @@ XY and water levels use world units. Block steps are absolute; a plane is in wor
 Cliff runs face left (high ground is on the left of the directed line). A ramp starts at its
 low landing and points uphill; the rise in steps determines its length. Blocks paint in order.
 """
+from collections.abc import Callable
 from dataclasses import dataclass
 import math
 
@@ -23,6 +24,7 @@ RAMP_LENGTH = 180
 SUB_DEPTH = 70              # WorldBuilder manual, docs/research/first-party.md
 SHORE_RISE = 4              # world units per cell: 6.4 writer units, below the ramp limit of 6.5
 VISIBLE = rules.FIELDS.index('visible')
+ON_SHORE = 2 * SHORE_RISE   # two bank cells' rise on each side of the waterline
 
 # These straight pieces have placement measurements from the 150 game probe.
 # The catalogue's adjacent-position medians (99/-13 and 119/-30) include hand placements.
@@ -30,10 +32,19 @@ _BENCHED = {'HB_CliffWall01': (100, -15), 'RM_CliffWall01_GRID': (120, -30)}
 
 
 @dataclass(frozen=True)
+class Surface:
+    id: str
+    use: str
+    kit: str
+    seed: int = 0
+
+
+@dataclass(frozen=True)
 class Block:
     points: tuple
     height: int | tuple      # whole steps, or (world Z at 0,0, rise per world X, rise per world Y)
     texture: str = 'Grass_Heidelberg01'
+    surface: Surface | None = None
 
 
 @dataclass(frozen=True)
@@ -85,6 +96,11 @@ class Ground:
     hidden: np.ndarray
     pieces: tuple
     issues: tuple
+    owners: np.ndarray
+    ramp: np.ndarray
+    shore: np.ndarray
+    rank: tuple = ()
+    edge_texture: Callable[[int, int, int, int, str], str | None] | None = None
 
 
 def _polygon(points, x, y, distances=False):
@@ -237,12 +253,13 @@ def expand(plan, library, width, height, border):
     y, x = (np.indices((height, width)) - border) * CELL
     raw = np.full(x.shape, _step(plan.base_steps), dtype=float)
     textures = np.full(x.shape, plan.ground, object)
+    owners = np.full(x.shape, -1, dtype=np.int32)
 
     def at(points):
         i, j = np.rint(np.asarray(points) / CELL).astype(int).T + border
         return np.clip(j, 0, height - 1), np.clip(i, 0, width - 1)
 
-    for block in plan.blocks:
+    for owner, block in enumerate(plan.blocks):
         mask = _polygon(block.points, x, y)
         if isinstance(block.height, tuple):
             z, dx, dy = block.height
@@ -252,6 +269,7 @@ def expand(plan, library, width, height, border):
         else:
             raw[mask] = _step(block.height)
         textures[mask] = block.texture
+        owners[mask] = owner
 
     base = raw.copy()
     ramps, ramp_mask = [], np.zeros(x.shape, bool)
@@ -314,7 +332,8 @@ def expand(plan, library, width, height, border):
     pieces, issues, cover = _cliffs(plan, library, base, at, x, y, ramps)
     if np.any(blocked & ramp_shoulders & ~ramp_mask & ~cover):
         issues += ('ramp sides: exposed steep cells outside the travel lane have no measured edge fitting',)
-    return Ground(raw, blocked, textures, cover & blocked, pieces, issues)
+    shore = np.abs(raw - waterline) <= ON_SHORE * rules.RAW_PER_WORLD
+    return Ground(raw, blocked, textures, cover & blocked, pieces, issues, owners, ramp_shoulders, shore)
 
 
 def apply(m, plan, ground):
@@ -330,13 +349,14 @@ def apply(m, plan, ground):
     for field, mask, value in ((rules.IMPASSABLE, ground.blocked, True), (VISIBLE, ground.hidden, False)):
         for j, i in zip(*np.nonzero(mask)):
             tiles.set_bit(field, int(i), int(j), value)
-    for name in sorted(set(ground.textures.ravel())):
+    for name in sorted(set(ground.textures.ravel()).union(ground.rank)):
         tiles.add_texture(name)
     tiles.arrays[3] = [0] * tiles.n
     if tiles.counts[2] != 1:
         raise ValueError('terrain container has custom cliff UVs')
+    rank = ground.rank or [plan.cliff, plan.shore, *dict.fromkeys(b.texture for b in plan.blocks), plan.ground]
     newmap.paint_grid(tiles, {(i, j): texture for (j, i), texture in np.ndenumerate(ground.textures)},
-                      [plan.cliff, plan.shore, *dict.fromkeys(b.texture for b in plan.blocks), plan.ground])
+                      rank, ground.edge_texture)
     tiles.store()
     points, level = (), 0
     if plan.water:
