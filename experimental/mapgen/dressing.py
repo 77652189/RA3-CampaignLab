@@ -1,6 +1,6 @@
 """Finish a locked layout with retail scenery. Terrain, road geometry and buildings stay fixed."""
 
-from collections import defaultdict, deque
+from collections import defaultdict
 from dataclasses import dataclass, replace
 import hashlib
 from itertools import pairwise
@@ -108,7 +108,8 @@ def _lanes(sketch, layout, roadbed):
 class Assets:
     def __init__(self, library, sage):
         self.library, self.sage = library, sage
-        self.entries, self.resolved = {}, {}
+        self.entries = {'orenode': {'source': 'Neutral/Structures/OreNode.xml'}}
+        self.resolved = {}
         for kit in library['kits'].values():
             for category in ('buildings', 'destructibles', 'props'):
                 for e in kit[category]:
@@ -127,8 +128,12 @@ class Assets:
             return None
         data = entry.get('geometry')
         if data is None:
-            src = self.sage / entry['source'].removeprefix('sdk/SageXML/')
-            obj = next(o for o in sdk_xml(src).iter('GameObject') if o.attrib['id'].casefold() == key)
+            src = self.sage / entry.get('source', '').removeprefix('sdk/SageXML/')
+            if not src.is_file():
+                return None
+            obj = next((o for o in sdk_xml(src).iter('GameObject') if o.attrib['id'].casefold() == key), None)
+            if obj is None:
+                return None
             data = {'shapes': [read_shape(node) for node in obj.findall('Geometry/Shape')],
                     'footprint': [read_shape(node) for node in obj.findall('Geometry/PlacementShape')]}
         shapes = geometry_shapes(data['shapes'])
@@ -142,15 +147,15 @@ class Assets:
     def posed(self, prop):
         asset = self.get(prop.template)
         if asset is None:
-            raise DesignError(prop.template, 'dressing', 'no verified SDK footprint and blocking class')
+            raise DesignError(prop.template, 'dressing',
+                              f'at ({prop.x:g}, {prop.y:g}): no verified SDK footprint and blocking class')
         placement, collision = (tuple(s.posed(prop.x, prop.y, prop.angle) for s in group)
                                 for group in (asset.placement, asset.collision))
         return Footprint(asset.blocking, placement, collision)
 
     def occupied(self, pieces):
-        return tuple(self.posed(p) for p in pieces
-                     if (asset := self.get(p.template)) is not None
-                     and (asset.placement or asset.blocking not in NO_PATH_BLOCK))
+        return tuple(asset for prop in pieces if
+                     (asset := self.posed(prop)).placement or asset.blocking not in NO_PATH_BLOCK)
 
     def palette(self, kit, words):
         entries = self.library['kits'][kit]
@@ -200,94 +205,12 @@ def _guard(prop, kind, shapes, lanes):
             raise DesignError(lane.name, 'dressing', f'{prop.template} at ({prop.x:g}, {prop.y:g}) enters lane {lane.name}')
 
 
-def check_lanes(sketch, roadbed, layout, pieces, library, sage):
-    """Validate final native placements. A lane infringement identifies the prop and lane."""
+def check_flanks(sketch, roadbed, layout, flanks, assets):
     lanes = tuple(_lanes(sketch, layout, roadbed))
-    assets = Assets(library, sage)
-    for prop in pieces:
+    for opening, prop in flanks:
         footprint = assets.posed(prop)
-        _guard(prop, footprint.blocking, _guard_shapes(footprint, prop), lanes)
-
-
-def _mask_shape(grid, shape, border):
-    x, y = shape.center[:2]
-    rx, ry = shape.support(1, 0) + CELL_PAD, shape.support(0, 1) + CELL_PAD
-    i, j = (max(0, math.ceil((p-r) / CELL) + border) for p, r in ((x, rx), (y, ry)))
-    k, l = (min(size, math.floor((p+r) / CELL) + border + 1)
-            for p, r, size in ((x, rx, grid.shape[1]), (y, ry, grid.shape[0])))
-    if k <= i or l <= j:
-        return False
-    j2, i2 = np.ogrid[j:l, i:k]
-    cells = shape.contains((i2 - border) * CELL, (j2 - border) * CELL, CELL_PAD)
-    window = grid[j:l, i:k]
-    changed = np.any(window & cells)
-    window &= ~cells
-    return changed
-
-
-def walkable(ground, roadbed, layout, border, fixed):
-    """Conservative grid for infantry and vehicles. Use a cell's full footprint."""
-    grid = (ground.raw > ground.waterline) & ~ground.blocked
-    if roadbed is not None and roadbed.bridges:
-        y, x = (np.indices(grid.shape) - border) * CELL
-        for bridge in roadbed.bridges:
-            grid |= bridge.mask(x, y)
-    for obj in (*fixed, *(b for _, group in layout.blocks for b in group)):
-        if obj.blocking not in NO_PATH_BLOCK:
-            for shape in obj.collision:
-                _mask_shape(grid, shape, border)
-    return grid
-
-
-def _distance(grid, start, end):
-    height, width = grid.shape
-    if any(not (0 <= y < height and 0 <= x < width and grid[y, x]) for y, x in (start, end)):
-        return None
-    queued = np.zeros_like(grid)
-    queued[start] = True
-    queue = deque([(*start, 0)])
-    while queue:
-        y, x, steps = queue.popleft()
-        if (y, x) == end:
-            return steps
-        for j, i in ((y-1, x), (y, x-1), (y, x+1), (y+1, x)):
-            if 0 <= j < height and 0 <= i < width and grid[j, i] and not queued[j, i]:
-                queued[j, i] = True
-                queue.append((j, i, steps + 1))
-    return None
-
-
-def _check_routes(finish, layout, pieces):
-    """A blocker can only remove cells. Keep each declared ground route's distance."""
-    sketch = finish.sketch
-    blockers = [(p, footprint.collision) for p, footprint in pieces
-                if footprint.blocking not in NO_PATH_BLOCK]
-    if not blockers:
-        return
-    endpoints = sketch.blocks | sketch.points
-    border = finish.border
-    routes = []
-    for name, rel in sketch.relations.items():
-        if rel.get('who') not in ('foot', 'vehicle', 'amphibian'):
-            continue
-        sources = ('a', 'b') if rel['type'] == '谁先到' else ('from',)
-        if 'to' not in rel:
-            continue
-        for source in sources:
-            routes.append((name, *(
-                tuple(round(v / CELL) + border for v in reversed(endpoints[rel[key]]['at']))
-                for key in (source, 'to')
-            )))
-    if not routes:
-        return
-    grid = walkable(finish.ground, finish.roadbed, layout, border, finish.fixed)
-    baseline = [_distance(grid, a, b) for _, a, b in routes]
-    for prop, shapes in blockers:
-        changed = [_mask_shape(grid, s, border) for s in shapes]
-        if any(changed):
-            for (name, a, b), old in zip(routes, baseline):
-                if _distance(grid, a, b) != old:
-                    raise DesignError(name, 'dressing', f'{prop.template} changes lane {name}')
+        other = (lane for lane in lanes if lane.name != opening)
+        _guard(prop, footprint.blocking, footprint.collision, other)
 
 
 def _group(group, at, angle, locked=False, depth=1.):
@@ -401,7 +324,7 @@ class _Finish:
             if self.fits(block, p):
                 self.texture[j + row, i + col] = name
 
-    def dressing(self, layout, flanks):
+    def dressing(self, flanks):
         slots = self.slots
         for name, patch in self.sketch.patches.items():
             slot = patch['slot']
@@ -417,7 +340,6 @@ class _Finish:
         posed = tuple((prop, self.assets.posed(prop)) for prop in slots.values())
         for prop, footprint in posed:
             _guard(prop, footprint.blocking, _guard_shapes(footprint, prop), self.lanes)
-        _check_routes(self, layout, posed)
         added = set(self.texture.flat) - set(self.ground.rank)
         ground = replace(self.ground, textures=self.texture, rank=(*self.ground.rank, *sorted(added)))
         return Dressing(ground, (*slots.values(), *flanks),
@@ -584,9 +506,6 @@ def expand(sketch, ground, roadbed, layout, library, kits, sage, border, frame=N
     """Place kit scenery after ground, roads, paint and building lock have been resolved."""
     assets = assets or Assets(library, sage)
     finish = _Finish(sketch, ground, roadbed, layout, assets, kits, border, frame, native)
-    for name, prop in flanks:
-        footprint = assets.posed(prop)
-        _guard(prop, footprint.blocking, footprint.collision, (lane for lane in finish.lanes if lane.name != name))
     edges = defaultdict(list)
     for border in sketch.borders:
         for section in sketch.border_sections(border):
@@ -621,4 +540,4 @@ def expand(sketch, ground, roadbed, layout, library, kits, sage, border, frame=N
             # A snow wood carries trees only, past the frame as inside it.
             _dress_frame(finish, block, () if spec['use'] == 'snow_woodland' else cover, trees,
                          Random(f'{sketch.block_seed(block)}:frame'))
-    return finish.dressing(layout, tuple(prop for _, prop in flanks))
+    return finish.dressing(tuple(prop for _, prop in flanks))

@@ -39,7 +39,7 @@ class Placement:
     y: float
     angle: float
     ports: tuple = ()
-    flags: int = 0
+    flags: int | None = 0
     side: str = 'civ'
     z: float = 0.
 

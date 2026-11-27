@@ -1,5 +1,6 @@
 """Write a design's native maps and its generated CNV map module."""
 
+from dataclasses import asdict
 from math import ceil, floor
 from pathlib import Path
 from pprint import pformat
@@ -29,15 +30,12 @@ class CampaignMap:
         self.BORDERS, self.STATE_BORDERS = borders, state_borders
         self.PATHS, self.STARTS = paths, starts
         self.FIELDS = []
-        for name, (pad, node, facing, base) in fields.items():
+        for pad, spec in fields.items():
             site = self.SITES[pad]
-            field = resources.Field(name, *site.at(), facing, twin=0, base=base,
-                                    owner='p1' if base else '', build=resources.PAD)
+            field = resources.Field(**spec)
             site.build = field.build
-            site.facing = resources.sites([field])[f'{name} refinery'].facing
-            self.SITES[node] = Site(*resources.nodes(field)[0], what=f'{name} ore')
+            site.facing = resources.sites([field])[f'{field.name} refinery'].facing
             self.FIELDS.append(field)
-        self.OBJECTS.extend(resources.objects(self.FIELDS))
         self.REGIONS = {name: tuple(square(*self.SITES[p['point']].at(), p['radius'])) if isinstance(p, dict)
                         else tuple(map(tuple, p)) for name, p in regions.items()}
         self._render = render
@@ -62,9 +60,11 @@ class CampaignMap:
         import newmap
         from mapscript import MapFile
 
+        atmosphere = newmap.read_atmosphere(m) if self._render is not None else None
         c18.c7.OWN_ATLAS = True
         c18.generate(m)
         if self._render is not None:
+            newmap.apply_atmosphere(m, atmosphere)
             c18.PREVIEWS.update(self._render(m))
         else:
             source = MapFile(self.game_file.read_bytes())
@@ -141,6 +141,8 @@ def _interface(built, padding):
     mission = sketch.mission
     points = {name: (tuple(p['at']), p.get('use', name)) for name, p in sketch.points.items()}
     points.update({name: (tuple(xy), name) for name, xy in mission.get('points', {}).items()})
+    for node, (_, field, placement) in built.ore.items():
+        points[node] = ((float(placement.x), float(placement.y)), f'{field.name} ore')
     starts = dict(mission.get('starts', {}))
     if 'Player_1_Start' in starts:
         for slot in ('InitialCameraPosition', 'Player_2_Start'):
@@ -159,9 +161,8 @@ def _interface(built, padding):
             raise DesignError(name, 'garrison', f'{block} already exported as {named[key]}')
         named[key] = name
     objects = [(p.template, float(p.x), float(p.y), p.side, named.get((p.template, p.x, p.y), ''),
-                float(p.angle), int(p.flags), float(p.z)) for p in built.placements()]
-    fields = {name: (f['pad'], f['node'], f['facing'], f.get('base', ''))
-              for name, f in mission.get('ore', {}).items()}
+                float(p.angle), None if p.flags is None else int(p.flags), float(p.z)) for p in built.placements()]
+    fields = {pad: asdict(field) for pad, field, _ in built.ore.values()}
     regions = {name: dict(sorted(p.items())) if isinstance(p, dict) else p
                for name, p in mission.get('regions', {}).items()}
     return dict(points=points, objects=objects, regions=regions, borders=borders, state_borders=states,

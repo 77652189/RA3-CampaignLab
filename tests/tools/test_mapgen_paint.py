@@ -114,6 +114,22 @@ def test_named_snow_skips_its_unused_palette(sample):
     assert ground.textures[15, 15] == 'Snow_Iceland03'
 
 
+def test_named_ramp_shoulder_skips_its_unused_palette(sample):
+    plan, library = sample
+    town, = plan.blocks[:1]
+    tile = dict(Texture='surface.tga', BumpTexture='surface.tga')
+    library['texture_kits']['Heidelberg'] = {
+        kind: [dict(tile, id=name)] for kind, name in
+        [('Snow', 'Snow_Iceland03'), ('Dirt', 'Dirt_Test'), ('Cliff', 'Cliff_Test')]}
+    surface = replace(town.surface, use='park', ground_texture='Snow_Iceland03')
+    plan = replace(plan, ground='Snow_Iceland03', blocks=(
+        terrain.Block(_rect(0, 0, 600, 300), 3, surface=surface),
+        terrain.Block(_rect(0, 310, 600, 600), 4, surface=replace(surface, id='high')),
+    ), ramps=(terrain.Ramp((300, 210), (0, 1), 1, 180),))
+    _, ground = _build(plan, library)
+    assert ground.ramp_edges[30, 40] and ground.textures[30, 40] == 'Snow_Iceland03'
+
+
 def test_writer_blends_final_dressed_material(sample, monkeypatch):
     plan, library = sample
     from experimental.mapgen.roads import Roadbed

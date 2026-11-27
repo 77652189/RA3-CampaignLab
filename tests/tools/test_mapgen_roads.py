@@ -67,9 +67,13 @@ def test_road_to_frame_derives_apron_grade_without_opening_the_backdrop(tmp_path
         return [dict(id=name, Texture='surface.tga', BumpTexture='surface.tga')]
 
     library = tmp_path / 'library.json'
+    # Both the full and half street mesh have an SDK bound and no placement shape or path blockage.
+    models = ('HV_StreetSegment09', 'HV_StreetSegment17')
+    geometry = {'shapes': [{'Type': 'BOX', 'MajorRadius': 60, 'MinorRadius': 60, 'Height': 5}]}
     library.write_text(json.dumps({
-        'kits': {KIT: {'buildings': [], 'destructibles': [], 'props': []}},
-        'blocking': {},
+        'kits': {KIT: {'buildings': [], 'destructibles': [],
+                       'props': [dict(template=name, geometry=geometry) for name in models]}},
+        'blocking': {name.casefold(): {'cls': 'none'} for name in models},
         'texture_kits': {
             'Heidelberg': {'Grass': material('Grass_Heidelberg01'), 'Road': material('Pavement_Heidelberg10')},
             'Gibraltar': {'Cliff': material('Cliff_Gibraltar1')},

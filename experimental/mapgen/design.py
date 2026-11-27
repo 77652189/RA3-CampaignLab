@@ -414,6 +414,10 @@ class Design:
             if "pass" in border:
                 self.base_pass[item] = _pass(border["pass"], item)
             self.base_pass.update({sid: span[2] for sid, span in self.spans[item].items()})
+            for _, _, left, right, section in self.border_sections(item):
+                if left and right and self.medium(left) == self.medium(right) == WATER:
+                    _need("ship" in self.base_pass.get(section, WATER), section, "pass",
+                          "a border in continuous water cannot close ship passage; use a shore or hold an order")
         self.base_pass.update(dict.fromkeys(self.roads, LAND))
 
     def _named_opening(self, spec, name):

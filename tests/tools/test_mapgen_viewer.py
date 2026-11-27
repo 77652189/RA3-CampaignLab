@@ -3,7 +3,7 @@ from experimental.mapgen.build import MapBuild
 from experimental.mapgen.buildings import Layout
 from experimental.mapgen.campaign_writer import CONTAINER
 from experimental.mapgen.design import Design
-from experimental.mappage.viewer import write_viewer
+from experimental.mappage.viewer import write_preview, write_viewer
 
 
 def test_failed_relation_has_a_place_in_a_repeatable_view(tmp_path):
@@ -51,3 +51,27 @@ def test_route_witness_is_drawn_at_its_own_location(tmp_path):
                  bounds=(300, 200, 700, 600), retail_label='Example')
     assert '<circle class="witness" cx="200" cy="300"' in (tmp_path / 'index.html').read_text(encoding='utf-8')
     assert '(500, 300) 航道水深 25' in (tmp_path / 'summary.md').read_text(encoding='utf-8')
+
+
+def test_preview_displays_known_terrain_diagnostics(tmp_path):
+    from dataclasses import replace
+
+    sketch = Design({
+        'version': 2, 'blocks': {'low': {'height': 3, 'use': 'park', 'at': [200, 150]},
+                                 'high': {'height': 4, 'use': 'park', 'at': [200, 250]}},
+        'borders': {'frame': {'line': [[100, 100], [300, 100], [300, 300], [100, 300], [100, 100]]},
+                    'wall': {'line': [[100, 200], [300, 200]], 'closed_reason': 'cliff'}},
+        'relations': {'closed': {'type': '通不通', 'from': 'low', 'to': 'high',
+                                 'who': 'vehicle', 'reachable': False}},
+    })
+    border = CONTAINER[2]
+    plan = terrain.from_design(sketch, terrain.TerrainPlan(), 'test')
+    ground = terrain.expand(plan, {'kits': {}}, 95, 95, border)
+    frame = terrain.design_frame(sketch, ground, 0, border)
+    ground = replace(frame.close(ground), issues=('inspect the <shoulder>',))
+    built = MapBuild(plan, ground, None, Layout(()), sketch, frame, (), level='sketch')
+    assert built.check_relations()['closed'].status == 'pass'
+    write_preview(tmp_path, built, title='Example')
+    for file, shoulder in (('index.html', 'inspect the &lt;shoulder&gt;'), ('summary.md', ground.issues[0])):
+        output = (tmp_path / file).read_text(encoding='utf-8')
+        assert ground.errors[0] in output and shoulder in output

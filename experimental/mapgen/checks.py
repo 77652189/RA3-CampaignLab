@@ -11,7 +11,7 @@ from scipy.ndimage import label
 
 from experimental.mapgen.buildings import FOOT_ONLY_BLOCK, NO_PATH_BLOCK, Shape, TOWN
 from experimental.mapgen.campaign_writer import rules
-from experimental.mapgen.design import ROAD_WIDTH, ROUTING_CELL
+from experimental.mapgen.design import ROAD_WIDTH, ROUTING_CELL, DesignError
 from experimental.mapgen.roads import crosses_water, unpainted_roads
 from experimental.mapgen.terrain import CELL, polygon_mask, strip_mask
 
@@ -231,12 +231,12 @@ class _Grid:
         return Witness(name, self.world(cell),
                        f'航道水深 {depth[cell] / rules.RAW_PER_WORLD:g}，舰艇需要 {SHIP_DEPTH:g}')
 
-    def length(self, who, source, goal, via=None):
-        """Route distances only for a race or detour, using weighted diagonal grid legs."""
+    def length(self, who, source, goal, via=None, *, without=()):
+        """Route distance using weighted diagonal grid legs."""
         from skimage.graph import MCP_Geometric
 
         best = inf
-        for grid, (start, end) in self.route_layers(who, (source, goal)):
+        for grid, (start, end) in self.route_layers(who, (source, goal), without):
             search = MCP_Geometric(np.where(grid, ROUTING_CELL, np.inf))
             if via is None:
                 value = search.find_costs([end], [start])[0][start]
@@ -319,6 +319,21 @@ class _Grid:
                 and all(square.gap(s) >= 0 for obj in self.occupants for s in obj.placement))
 
 
+def _route_values(grid, rel, *, distances=False):
+    who, goal = rel['who'], rel['to']
+    if rel['type'] == '谁先到':
+        return tuple(grid.length(who, rel[start], goal) for start in ('a', 'b'))
+    start = rel['from']
+    if rel['type'] == '绕多远':
+        return grid.length(who, start, goal), grid.length(who, start, goal, rel['via'])
+    paths = (rel['without'],) if 'without' in rel else ()
+    measure = grid.length if distances else grid.reachable
+    values = (measure(who, start, goal, without=paths),)
+    if 'only_via' in rel:
+        values += (measure(who, start, goal, without=(*paths, rel['only_via'])),)
+    return values
+
+
 def _answer(grid, rel, held):
     kind = rel['type']
     who = rel.get('who')
@@ -339,10 +354,9 @@ def _answer(grid, rel, held):
             sentence = f'{order} 航令：{sentence}' if who == 'ship' else f'{order} 行动命令：{sentence}'
         if held:
             return not expected, sentence, places, f'在 {rel["state"]} 状态放行 {order}。'
-        without = (avoid,) if avoid else ()
         if grid is None:
             return False, sentence, places, ''
-        connected = grid.reachable(who, a, b, without)
+        connected, *bypass = _route_values(grid, rel)
         if connected != expected:
             if expected and avoid and not only:
                 choice = f'在 {a} 到 {b} 之间留一条绕开 {avoid} 的{unit}路线。'
@@ -353,18 +367,16 @@ def _answer(grid, rel, held):
             else:
                 choice = f'在 {a} 和 {b} 之间延长崖壁或岸线，封上这条{unit}能走的路。'
             return False, sentence, places, choice
-        bypass = only and grid.reachable(who, a, b, (*without, only))
-        return not bypass, sentence, places, f'封住绕开 {only} 的口子，让{unit}只能从那里通过。'
+        return not any(bypass), sentence, places, f'封住绕开 {only} 的口子，让{unit}只能从那里通过。'
     if kind == '谁先到':
         a, b, goal, lead = rel['a'], rel['b'], rel['to'], rel['min_lead']
-        left, right = (grid.length(who, start, goal) if grid else inf for start in (a, b))
+        left, right = _route_values(grid, rel) if grid else (inf, inf)
         return (isfinite(left) and isfinite(right) and right - left >= lead,
                 f'{unit}从 {a} 去 {goal} 比从 {b} 至少近 {lead:g}', (a, b, goal),
                 f'让两边都能到 {goal}，再把 {a} 的入口移近或让 {b} 的来路绕过一段界。')
     if kind == '绕多远':
         via, extra = rel['via'], rel['max_extra']
-        best = grid.length(who, a, b) if grid else inf
-        detour = grid.length(who, a, b, via) if grid else inf
+        best, detour = _route_values(grid, rel) if grid else (inf, inf)
         return (isfinite(detour) and detour - best <= extra,
                 f'{unit}从 {a} 经 {via} 到 {b} 多走不超过 {extra:g}', (a, via, b),
                 f'把 {via} 的出入口移向 {a} 到 {b} 的主通路，或移开绕路上的阻挡。')
@@ -416,6 +428,27 @@ def _requires_layout(grid, rel, dependencies):
     return ''
 
 
+def _unexpanded(sketch, state):
+    return any(table[state] != table['base'] for table in (sketch.state_pass, sketch.state_heights, sketch.playable))
+
+
+def check_dressing_routes(sketch, ground, roadbed, layout, border, frame, before, after):
+    if not any(p.blocking not in NO_PATH_BLOCK for p in after[len(before):]):
+        return
+    routes = {}
+    for name, rel in sketch.relations.items():
+        state = rel.get('state', 'base')
+        if 'who' in rel and not _unexpanded(sketch, state) and not sketch.order_held(state, rel.get('order')):
+            routes[name] = rel
+    if not routes:
+        return
+    grids = tuple(_Grid(sketch, ground, roadbed, layout, border, frame, occupied) for occupied in (before, after))
+    for name, rel in routes.items():
+        old, new = (_route_values(grid, rel, distances=True) for grid in grids)
+        if not np.allclose(old, new, rtol=0, atol=1e-9):
+            raise DesignError(name, 'dressing', f'scenery changes lane {name}')
+
+
 def evaluate(sketch, ground, roadbed, layout, border, frame, footprints=(), *, sketch_only=False,
              has_road_kit=False):
     """Answer named orders and check open routes on the exported geometry."""
@@ -429,7 +462,7 @@ def evaluate(sketch, ground, roadbed, layout, border, frame, footprints=(), *, s
         held = sketch.order_held(state, relation.get('order'))
         pending = ''
         if not held:
-            if any(table[state] != table['base'] for table in (sketch.state_pass, sketch.state_heights, sketch.playable)):
+            if _unexpanded(sketch, state):
                 pending = f'先把 {state} 的过口、水位或可玩区变动展开成可检查的地图。'
             elif dependencies is not None:
                 pending = _requires_layout(grid, relation, dependencies)

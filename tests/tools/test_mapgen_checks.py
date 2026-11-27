@@ -1,5 +1,6 @@
 from dataclasses import replace
 import json
+from pathlib import Path
 from xml.etree import ElementTree
 
 import pytest
@@ -339,6 +340,85 @@ def test_handwritten_ramp_keeps_other_design_opening():
     sketch = Design(data)
     west, east = terrain.from_design(sketch, terrain.TerrainPlan(), 'test').ramps
     assert terrain.from_design(sketch, terrain.TerrainPlan(ramps=(west,)), 'test').ramps == (west, east)
+
+
+def test_handwritten_ramp_shoulder_cannot_enter_closed_frame():
+    data = _split_design(passage={'pass': [], 'closed_reason': 'sealed'})
+    data['borders']['frame']['line'] = [[200, 100], [1000, 100], [1000, 800], [200, 800], [200, 100]]
+    data['borders']['wall']['line'][0][0] = 200
+    sketch = Design(data)
+    scenery = tuple(terrain.Block(((0, y), (200, y), (200, y + 400), (0, y + 400)), h)
+                    for y, h in ((0, 3), (400, 4)))
+    with pytest.raises(ValueError, match='ramp.*outside the playable frame'):
+        terrain.from_design(sketch, terrain.TerrainPlan(
+            blocks=scenery, ramps=(terrain.Ramp((160, 310), (0, 1), 1, 180),)), 'test')
+
+
+def test_closed_water_border_is_rejected():
+    data = _split_design(height=3, passage={'pass': []})
+    for block in data['blocks'].values():
+        block['kind'] = 'water'
+    with pytest.raises(ValueError, match='wall.*continuous water'):
+        Design(data)
+
+
+def test_implicit_opening_id_is_documented_and_inherits_the_border_state():
+    data = _split_design()
+    data['blocks']['south']['at'] = [400, 200]
+    data['blocks']['north']['at'] = [600, 600]
+    data['roads'] = {'street': {'line': [[500, 0], [500, 800]], 'width': 'street'}}
+    data['states'] = {'closed': {'pass': {'street': [], 'wall': []}}}
+    sketch = Design(data)
+    opening, = sketch.spans['wall']
+    assert opening == 'wall.road-street' and opening in sketch.via_ids
+    assert sketch.base_pass[opening] and not sketch.state_pass['closed'][opening]
+    format_doc = Path(__file__).resolve().parents[2] / 'docs/mapgen/format.md'
+    instructions = format_doc.read_text(encoding='utf-8')
+    assert 'wall.road-street' in instructions and '显式过口保留自己的通行声明' in instructions
+
+
+def test_layout_rejects_flank_touching_a_nearby_road(tmp_path, monkeypatch):
+    monkeypatch.setattr(builder, 'CONTAINER', (111, 91, 5))
+    data = _split_design(height=3, passage={'pass': [], 'segments': {
+        'foot': {'from': 'toe', 'to': 'top', 'footpath': 'T_Rock'}}})
+    data['points'] = {'toe': {'block': 'south', 'at': [500, 200]},
+                      'top': {'block': 'north', 'at': [500, 600]}}
+    for block in data['blocks'].values():
+        block['ground_texture'] = 'Grass_Heidelberg01'
+    data['roads'] = {'lane': {'line': [[350, 430], [650, 430]], 'width': 'street',
+                              'ends': ['start', 'end']}}
+    shape = {'Type': 'BOX', 'MajorRadius': 20, 'MinorRadius': 20, 'Height': 30}
+    library = {'kits': {'Test_T': {'buildings': [], 'destructibles': [], 'props': [
+        {'template': 'T_Rock', 'geometry': {'shapes': [shape]}}]}},
+        'blocking': {'t_rock': {'cls': 'rockbig'}}}
+    catalogue, source = tmp_path / 'library.json', tmp_path / 'design.json'
+    catalogue.write_text(json.dumps(library))
+    source.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match='T_Rock.*enters lane lane'):
+        builder.build(source, catalogue, kit='Test_T', level='layout')
+
+
+def test_missing_native_footprint_stops_layout(tmp_path, monkeypatch):
+    monkeypatch.setattr(builder, 'CONTAINER', (111, 91, 5))
+    data = _split_design(passage={'closed_reason': 'sealed'})
+    data['points'] = {'room': {'block': 'north', 'at': [55, 440]}}
+    data['relations'] = {'space': {'type': '放得下', 'point': 'room', 'side': 10}}
+    shape = {'Type': 'BOX', 'MajorRadius': 14, 'MinorRadius': 14, 'Height': 30}
+    library = {'kits': {'Test_T': {'buildings': [], 'destructibles': [], 'props': [
+        {'template': 'T_Cliff', 'geometry': {'shapes': [shape]}}], 'cliffs': [
+        dict(template='T_Cliff', height_steps=1, samples=16, length=100, offset_y=-40)]}},
+        'blocking': {}}
+    catalogue, source = tmp_path / 'library.json', tmp_path / 'design.json'
+    source.write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
+
+    def answer():
+        catalogue.write_text(json.dumps(library))
+        return builder.build(source, catalogue, kit='Test_T', level='layout').check_relations()['space']
+
+    with pytest.raises(ValueError, match='T_Cliff.*no verified SDK footprint and blocking class'):
+        answer()
+    library['blocking']['t_cliff'] = {'cls': 'all'}
+    assert answer().status == 'fail'
 
 
 def test_net_room_counts_a_solid_flank():

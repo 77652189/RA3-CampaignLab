@@ -57,6 +57,10 @@ class Ramp:
     steps: int
     width: float
 
+    @property
+    def half_shoulders(self):
+        return self.width / 2 + CELL
+
 
 @dataclass(frozen=True)
 class Quay:
@@ -345,8 +349,7 @@ def from_design(sketch, plan, kit):
             inferred.append(cliff)
     for ramp in plan.ramps:
         if ramp not in ramps:
-            high = np.add(ramp.low, unit_direction(ramp.uphill) * RAMP_LENGTH * ramp.steps)
-            if _enters_design(sketch, ramp.low, high):
+            if _ramp_enters_design(sketch, ramp):
                 raise DesignError('$', 'ramp', f'{ramp.low} must match a design ramp or lie outside the playable frame')
             ramps.append(ramp)
     return replace(plan, blocks=(*plan.blocks, *blocks), water=plan.water or water, quays=(*plan.quays, *quays),
@@ -369,6 +372,20 @@ def _enters_design(sketch, a, b):
             t = (vx * uy - vy * ux) / cross
             u = (vx * dy - vy * dx) / cross
             if 0 < t < 1 and 0 < u < 1:
+                return True
+    return False
+
+
+def _ramp_enters_design(sketch, ramp):
+    uphill = unit_direction(ramp.uphill)
+    run = RAMP_LENGTH * ramp.steps
+    center = tuple(np.add(ramp.low, uphill * (run / 2)))
+    if any(point_in_ring(center, ring) >= 0 for ring in sketch.rings.values()):
+        return True
+    for (a, b), faces in sketch.sides.items():
+        if None in faces:
+            overlap = _ramp_cut(a, np.subtract(b, a), ramp, uphill, run, ends=CELL)
+            if overlap is not None and overlap[0] <= 1 and overlap[1] >= 0:
                 return True
     return False
 
@@ -415,20 +432,20 @@ def _step(value):
     return value * CLIFF_STEP_RAW
 
 
-def _ramp_cut(start, tangent, ramp, uphill, run):
-    """Interval along a cliff line inside the ramp and its one-cell shoulders."""
+def _ramp_cut(start, tangent, ramp, uphill, run, *, ends=0):
+    """Interval along a line inside the ramp shoulders, with optional landing length."""
     along, cross = strip_coordinates(*start, ramp.low, uphill)
     da, dc = strip_coordinates(*tangent, (0, 0), uphill)
-    half = ramp.width / 2 + CELL
+    half = ramp.half_shoulders
     begin, end = -math.inf, math.inf
-    for pos, rate, low, high in ((along, da, 0, run), (cross, dc, -half, half)):
+    for pos, rate, low, high in ((along, da, -ends, run + ends), (cross, dc, -half, half)):
         if abs(rate) < 1e-10:
             if not low <= pos <= high:
                 return None
         else:
             a, b = sorted(((low - pos) / rate, (high - pos) / rate))
             begin, end = max(begin, a), min(end, b)
-    return (begin, end) if begin < end else None
+    return (begin, end) if begin <= end else None
 
 
 def _straight(library, kit, steps):
@@ -477,7 +494,7 @@ def _cliffs(plan, library, base, at, x, y, ramps):
         spans = [(0., length)]
         for ramp, uphill, run in ramps:
             cut = _ramp_cut(a, tangent, ramp, uphill, run)
-            if cut is None:
+            if cut is None or cut[0] == cut[1]:
                 continue
             lo, hi = cut
             spans = [(p, q) for start, end in spans
@@ -668,7 +685,7 @@ def expand(plan, library, width, height, border):
         along, cross = strip_coordinates(x, y, ramp.low, uphill)
         core = abs(cross) <= ramp.width / 2
         on = (along >= 0) & (along <= run)
-        pad = abs(cross) <= ramp.width / 2 + CELL
+        pad = abs(cross) <= ramp.half_shoulders
         shoulder = on & pad
         low = (along >= -CELL) & (along <= 0) & pad
         high = (along >= run) & (along <= run + CELL) & pad

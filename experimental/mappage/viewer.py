@@ -287,9 +287,16 @@ def _write_viewer(directory, title, sketch, answers, bounds, retail_label=None, 
             f'<figcaption>原厂对照 · {escape(retail_label)}</figcaption></figure>'
         )
     buildings = []
+    diagnostics = []
     built_label = '生成图'
     if built is not None:
         built_label = {'sketch': '地形草图', 'layout': '布局', 'full': '成图布局'}[built.level]
+        for title_text, messages, role in (('地形错误', built.ground.errors, 'alert'),
+                                            ('地形提示', built.ground.issues, 'status')):
+            if messages:
+                report.extend(['', f'## {title_text}', '', *(f'- {msg}' for msg in messages)])
+                items = ''.join(f'<li>{escape(msg)}</li>' for msg in messages)
+                diagnostics.append(f'<section role="{role}"><h3>{title_text}</h3><ul>{items}</ul></section>')
         for _, group in built.layout.blocks:
             for b in group:
                 x, y = maprender.north_up(b.x, b.y, north)
@@ -302,7 +309,7 @@ def _write_viewer(directory, title, sketch, answers, bounds, retail_label=None, 
         ice_key='<span class="key ice-key">河冰</span>' if any(b['use'] == 'ice' for b in sketch.blocks.values()) else '',
         width=f'{width:g}', height=f'{height:g}', scale=scale, scale_percent=f'{scale_percent:g}',
         definitions=definitions, design_layer=layer, highlights=''.join(highlights),
-        relations=''.join(rows) or '<p>这张设计没有声明关系。</p>',
+        relations=''.join(diagnostics) + (''.join(rows) or '<p>这张设计没有声明关系。</p>'),
         bench=('<section><h2>实机截图</h2><div class="gallery">' + ''.join(gallery) + '</div></section>')
         if gallery else '',
     )

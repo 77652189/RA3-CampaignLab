@@ -77,6 +77,7 @@ def paint(plan, library, ground, roadbed=None):
     for owner, surface in enumerate([*surfaces, None]):
         mask = ground.owners == (owner if surface else -1)
         label, kit, kind = backdrop, ground_kit, ground_class
+        named_texture = None
         if surface:
             label = surface.id
             kit = texture_kit(surface.kit)
@@ -89,7 +90,8 @@ def paint(plan, library, ground, roadbed=None):
                 entry = catalogue.get(surface.ground_texture)
                 if entry is None:
                     raise ValueError(f'block {label}: missing texture {surface.ground_texture}')
-                textures[mask] = _asset(label, entry[2])
+                named_texture = _asset(label, entry[2])
+                textures[mask] = named_texture
             else:
                 rng = Random(f'{label}:{surface.seed}')
                 winter = WINTER_SURFACES.get(surface.use)
@@ -120,9 +122,10 @@ def paint(plan, library, ground, roadbed=None):
                     ramp_material = name
         shoulder = mask & ground.ramp_edges & ~ground.hidden
         if shoulder.any():
-            name, = _palette(kits, kit, 'Dirt' if kind == 'Dirt' else 'Grass', label,
-                             Random(f'{kit}:ramp verge'), 1)
-            textures[shoulder] = surface.ground_texture if surface and surface.ground_texture else name
+            if named_texture is None:
+                named_texture, = _palette(kits, kit, 'Dirt' if kind == 'Dirt' else 'Grass', label,
+                                          Random(f'{kit}:ramp verge'), 1)
+            textures[shoulder] = named_texture
 
     road_material = asphalt = None
     if roadbed is not None and roadbed.paved.any():

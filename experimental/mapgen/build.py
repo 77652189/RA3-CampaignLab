@@ -22,6 +22,7 @@ class MapBuild:
     scenery_slots: dict[str, terrain.Piece] = field(default_factory=dict)
     level: str = 'full'
     has_road_kit: bool = False
+    ore: dict = field(default_factory=dict)  # node ID -> (pad ID, field, native placement)
 
     @property
     def border_index(self):
@@ -48,6 +49,8 @@ class MapBuild:
                 yield roads.Placement(piece.template, piece.x, piece.y, piece.angle)
         for piece in self.scenery:
             yield roads.Placement(piece.template, piece.x, piece.y, piece.angle)
+        for _, _, placement in self.ore.values():
+            yield placement
 
     def apply_terrain(self, m):
         """Fill the ground and atmosphere for the shared game/editor map."""
@@ -83,7 +86,7 @@ class MapBuild:
         objects = next(node for _, node in m.walk() if node.name == 'ObjectsList').kids
         for piece in self.placements():
             owner = 'PlyrNeutral' if piece.side == 'neutral' else 'PlyrCivilian'
-            objects.append(newmap.object_node(m, {}, piece.flags, piece.template, piece.x, piece.y,
+            objects.append(newmap.object_node(m, {}, piece.flags or 0, piece.template, piece.x, piece.y,
                                              z=piece.z, angle=piece.angle, originalOwner=f'{owner}/team{owner}',
                                              uniqueID=f'{piece.template} {len(objects)}'))
         answers = self.check_relations()
@@ -118,6 +121,25 @@ def retail_atmosphere(mood, library):
         raise design.DesignError('$.commitments', 'mood',
                                  f'{mood!r}: expected one retail mood in the library, found {len(matches)}')
     return deepcopy(matches[0]['atmosphere'])
+
+
+def _ore(sketch):
+    fields = sketch.mission.get('ore', {})
+    if not fields:
+        return {}
+    from experimental.cnv import build as cnv  # noqa: F401 (initialize the campaign imports)
+    import resources
+
+    points = {name: p['at'] for name, p in sketch.points.items()} | sketch.mission.get('points', {})
+    nodes = {}
+    for name, spec in fields.items():
+        pad, base = spec['pad'], spec.get('base', '')
+        field = resources.Field(name, *points[pad], spec['facing'], twin=0, base=base,
+                                owner='p1' if base else '', build=resources.PAD)
+        obj, = resources.objects((field,))
+        nodes[spec['node']] = (pad, field, roads.Placement(obj.template, obj.x, obj.y, obj.angle,
+                                                          flags=obj.flags, side=obj.side))
+    return nodes
 
 
 def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, road_kit=None, fronts=None,
@@ -156,22 +178,26 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
     ground = terrain.expand(plan, catalogue, *CONTAINER)
     layout, roadbed = buildings.Layout(()), None
     frame, scenery, footprints, slots = None, (), (), {}
+    ore = {}
     if sketch is not None:
         sage = Path(labpaths.SDK3) / 'SageXML'
         assets = dressing.Assets(catalogue, sage)
-        if level == 'sketch':
-            footprints = assets.occupied(ground.pieces)
-        else:
+        ore = _ore(sketch)
+        native = (*ground.pieces, *(placement for _, _, placement in ore.values()))
+        if level != 'sketch':
             if road_kit is not None:
                 roadbed = roads.expand(sketch, ground, border, road_kit)
+                # The road markers and bridge generators are already represented by Roadbed.
+                native += tuple(p for p in roadbed.placements if p.side != 'road' and p.template != roads.BRIDGE_TEMPLATE)
             kits = {name: spec.get('kit', kit) for name, spec in sketch.blocks.items()}
             flanks = tuple(dressing.footpath_flanks(sketch, assets))
             scenery = tuple(prop for _, prop in flanks)
-            native = (*ground.pieces, *(roadbed.placements if roadbed else ()), *scenery)
-            footprints = assets.occupied(native)
+        footprints = assets.occupied((*native, *scenery))
+        if level != 'sketch':
             obstacles = tuple(s for obj in footprints for s in obj.placement + obj.collision)
             layout = buildings.BuildingPlanner(sketch, ground, catalogue, kits, fronts or {}, sage, border,
                                                obstacles).lock()
+            dressing.check_flanks(sketch, roadbed, layout, flanks, assets)
     if level == 'full':
         ground = paint.paint(plan, catalogue, ground, roadbed)
     if sketch is not None:
@@ -181,6 +207,8 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
         if level == 'full':
             dressed = dressing.expand(sketch, ground, roadbed, layout, catalogue, kits, sage, border, frame,
                                        assets=assets, native=footprints, flanks=flanks)
+            checks.check_dressing_routes(sketch, ground, roadbed, layout, border, frame,
+                                         footprints, dressed.footprints)
             ground, scenery, footprints, slots = dressed.ground, dressed.pieces, dressed.footprints, dressed.slots
     return MapBuild(plan, ground, roadbed, layout, sketch, frame, scenery, atmosphere, footprints, slots,
-                    level, road_kit is not None)
+                    level, road_kit is not None, ore)

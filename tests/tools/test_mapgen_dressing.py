@@ -1,5 +1,6 @@
 import json
 from dataclasses import asdict
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -54,9 +55,11 @@ def test_locked_building_and_output_bytes(slice_inputs):
 
 
 def test_prop_on_lane_names_prop_and_lane(slice_inputs):
-    sketch, _, roads, layout, library, _, sage, _ = slice_inputs
-    with pytest.raises(DesignError, match=r'T_Wall.*enters lane lane'):
-        dressing.check_lanes(sketch, roads, layout, [Piece('T_Wall', 200, 250, 0)], library, sage)
+    sketch, *args = slice_inputs
+    slot, prop = next(iter(dressing.expand(sketch, *args).slots.items()))
+    data = sketch.data | {'patches': {'shift': {'op': 'move', 'slot': slot, 'at': [200, 250]}}}
+    with pytest.raises(DesignError, match=rf'{prop.template}.*enters lane lane'):
+        dressing.expand(Design(data), *args)
 
 
 def test_busy_frontage_stops_at_its_budget(slice_inputs):
@@ -248,3 +251,36 @@ def test_patches_apply_to_the_written_scenery_slots(slice_inputs):
     assert after.slots[move].angle == b.angle and after.slots[swap].template == 'T_Bush'
     assert (after.slots[swap].x, after.slots[swap].y) == (c.x, c.y)
     assert tuple(after.slots.values()) == after.pieces
+    format_doc = Path(__file__).resolve().parents[2] / 'docs/mapgen/format.md'
+    assert '带补丁的全量构建中，`built.scenery_slots` 反映补丁执行后的摆放' in format_doc.read_text(encoding='utf-8')
+
+
+def test_dressing_cannot_change_weighted_race_distance(tmp_path, monkeypatch):
+    monkeypatch.setattr(build, 'CONTAINER', (111, 91, 5))
+    monkeypatch.setattr(paint, 'ART', tmp_path)
+    (tmp_path / 'tile').touch()
+    shape = {'Type': 'BOX', 'MajorRadius': 4, 'MinorRadius': 4, 'Height': 30}
+    library = {'kits': {'Test_T': {'buildings': [], 'destructibles': [], 'props': [
+        {'template': 'T_Tree', 'geometry': {'shapes': [shape]}},
+        {'template': 'T_Block', 'geometry': {'shapes': [shape | {'MajorRadius': 40, 'MinorRadius': 40}]}},
+    ]}}, 'blocking': {'t_tree': {'cls': 'none'}, 't_block': {'cls': 'all'}},
+        'texture_kits': {'Test': {'Grass': [
+            {'id': 'Grass_Heidelberg01', 'Texture': 'tile', 'BumpTexture': 'tile'}]}}}
+    data = {'version': 2, 'blocks': {'yard': {'at': [510, 410], 'height': 3, 'use': 'wildland'}},
+            'borders': {'rim': {'line': [[0, 0], [1000, 0], [1000, 800], [0, 800], [0, 0]]}}}
+    catalogue, source = tmp_path / 'library.json', tmp_path / 'design.json'
+    catalogue.write_text(json.dumps(library))
+
+    def make(level='full'):
+        source.write_text(json.dumps(data), encoding='utf-8')
+        return build.build(source, catalogue, kit='Test_T', level=level)
+
+    slot = next(iter(make().scenery_slots))
+    data['points'] = {name: {'at': at, 'block': 'yard'}
+                      for name, at in [('a', [500, 220]), ('b', [500, 120]), ('goal', [820, 540])]}
+    data['relations'] = {'race': {'type': '谁先到', 'a': 'a', 'b': 'b', 'to': 'goal',
+                                  'who': 'vehicle', 'min_lead': 90}}
+    data['patches'] = {'block': {'op': 'replace', 'slot': slot, 'with': 'T_Block'}}
+    assert make('layout').check_relations()['race'].status == 'pass'
+    with pytest.raises(DesignError, match='race.*changes lane race'):
+        make()
