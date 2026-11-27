@@ -307,7 +307,6 @@ NOTES = {
     # review 1121nn: the readings stay (checks/engine_activate / _hitreaction_e), the main behavior not modelled
     (MODULE, 'Behaviors/HitReactionBehavior'): (GUESSED, '维和举盾那条已对拍：E172受击HIT_REACTION位、engine_hitreaction_r受击转向（背后挨打后转身，原版94/删模块83，读数checks/engine_hitreaction_e.readings.toml）；征召兵BITTEN/GoIdle那条和JapanEmperor的没量，idle判定和刷新时序INFERRED'),
     (NUGGET, 'TintObjectsNugget'): (NA, '纯表现：Color及Pre/Sustained/PostColorTime、Frequency/Amplitude仅控制染色动画；engine_tint pair实测2/90/2/90，独立DamageNugget解释全部伤害，test_simbench_c重放；不声称像素已验证'),
-    (NUGGET, 'MetaImpactNugget'): (TODO, '原版写法都已切片（A394）；落在这里的是自定义武器的新写法：先上台量清再切（inventory.nugget_form_slice）'),
     (NUGGET, 'ParalyzeNugget'): (GUESSED, '部分：engine_emp phase实测PASS16051/31066/61096、hit1；engine_empfire a实测PASS901090/901100/901080/901090，失能窗口按令不开火、到期后新令恢复；仅无筛选EMP，其他类型/筛选/装填相位未验证'),
     (NUGGET, 'StripMaxHealthPercentNugget'): (GUESSED, '部分：engine_strip exact实测PASS95/45/74，4%满血/半血与25%满血按最大血量扣减；筛选、护甲倍率、无标记伤害形式未验证，最大血量不变仍推断'),
     # Weapon round 1: scope limitations retained; explicit replay register above sets the bench state.
