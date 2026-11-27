@@ -143,7 +143,8 @@ def _blend_mask(px, direction, flags, two_sided):
 
 
 def render(m, out, px=4, around=None, bench_view=False, water=newmap.WATERLINE, title=None, plain=False,
-           models=False):
+           models=False, *, bounds=None):
+    """Render north-up. An explicit world rectangle preserves its scale and extent, padding outside the map."""
     hm = mapterrain.HeightMap(m)
     tiles = mapterrain.Tiles(m, hm.width)
     tex = _Textures(tiles, px)
@@ -187,10 +188,7 @@ def render(m, out, px=4, around=None, bench_view=False, water=newmap.WATERLINE, 
 
     drawn = set()
     if models:                                  # the objects' retail models, rendered once (mapsprite.py)
-        import importlib.util
-        spec = importlib.util.spec_from_file_location('mapsprite', os.path.join(HERE, 'mapsprite.py'))
-        mapsprite = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mapsprite)
+        from experimental.campaign import mapsprite
         pic, drawn = mapsprite.composite(pic, mapxml.objects(m), at, s)
     d = ImageDraw.Draw(pic, 'RGBA')
 
@@ -243,7 +241,12 @@ def render(m, out, px=4, around=None, bench_view=False, water=newmap.WATERLINE, 
         corners = [calib.screen_to_world(u, v) for u, v in ((0, 0), (1280, 0), (1280, 720), (0, 720))]
         d.polygon([at(x, y) for x, y in corners], outline=(255, 255, 255, 230))
         d.text(at(*corners[0]), 'bench start view', fill=(255, 255, 255, 230), font=small)
-    if around:
+    if bounds is not None:
+        west, south, east, north = bounds
+        box = (*at(west, north), *at(east, south))
+        pic = pic.crop(tuple(round(v) for v in box))
+        d = ImageDraw.Draw(pic, 'RGBA')
+    elif around:
         x, y, r = around
         x0, y0 = at(x - r, y + r)
         x1, y1 = at(x + r, y - r)
