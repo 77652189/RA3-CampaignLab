@@ -1,5 +1,5 @@
-"""HealCrateCollide for the retail human-player pickup (engine_healcrate_r a/b); AttributeCrateCollide
-(engine_secretfile_e b) on the same pickup, its modifier hung by the order layer (CrateCollect.worn).
+"""Crate effects on a human player's pickup: heal (engine_healcrate_r b), attribute modifier
+(engine_secretfile_e b, hung by the order layer) and cash (engine_moneycrate_e a).
 
 ObjectFilter selects recipients. The bench backs fully healing nearby units of the collector's owner and
 excluding a nearby enemy. INFERRED: centre-to-centre healing range, the exact collision shape/timing and
@@ -68,3 +68,24 @@ class AttributeCrate(module.Module, interfaces.CrateCollect):
 
     def worn(self):
         return self.data.modifier
+
+
+class MoneyCrateData(module.ModuleData):
+    def __init__(self, amount):
+        self.amount = amount
+
+    @classmethod
+    def parse(cls, head, inner):
+        return cls(templates.num(templates.attr(head, 'MoneyProvided')))
+
+
+@factory.module('MoneyCrateCollide')
+class MoneyCrate(module.Module, interfaces.CrateCollect):
+    DATA = MoneyCrateData
+
+    def collect(self, collector, allied):
+        if not _collecting(self, collector):
+            return False
+        # INFERRED: a pickup pays directly, bypassing income sharing and the money cap.
+        self.world.pay(collector, self.data.amount)
+        return True

@@ -151,7 +151,7 @@ class World:
         self._remove(thing, why)
 
     def pay(self, thing, amount):
-        """A module pays its thing's holder (AutoDepositUpdate): the host's money -- today simmoney.Money.deposit
+        """A module pays the owner of a thing (deposit building or crate collector): the host's money -- Money.deposit
         (the neutral side paid nothing). A world with no host pays nobody."""
         if self._pay is None:
             raise RuntimeError(f'World.pay({thing.name!r}): this world has no host to pay with')

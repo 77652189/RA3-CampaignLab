@@ -195,7 +195,7 @@ def collect_crate_due(world, kernel, b, crate):
                     simmodifier.crate_wear(world, b, crate, effect.worn())
                 break
         if collected:
-            kernel.remove(crate, '拾取医疗箱')
+            kernel.remove(crate, '拾取箱子')
             stand(b)
 
 

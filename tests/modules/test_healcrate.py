@@ -2,7 +2,7 @@
 
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
 import engine.testing.small as simsmall  # noqa: E402
-from engine.modules.healcrate import AttributeCrate, HealCrate  # noqa: E402
+from engine.modules.healcrate import AttributeCrate, HealCrate, MoneyCrate  # noqa: E402
 
 
 def test_heal_crate_collide_respects_range_and_owner():
@@ -33,3 +33,19 @@ def test_attribute_crate_collide_takes_only_the_unit_collecting_it():   # Attrib
     man.goal = crate
     assert effect.collect(man, None)
     assert effect.worn() is None        # retail's AttributeCrate names no modifier
+
+
+def test_money_crate_collide_pays_the_registered_collector():   # MoneyCrateCollide
+    s = simsmall.small_world([('crate', 'MoneyCrate', 'PlyrCivilian', 1360.0, 1450.0),
+                              ('man', 'AlliedAntiInfantryInfantry', 'Player_1', 1365.0, 1450.0)], model=False)
+    crate, man = s.bodies['crate'], s.bodies['man']
+    effect, = crate.find(MoneyCrate)
+    before = s.wallet.money.copy()
+
+    assert not effect.collect(man, None)
+    assert s.wallet.money == before
+
+    man.mode, man.goal = 'collect_crate', crate
+    assert effect.collect(man, None)
+    before[man.owner] += 1000
+    assert s.wallet.money == before

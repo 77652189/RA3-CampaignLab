@@ -108,3 +108,16 @@ proves = """AttributeCrateCollide (RA3's): a right-click on secret file 1 takes 
 crate's modifier (USER_1, no Duration) to the end (盖 1: the other lanes' movers and both files never show it). The \
 file's HealCrateCollide does not run on that pickup: the collector, at 50%, stays at 50 (one pickup, one effect)"""
 expect = "any(r['存活'] == 7 for r in rows) and rows[-1]['存活'] == 6 and rows[-1]['盖'] == 1 and all(r['兵血'] == 50 for r in rows)"
+
+[[reading]]
+id = "right_clicking_the_retail_money_crate_pays_once"
+scene = {build = "engine_moneycrate_e", check = "a", until = 16, script = "6 拾取 switch man 去 switch cash"}
+item = "物体模块 Behaviors/MoneyCrateCollide"
+bench = """CampMoneyCrateA_mcp_1127_073035, counters (箱位, 过点, 玩家资金, 对手资金): \
+s3.07–4.13 3/0/0/0; s4.6–26.6 3/1/0/0; s40.27–63.4 2/1/1000/0."""
+proves = """A Peacekeeper crossing a retail MoneyCrate's centre by script leaves both crates standing and pays nothing. \
+Right-clicking the other, identical crate takes it and adds MoneyProvided (1000) once to the collector's owner. \
+The control crate and the other player's balance remain unchanged. Replay checks the observed states, with no click-time claim."""
+expect = """any(r['箱位'] == 3 and r['过点'] == 1 for r in rows) and \
+all(r['对手资金'] == 0 and (r['箱位'], r['玩家资金']) in ((3, 0), (2, 1000)) for r in rows) and \
+rows[-1]['箱位'] == 2 and rows[-1]['过点'] == 1"""

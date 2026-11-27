@@ -279,9 +279,54 @@ def collect_file(m):
     return t
 
 
+def money_mission():
+    m = Mission(name='CampMoneyCrate', map=probe_range, units=[])
+    m.ext = True
+    for lane in ('switch', 'low'):
+        m.put('MoneyCrate', lane + ' gun', side='neutral', role=lane + ' cash', name=lane + ' cash')
+        m.put(MAN, lane + ' gun', -130, side='p1', role=lane + ' man', name=lane + ' man')
+    return m
+
+
+def money_pickup(m):
+    """Retail MoneyProvided=1000. Predict the clicked crate pays p1 once and disappears.
+    A script move across the identical control crate leaves it standing and pays nothing."""
+    t = Test()
+    p1, s2 = m.player('p1'), m.player('s2')
+    x, y = m.site('switch gun')
+    low_x, low_y = m.site('low gun')
+    walker = m.role('low man').name
+    t.waypoints.update({'Cash view': (x, y), 'Cash goal': (low_x + 130, low_y)})
+    t.areas['Cash crossing'] = square(low_x, low_y, 12)
+    t.scripts.extend([
+        Script('Test - Cash start', [], [('PLAYER_SET_MONEY', p1, 0), ('PLAYER_SET_MONEY', s2, 0),
+                                        ('MAP_REVEAL_ALL_PERM', p1)]),
+        Script('Test - Cash crossing', [('NAMED_INSIDE_AREA', walker, 'Cash crossing')],
+               [('SET_COUNTER', 'CashCross', 1)]),
+    ])
+    s8.at(t, 'cash view', 1., [('MOVE_CAMERA_TO', 'Cash view', 0.5, 0.0, 1.0, 1.0)])
+    s8.at(t, 'cash move', 2., [('MOVE_NAMED_UNIT_TO', walker, 'Cash goal')])
+    s8.total(t, 'CashLive', '箱位', [(2**k, ('NAMED_NOT_DESTROYED', m.role(lane + ' cash').name))
+                                   for k, lane in enumerate(('switch', 'low'))])
+    t.counters.append(('CashCross', '过点'))
+    for player, label, counter in ((p1, '玩家资金', 'CashOwn'), (s2, '对手资金', 'CashOther')):
+        t.counters.append((counter, label))
+        t.scripts.append(Script(f'Test - {counter}', [], [('SET_PLAYER_MONEY_TO_COUNTER', player, counter)], once=False))
+    s8.watch(t, 16., .5)
+    watch = t.bench[0][1]
+    t.bench = [('bench_watch', dict(watch, seconds=2.0)), ('bench_view', dict(x=x, y=y, look=True)),
+               ('bench_box', dict(x0=x - 170, y0=y - 40, x1=x - 90, y1=y + 40, look=True)),
+               ('bench_click', dict(x=640, y=346, world=False, right=True, look=True)),
+               ('bench_watch', dict(watch, seconds=14.0))]
+    t.expect = [('箱位', 0, 'ever==', 3), ('箱位', 0, 'ever==', 2), ('过点', 0, 'ever==', 1),
+                ('玩家资金', 0, 'ever==', 1000), ('对手资金', 0, '==', 0)]
+    return t
+
+
 MISSION = {'engine_healcrate': mission, 'engine_healcrate_r': lambda: mission(True), 'engine_healcrate_h': hypotheses,
-           'engine_healcrate_v': lambda: hypotheses(True), 'engine_secretfile_e': secret_files_mission}
+           'engine_healcrate_v': lambda: hypotheses(True), 'engine_secretfile_e': secret_files_mission,
+           'engine_moneycrate_e': money_mission}
 CHECKS = {'engine_healcrate': {'a': check, 'b': passed, 'c': ordered}, 'engine_healcrate_r': {'a': check, 'b': collect, 'c': recalled},
           'engine_healcrate_h': {'a': hyp_check}, 'engine_healcrate_v': {'a': hyp_check},
-          'engine_secretfile_e': {'a': secret_files, 'b': collect_file}}
+          'engine_secretfile_e': {'a': secret_files, 'b': collect_file}, 'engine_moneycrate_e': {'a': money_pickup}}
 CONTROL_ARMS = {'engine_healcrate': ('On', 'Off')}
