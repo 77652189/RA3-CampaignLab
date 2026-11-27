@@ -86,7 +86,7 @@
 
 ## 五、原厂库
 
-从本机游戏和 SDK 文件现生成，带版本号，不进公开仓库；公开仓库里只有生成它们的工具。
+从仓库根用 `python -X utf8 -m experimental.mapgen.library` 生成 `work/mapgen/library.json`，有现成库可直接读。独立工作区没有自己的 `work` 时，工具使用主仓库的 `work`（见 `experimental/campaign/labpaths.py`）。库带版本号，只在本机使用。打开展开所需的 `kits`、`texture_kits`、`blocking` 和 `retail_moods` 查名字和来源，再看 `issues`。崖壁规格、场景组合、碰撞分类和氛围有额外的本地数据来源，单从 SDK 重建的库可能缺其中几项。
 
 | 库 | 来源 | 用途 |
 |---|---|---|
@@ -106,23 +106,63 @@
 | 像不像原版 | 逐块的密度、空地比例、成簇方式、同一零件附近重复几次；同比例俯视和固定镜头截图，与同风格原版并排 | 图元层、上台 |
 | 玩法比对 | 装扮前后寻路：哪条路变长、哪个口被堵 | 装扮之后 |
 
-按成本分三档，便宜的先跑：设计层上几秒（每改一次都跑），展开后几分钟（加模拟器代玩），上台几十分钟（只在成品前）。和台上实测冲突时以台上为准，然后回来改规则。
+按成本分三档。改一次设计就跑结构和草图的通行关系。展开后检查真楼占地、通行格、`ground.issues` 和装扮对路线的影响。再挑实机能判定的关键动作上台，和实测冲突时回来修规则。地图生成入口只做离线检查，模拟器代玩和游戏测试都需另接任务。
 
 ## 七、流程
 
 | 步 | 做什么 | 层 | 谁 | 之后 |
 |---|---|---|---|---|
-| 0 | 一句话变成卡：戏、剧情事实、硬约束、关的种类 | — | agent | |
-| 1 | 写承诺 | ① | agent | |
-| 2 | 写关系 | ② | agent | |
-| 3 | 草图：主路、第一级的块、界、点 | ② | agent | 设计层检查 → **闸门一：看草图和红绿清单** |
-| 4 | 布局：切到街块、定主角（真楼占地）、定过口 | ② | agent | 展开玩法部分（地形、水、路、主角）→ 结构、原厂规矩、关系检查 + 模拟器代玩 → **闸门二：布局锁定** |
-| 5 | 装扮：门面、场景小品、种子 | ② | agent | 展开沿线、成片、成组 → 像不像原版、玩法比对 |
-| 6 | 地表和环境：贴图按风格套和类刷，光照照同风格原版图 | ③ | 展开器 | |
-| 7 | 导出：地图模块、任务接口、按状态分的边界 | ④ | 现有工具 | `contract` 检查任务和地图对得上 |
-| 8 | 上台：固定镜头截图并排原版、帧率；能的话用 WorldBuilder 打开看 | — | 测试台 | **闸门三：成品** |
+| 0 | 一句话变成卡，写下戏、剧情事实、硬约束和关型 | — | agent | 未指定的地点、小队规模和摆法由设计决定 |
+| 1 | 卡上写地点、时限、风格理由，设计 JSON 写 `commitments.mood`，套件交给 `build(..., kit=...)` | ① | agent | 从原厂库选实际存在的 ID |
+| 2 | 写成能检查的关系，给出生、交战、抵达等动作各取一个地点 ID | ② | agent | [关系参数](format.md#关系与修补) |
+| 3 | 草图写路、块、界、点 | ② | agent | 跑 `python -X utf8 -m experimental.mapgen.design design.json`，再按[格式页](format.md#关系与修补)输出并打开草图 SVG → **闸门一** |
+| 4 | 布局加子块、定主角和坡口 | ② | agent | 用下方入口展开，核对 `built.layout`、`built.ground.issues` 和 `built.check_relations()` → **闸门二** |
+| 5 | 装扮调块的用途、套件、种子和确有必要的修补 | ② | agent | 在同一份 JSON 上重跑。检查路线后再看图，确认地图仍表现原来的选择 |
+| 6 | 贴图和固定光照按套件及原版来源展开 | ③ | 展开器 | `check_relations()` 和俯视图分别核路线与构图 |
+| 7 | 从准备好的容器写出两种 `.map`、布局锁和关系报告。要加载剧情，再接任务层 | ④ | 现有工具 | `--show` 检查摆位和脚本引用 |
+| 8 | 让实际单位跑关键动作，按固定镜头看必须判断的观感 | — | 测试台 | 记录读数和能验证的画面 → **闸门三** |
 
 锁定之后要改布局，就退回第 4 步重来。装扮阶段改出的玩法变化会被玩法比对拦下来。
+
+从仓库根用 Python 调用现有入口。第 4 步先输入简化布局，第 5 步带装扮重跑同一个入口。一次 `build()` 会铺地、锁楼并自动装扮。
+
+```python
+from pathlib import Path
+from experimental.campaign import labpaths
+from experimental.mapgen.build import build
+from experimental.mapgen.campaign_writer import MapFile, newmap
+import make_campnew18
+
+library = Path(labpaths.WORK) / "mapgen" / "library.json"
+built = build("design.json", library, kit="Heidelberg_HB")
+print(built.ground.issues)
+print({name: result.status for name, result in built.check_relations().items()})
+
+out = Path("output")
+out.mkdir(exist_ok=True)
+_, raw = next((p, data) for p, data in make_campnew18.c6._map_files() if p.lower().endswith(".map"))
+container = MapFile(raw)
+make_campnew18.generate(container)
+objects = next(node for _, node in container.walk() if node.name == "ObjectsList")
+objects.kids = [node for node in objects.kids if "waypointID" in newmap.typed_props_of(container, node)[0]]
+seed_script = container.new_script(
+    "Container script template", [container.new_content("Condition", "CONDITION_TRUE")],
+    [container.new_content("ScriptAction", "MAP_SWITCH_BORDER", 0)], active=False,
+)
+newmap.clear_scripts(container)[2].kids.append(seed_script)
+container.set_trigger_areas({})
+container.set_objectives([])
+container.set_hotspots({})
+prepared = out / "prepared-container.map"
+prepared.write_bytes(container.map_file())
+built.write(prepared, out / "my-map")
+```
+
+`kit` 必填。生成容器的部分只需做一次。已准备好的 CNV 容器可直接复用，要求与海德堡同规格（560×560，边宽 30，保留玩家、脚本表和水面样式）。留一条禁用脚本供写出器读取脚本块版本。直接把原版关当输入会把旧内容带进结果。图上只要地形和原厂景物时可停在这一步。俯视预览可用 `python -I -X utf8 experimental/campaign/maprender.py output/my-map-game.map --around 2250 2150 600 --px 4 --out output/overhead.png`（按设计替换中心和半径）。
+
+要放可操作的小队、伏兵、车队或剧情时限，任务依照设计点发布 `SITES`、路点和剧本，并把 `built.apply_terrain` 与 `built.placements()` 接到同一个 CNV 写出流程。当前 `MapBuild.write()` 只写地形、物件及初始边界，`points` 是设计引用，任务模块与兵力、命令、区域、状态切换要另接。CNV 地图模块还应把 `built.apply_terrain(m)` 返回的 `art`、`small` 雷达图更新到 `make_campnew18.PREVIEWS`，否则打包会报缺少 `small`。用了海德堡图集以外的贴图时，要在地图的 `terrain(m)` 里启用 `make_campnew18.c7.OWN_ATLAS = True`（见 [sapporo.py](../../experimental/cnv/maps/sapporo.py)），游戏才会加载对应材质。俯视图用本地素材渲染，即使游戏图集缺失也可能显示正常。
+
+用本工作区的 `python -I -X utf8 experimental/cnv/build.py <mission> --check <check> --show` 查合约，再用 `python -I -X utf8 experimental/testbench/run_queue.py <mission>:<check> --jobs 2` 上台。临时探针可由 `experimental/cnv/checks/` 下的模块注册 `MISSION` 和 `CHECKS`，地图模块放在同级 `maps/`。构建名加检查后缀也须在 15 字内。纯走路验证可让测试脚本下令，按单位经过命名区域计数。若测试需要对单个单位发命令，脚本名以 `Test` 开头。
 
 ### agent 的循环
 
@@ -139,7 +179,7 @@
 - `experimental/mappage/sketch2map.py` 和它的草图格式（[shell/sketch-format.md](../shell/sketch-format.md)）往下当"③ → ④"这一段用，按原厂图元的规格扩充，不另起一套写出工具。
 - `experimental/mappage/cityblocks.py`（沿街排楼）、`experimental/campaign/platprops.py`（布景）是展开器的前身，收拢成按用途通用的规则后去掉每关各写一份的做法。
 - `garrison_cover.py`、`attack_routes.py`、`experimental/campaign/maprender.py`、`mapstudy.py` 直接当检查和诊断的零件用。
-- 地图页（`serve.py`、`sketch.html`）改成查看页：画设计层、叠检查结果、并排原版对照。
+- v2 设计查看用 `checks.draw_failures` 生成的 SVG。旧地图页（`serve.py`、`sketch.html`）仍读旧草图格式。
 
 ## 九、不许
 
@@ -157,4 +197,4 @@
 
 - 画路工具的弯道半径（街道件的已量）；
 - 两片不同高度的水、同局改水位能不能做（第一版只出静态的各状态边界和名字，动态由关卡脚本兑现）；
-- 像不像原版只用指标定位差异，观感由用户在闸门三看并排截图。
+- 像不像原版可用指标定位差异。闸门三由做图的人或能读画面的 agent 看固定镜头和原版图，涉及玩家偏好再请用户判断。
