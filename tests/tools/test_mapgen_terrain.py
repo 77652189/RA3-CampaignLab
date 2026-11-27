@@ -5,7 +5,8 @@ import struct
 import numpy as np
 
 from experimental.campaign.mapscript import MapFile
-from experimental.mapgen.terrain import Block, Cliff, Ramp, TerrainPlan, Water, apply, expand
+from experimental.mapgen.design import Design
+from experimental.mapgen.terrain import Block, Cliff, Ramp, TerrainPlan, Water, apply, expand, from_design
 from experimental.mappage import sketch2map
 
 import mapterrain
@@ -87,3 +88,32 @@ def _container(w, h, border):
                      for i, (n, _, _) in enumerate(chunks, 1))
     body = b''.join(struct.pack('<IHI', i, v, len(b)) + b for i, (_, v, b) in enumerate(chunks, 1))
     return MapFile(b'CkMp' + struct.pack('<I', len(chunks)) + names + body)
+
+def test_quay_connects_the_deck_to_deep_water_with_a_closed_lip():
+    kit = 'StPetersburg_ST'
+    template = 'ST_SeaWallPiece01'
+    sketch = Design({
+        'version': 2,
+        'blocks': {
+            'yard': {'height': 3, 'use': 'dock', 'at': [200, 430], 'kit': kit},
+            'basin': {'height': 3, 'use': 'water', 'kind': 'water', 'at': [200, 200]},
+        },
+        'borders': {
+            'frame': {'line': [[0, 0], [400, 0], [400, 500], [0, 500], [0, 0]]},
+            'edge': {'line': [[400, 300], [0, 300]], 'shore': 'quay'},
+        },
+    })
+    assert not sketch.reachable('basin', 'yard', 'amphibian')
+    plan = from_design(sketch, TerrainPlan(), 'other_kit')
+    ground = expand(plan, {'kits': {kit: {'props': [{'template': template}]}}}, 41, 51, 0)
+    # The 100-unit retail model meets the next piece end to end, facing the water.
+    assert [(p.template, p.x, p.y, p.angle) for p in ground.pieces] == [
+        (template, x, 307, 0) for x in (50, 150, 250, 350)]
+    # The sea bed reaches the wall. The first dry row holds any beaching unit.
+    assert ground.raw[29, 20] == 130 * terrain_rules.RAW_PER_WORLD
+    assert not ground.blocked[29, 20] and ground.blocked[31, 20]
+    assert ground.blocked[32, 20] and not ground.blocked[33, 20]
+    m = _container(41, 51, 0)
+    apply(m, plan, ground)
+    tiles = mapterrain.Tiles(m, 41)
+    assert tiles.extra[31 * tiles.row_bytes + 20 // 8] & 1 << (20 % 8)

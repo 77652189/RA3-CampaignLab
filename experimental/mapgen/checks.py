@@ -1,8 +1,10 @@
 """Answer v2 relations against the terrain, decks and locked buildings that will be written."""
 
 from dataclasses import dataclass
+from html import escape
 from itertools import pairwise
 from math import ceil, dist, floor, inf, isfinite, sqrt
+from pathlib import Path
 
 import numpy as np
 from scipy.ndimage import label
@@ -23,11 +25,19 @@ UNITS = {'foot': '步兵', 'vehicle': '车辆', 'amphibian': '两栖单位', 'sh
 
 
 @dataclass(frozen=True)
+class Witness:
+    place: str
+    at: tuple[float, float]
+    reason: str
+
+
+@dataclass(frozen=True)
 class Answer:
     status: str
     sentence: str
     place: tuple[str, ...]
     decision: str = ''
+    witness: Witness | None = None
 
 
 def _shape_mask(shape, x, y):
@@ -130,6 +140,82 @@ class _Grid:
             if regions[start] == regions[end]:
                 return True
         return False
+
+    def bypass_witness(self, rel):
+        """Locate the alternate crossing on a route that misses the required opening."""
+        from skimage.graph import MCP_Geometric
+
+        only = rel['only_via']
+        without = (only, rel['without']) if 'without' in rel else (only,)
+        for grid, (start, end) in self.route_layers(rel['who'], (rel['from'], rel['to']), without):
+            search = MCP_Geometric(np.where(grid, CELL, inf))
+            costs, _ = search.find_costs([start], [end])
+            if not isfinite(costs[end]):
+                continue
+            route = search.traceback(end)
+            openings = {name: self.area(name) for spans in self.sketch.spans.values() for name in spans
+                        if name not in without}
+            unit = UNITS[rel['who']]
+            for cell in route:
+                for name, mask in openings.items():
+                    if mask[cell]:
+                        return Witness(name, self.world(cell), f'{unit}从这里绕过 {only}')
+            return Witness(f'{rel["from"]} 到 {rel["to"]}', self.world(route[len(route) // 2]),
+                           f'{unit}绕开 {only} 后仍能通行')
+        return None
+
+    def route_witness(self, rel):
+        """Explain a failed positive route using the built cell, not the sketch distance."""
+        who, a, b = (rel[k] for k in ('who', 'from', 'to'))
+        depth = self.ground.waterline - self.ground.raw
+        points = [self.point(name) for name in (a, b)]
+        for name, p in zip((a, b), points, strict=True):
+            if not self.inside(p):
+                return Witness(name, tuple(p), '地点在可玩区外')
+            cell = self.cell(p)
+            if not any(g[cell] for g in self.grids[who]):
+                if who == 'ship' and 0 <= depth[cell] < SHIP_DEPTH * rules.RAW_PER_WORLD:
+                    return self.shallows(name, cell, depth)
+                return Witness(name, self.world(cell), f'{UNITS[who]}在这个格子无法通行')
+        if who != 'ship':
+            return None
+
+        # Lower the depth requirement only far enough to connect the two ends.
+        # This finds a bottleneck on the best available channel, even when a
+        # straight line between the sites crosses a headland.
+        start, end = map(self.cell, points)
+        swimming = (depth >= 0) & ~self.ground.blocked & self.frame.mask
+        if 'without' in rel:
+            swimming &= ~self.area(rel['without'])
+        thresholds = np.unique(depth[swimming & (depth < SHIP_DEPTH * rules.RAW_PER_WORLD)])
+        lo, hi = -1, len(thresholds)
+        while lo + 1 < hi:
+            mid = (lo + hi) // 2
+            regions, _ = label(swimming & (depth >= thresholds[mid]), structure=np.ones((3, 3), bool))
+            if regions[start] and regions[start] == regions[end]:
+                lo = mid
+            else:
+                hi = mid
+        if lo < 0:
+            return None
+        from skimage.graph import MCP_Geometric
+
+        threshold = thresholds[lo]
+        search = MCP_Geometric(np.where(swimming & (depth >= threshold), CELL, inf))
+        search.find_costs([start], [end])
+        cell = next(c for c in search.traceback(end) if depth[c] == threshold)
+        here = rel.get('only_via')
+        if here is None or not self.area(here)[cell]:
+            here = next((name for name, spec in self.sketch.blocks.items()
+                         if spec.get('kind') == 'water' and self.area(name)[cell]), f'{a} 到 {b}')
+        return self.shallows(here, cell, depth)
+
+    def world(self, cell):
+        return tuple((int(i) - self.border) * CELL for i in reversed(cell))
+
+    def shallows(self, name, cell, depth):
+        return Witness(name, self.world(cell),
+                       f'航道水深 {depth[cell] / rules.RAW_PER_WORLD:g}，舰艇需要 {SHIP_DEPTH:g}')
 
     def length(self, who, source, goal, via=None):
         """Route distances only for a race or detour, using weighted diagonal grid legs."""
@@ -277,10 +363,76 @@ def evaluate(sketch, ground, roadbed, layout, border, frame):
     for name, relation in sketch.relations.items():
         ok, sentence, places, decision = _answer(grid, relation)
         state = relation.get('state', 'base')
+        pending = any(table[state] != table['base'] for table in
+                      (sketch.state_pass, sketch.state_heights, sketch.playable))
         if state != 'base':
             sentence = f'{state} 状态下，{sentence}'
-            if any(table[state] != table['base'] for table in
-                   (sketch.state_pass, sketch.state_heights, sketch.playable)):
-                ok, decision = False, f'先把 {state} 的过口、水位或可玩区变动展开成可检查的地图。'
-        answers[name] = Answer('pass' if ok else 'fail', sentence, places, '' if ok else decision)
+        witness = None
+        if pending:
+            ok, decision = False, f'先把 {state} 的过口、水位或可玩区变动展开成可检查的地图。'
+        elif not ok and relation['type'] == '通不通' and relation.get('reachable', True):
+            witness = grid.route_witness(relation)
+            if witness is None and relation.get('only_via'):
+                witness = grid.bypass_witness(relation)
+            if witness:
+                x, y = witness.at
+                decision = f'{witness.place}（{x:g}, {y:g}）{witness.reason}。{decision}'
+        answers[name] = Answer('pass' if ok else 'fail', sentence, places, '' if ok else decision, witness)
     return answers
+
+
+def draw_failures(sketch, answers, path):
+    """Draw the named sites and any exact failure cell on a north-up map."""
+    failed = [(name, answer) for name, answer in answers.items() if answer.status == 'fail']
+    all_points = [p for line in sketch.lines.values() for p in line]
+    xmin, ymin = map(min, zip(*all_points))
+    xmax, ymax = map(max, zip(*all_points))
+    scale = min(540 / (xmax - xmin), 340 / (ymax - ymin))
+
+    def xy(point):
+        return 30 + (float(point[0]) - xmin) * scale, 122 + (ymax - float(point[1])) * scale
+
+    def line(points, color, width):
+        run = ' '.join(f'{x:.2f},{y:.2f}' for x, y in map(xy, points))
+        return f'<polyline points="{run}" fill="none" stroke="{color}" stroke-width="{width}"/>'
+
+    def text(x, y, label, color='#eee'):
+        return f'<text x="{x:.2f}" y="{y:.2f}" fill="{color}">{escape(label)}</text>'
+
+    backdrop = [line(run, '#81939b', 1) for run in sketch.lines.values()]
+    height = max(90, len(failed) * 480)
+    svg = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 {height}" '
+           'font-family="sans-serif" font-size="15">',
+           f'<rect width="640" height="{height}" fill="#23313a"/>']
+    if not failed:
+        svg.append(text(24, 42, '全部关系通过'))
+    for index, (name, answer) in enumerate(failed):
+        svg += [f'<g transform="translate(0 {index * 480})">',
+                text(24, 26, f'{name} · {answer.sentence}'), *backdrop]
+        for place in answer.place:
+            if place in sketch.rings:
+                svg.append(line(sketch.rings[place], '#f1bd69', 3))
+            elif place in sketch.lines:
+                svg.append(line(sketch.lines[place], '#f1bd69', 3))
+            elif place not in sketch.points:
+                border = place.split('.')[0]
+                for a, b, _, _, section in sketch.border_sections(border):
+                    if section == place:
+                        svg.append(line((a, b), '#f1bd69', 3))
+            spec = sketch.points.get(place, sketch.blocks.get(place, {}))
+            if 'at' in spec:
+                x, y = xy(spec['at'])
+                svg += [f'<circle cx="{x:.2f}" cy="{y:.2f}" r="4" fill="#f1bd69"/>',
+                        text(x + 7, y - 4, place, '#f1bd69')]
+        if answer.witness:
+            w = answer.witness
+            x, y = xy(w.at)
+            px, py = w.at
+            svg += [f'<circle cx="{x:.2f}" cy="{y:.2f}" r="8" fill="none" stroke="#ff7777" stroke-width="3" '
+                    f'data-world-x="{px:g}" data-world-y="{py:g}"><title>{escape(w.place)} · '
+                    f'{escape(w.reason)}</title></circle>']
+        message = answer.decision
+        svg += [text(24, 50 + 20 * k, message[i:i + 39], '#ffc3b3')
+                for k, i in enumerate(range(0, len(message), 39))]
+        svg.append('</g>')
+    Path(path).write_text('\n'.join([*svg, '</svg>']), encoding='utf-8')

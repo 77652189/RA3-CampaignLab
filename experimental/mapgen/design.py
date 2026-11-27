@@ -13,6 +13,10 @@ import re
 
 STEP_WORLD = 70
 STEP_RAW = 1792
+# The engine routes on a 20-world-unit grid. A footpath has one routing cell;
+# a street ramp leaves a carriageway on either side of its centre (two 90-unit lanes).
+FOOT_RAMP_WIDTH = 20
+STREET_RAMP_WIDTH = 180
 LAND = frozenset(("foot", "vehicle", "amphibian"))
 WATER = frozenset(("amphibian", "ship"))
 KINDS = LAND | WATER
@@ -192,18 +196,22 @@ def face_rings(edges):
     return sorted(rings, key=signed_area_twice), other
 
 
-def _spans(border, item, length):
+def _spans(border, item, length, named_ramp):
     spans = {}
     raw = border.get("segments", {})
     _need(isinstance(raw, dict), item, "shape", "segments needs an object keyed by ID")
     for name, segment in sorted(raw.items()):
         sid = f"{item}.{name}"
         _id(name, sid)
-        _fields(segment, sid, "span pass", "width")
-        _list(segment["span"], sid, "span", size=2)
-        start, end = segment["span"]
-        if end is None:
-            end = length
+        if isinstance(segment, dict) and ("from" in segment or "to" in segment):
+            _fields(segment, sid, "from to pass")
+            start, end = named_ramp(segment, sid)
+        else:
+            _fields(segment, sid, "span pass", "width")
+            _list(segment["span"], sid, "span", size=2)
+            start, end = segment["span"]
+            if end is None:
+                end = length
         _number(start, sid, "span start")
         _number(end, sid, "span end")
         _need(start < end <= length, sid, "span", f"span must fit the border length {length:g}")
@@ -253,8 +261,8 @@ class Design:
         self.lines = self._read_lines()
         self.edges = _split_lines(self.lines)
         self.rings, self.sides = self._read_blocks()
-        self._read_borders()
         self._read_points()
+        self._read_borders()
         self._read_states()
         self.via_ids = self.blocks.keys() | self.borders.keys() | self.base_pass.keys()
         self._read_relations()
@@ -273,7 +281,7 @@ class Design:
             _need(len(set(ends)) == len(ends), item, "ends", "repeated end")
             lines[item] = _line(road["line"], item)
         for item, border in self.borders.items():
-            _fields(border, item, "line", "width pass segments closed_reason")
+            _fields(border, item, "line", "width pass segments closed_reason shore")
             lines[item] = _line(border["line"], item)
         return lines
 
@@ -369,11 +377,46 @@ class Design:
                         break
                 offset = end
             self.lengths[item], self.border_edges[item] = offset, arcs
-            self.spans[item] = _spans(border, item, offset)
+            self.spans[item] = _spans(border, item, offset, self._named_ramp)
+            if "shore" in border:
+                _ref(border["shore"], ("quay",), item, "shore")
+                _need("pass" not in border and not self.spans[item], item, "shore",
+                      "a quay closes the land/water crossing")
+                _need(all(l and r and {self.medium(l), self.medium(r)} == {LAND, WATER}
+                          for edge, _, _ in arcs for l, r in (self.sides[edge],)),
+                      item, "shore", "a quay must separate land from water")
+                self.base_pass[item] = frozenset()
             if "pass" in border:
                 self.base_pass[item] = _pass(border["pass"], item)
             self.base_pass.update({sid: span[2] for sid, span in self.spans[item].items()})
         self.base_pass.update(dict.fromkeys(self.roads, LAND))
+
+    def _named_ramp(self, spec, name):
+        border = name.split(".", 1)[0]
+        for end in ("from", "to"):
+            _ref(spec[end], self.points, name, end)
+        toe, crest = (self.points[spec[end]] for end in ("from", "to"))
+        a, b = tuple(toe["at"]), tuple(crest["at"])
+        low, high = toe["block"], crest["block"]
+        _need(self.medium(low) == self.medium(high) == LAND
+              and self.blocks[low]["height"] < self.blocks[high]["height"], name, "ramp",
+              "from must be on lower land and to on higher land")
+        allowed = _pass(spec["pass"], name)
+        _need(allowed in ({"foot"}, LAND), name, "ramp",
+              "choose foot alone or foot, vehicle and amphibian together")
+        hits = {}
+        for edge, start, _ in self.border_edges[border]:
+            for p in _meet(a, b, *edge):
+                hits.setdefault(p, set()).update(self.sides[edge])
+        _need(len(hits) == 1 and next(iter(hits.values())) >= {low, high}, name, "ramp",
+              f"{spec['from']} to {spec['to']} must cross this cliff once between those blocks")
+        point = next(iter(hits))
+        for edge, start, _ in self.border_edges[border]:
+            if on_segment(point, *edge):
+                center = start + math.dist(edge[0], point)
+                break
+        width = FOOT_RAMP_WIDTH if allowed == {"foot"} else STREET_RAMP_WIDTH
+        return center - width / 2, center + width / 2
 
     def _read_points(self):
         for item, point in self.points.items():

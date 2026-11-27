@@ -41,6 +41,7 @@ class Placement:
     ports: tuple = ()
     flags: int = 0
     side: str = 'civ'
+    z: float = 0.
 
 
 @dataclass(frozen=True)

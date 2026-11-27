@@ -32,7 +32,7 @@ class MapBuild:
         if self.roadbed is not None:
             yield from self.roadbed.placements
         for piece in self.ground.pieces:
-            yield roads.Placement(piece.template, piece.x, piece.y, piece.angle)
+            yield roads.Placement(piece.template, piece.x, piece.y, piece.angle, z=piece.z)
         for _, group in self.layout.blocks:
             for piece in group:
                 yield roads.Placement(piece.template, piece.x, piece.y, piece.angle)
@@ -66,10 +66,12 @@ class MapBuild:
         for piece in self.placements():
             owner = 'PlyrNeutral' if piece.side == 'neutral' else 'PlyrCivilian'
             objects.append(newmap.object_node(m, {}, piece.flags, piece.template, piece.x, piece.y,
-                                             angle=piece.angle, originalOwner=f'{owner}/team{owner}',
+                                             z=piece.z, angle=piece.angle, originalOwner=f'{owner}/team{owner}',
                                              uniqueID=f'{piece.template} {len(objects)}'))
         for suffix, data in zip(('game.map', 'editor.map', 'locked.json'), self.outputs(m), strict=True):
             Path(f'{stem}-{suffix}').write_bytes(data)
+        if self.sketch is not None and self.sketch.relations:
+            checks.draw_failures(self.sketch, self.check_relations(), f'{stem}-relations.svg')
 
 
 def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, road_kit=None, fronts=None):

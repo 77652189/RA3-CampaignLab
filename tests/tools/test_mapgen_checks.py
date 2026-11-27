@@ -1,8 +1,10 @@
 from dataclasses import replace
+from xml.etree import ElementTree
 
 from experimental.mapgen import terrain
 from experimental.mapgen.build import MapBuild
 from experimental.mapgen.buildings import Layout
+from experimental.mapgen.checks import draw_failures
 from experimental.mapgen.campaign_writer import rules
 from experimental.mapgen.design import Design
 
@@ -69,3 +71,65 @@ def test_only_way_up_is_checked_on_the_built_grid():
     assert 'wall.ramp' in cut.place and 'wall.ramp' in cut.decision
     bypass = terrain.Ramp((40, 110), (0, 1), 1, 40)
     assert answers(replace(plan, ramps=(*plan.ramps, bypass)))['climb'].status == 'fail'
+
+def test_named_foot_ramp_locates_the_narrow_cut_and_checks_real_passage():
+    sketch = Design({
+        'version': 2,
+        'blocks': {
+            'valley': {'height': 3, 'use': 'canyon', 'at': [150, 80]},
+            'rim': {'height': 4, 'use': 'canyon', 'at': [150, 330]},
+        },
+        'borders': {
+            'frame': {'line': [[0, 0], [360, 0], [360, 400], [0, 400], [0, 0]]},
+            'wall': {'line': [[0, 200], [360, 200]], 'segments': {
+                'path': {'from': 'houses', 'to': 'hillPath', 'pass': ['foot']},
+            }},
+        },
+        'points': {'houses': {'block': 'valley', 'at': [160, 80]},
+                   'hillPath': {'block': 'rim', 'at': [220, 320]}},
+        'relations': {
+            'foot': {'type': '通不通', 'from': 'houses', 'to': 'hillPath',
+                     'who': 'foot', 'only_via': 'wall.path'},
+            'tank': {'type': '通不通', 'from': 'houses', 'to': 'hillPath',
+                     'who': 'vehicle', 'reachable': False},
+        },
+    })
+    plan = terrain.from_design(sketch, terrain.TerrainPlan(), 'test')
+    # Halfway between the named sites in Y gives the cut at X=190.
+    assert sketch.check_relations() == {'foot': 'pass', 'tank': 'pass'}
+    assert plan.ramps[0].low == (190, 110)
+    assert plan.ramps[0].width == 20 and plan.ramps[0].narrow
+    ground = terrain.expand(plan, {'kits': {}}, 97, 101, 30)
+    frame = terrain.design_frame(sketch, ground, 0, 30)
+    built = MapBuild(plan, frame.close(ground), None, Layout(()), sketch, frame, ())
+    assert {name: a.status for name, a in built.check_relations().items()} == {'foot': 'pass', 'tank': 'fail'}
+
+
+def test_failed_channel_draws_its_best_route_bottleneck(tmp_path):
+    sketch = Design({
+        'version': 2,
+        'blocks': {'bay': {'height': 3, 'use': 'water', 'kind': 'water', 'at': [200, 250]},
+                   'port': {'height': 3, 'use': 'water', 'kind': 'water', 'at': [800, 250]}},
+        'borders': {
+            'frame': {'line': [[0, 0], [1000, 0], [1000, 500], [0, 500], [0, 0]]},
+            'mouth': {'line': [[500, 0], [500, 500]], 'pass': ['ship']},
+        },
+        'relations': {'enter': {'type': '通不通', 'from': 'bay', 'to': 'port',
+                                'who': 'ship', 'only_via': 'mouth'}},
+    })
+    plan = terrain.from_design(sketch, terrain.TerrainPlan(), 'test')
+    ground = terrain.expand(plan, {'kits': {}}, 161, 111, 30)
+    frame = terrain.design_frame(sketch, ground, 0, 30)
+    # A shoal cuts the channel. The one deeper cell is the best crossing,
+    # even though it lies off the straight line from anchorage to berth.
+    ground.raw[30:81, 80] = 190 * rules.RAW_PER_WORLD
+    ground.raw[60, 80] = 175 * rules.RAW_PER_WORLD
+    result = MapBuild(plan, frame.close(ground), None, Layout(()), sketch, frame, ())
+    answers = result.check_relations()
+    assert answers['enter'].witness.at == (500, 300)
+    assert 'mouth（500, 300）航道水深 25' in answers['enter'].decision
+    svg = tmp_path / 'relations.svg'
+    draw_failures(sketch, answers, svg)
+    root = ElementTree.parse(svg)
+    witness = root.find(".//{http://www.w3.org/2000/svg}circle[@data-world-x='500'][@data-world-y='300']")
+    assert witness is not None and float(witness.attrib['cx']) > 30
