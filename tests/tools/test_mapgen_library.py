@@ -6,7 +6,7 @@ from experimental.mapgen import library
 
 
 def test_library_groups_inherits_and_reports_missing_sources(tmp_path, monkeypatch, capsys):
-    sdk, work = tmp_path / "sdk", tmp_path / "work"
+    sdk, work = tmp_path / "sdk", tmp_path / "probes"
     sage = sdk / "SageXML"
 
     def write(path, content):
