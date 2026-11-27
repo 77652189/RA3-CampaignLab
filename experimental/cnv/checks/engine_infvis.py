@@ -153,5 +153,38 @@ def trio_still_s4(m):
     return trio_still(m)
 
 
+def units(m):
+    """A411 VISION_UNITS on the hosts our levels have (missions/infiltrator_vision.py units), both spies sent at 10 s.
+
+    Rows (script passes, cumulative): entries = passes before each spy is gone, veh + 1000 inf; veh = passes the
+    Tsunami is discovered + 1000 x the Japan infantry's; inf = the still conscript's + 1000 x the walker's (sent
+    1200 west at 10 s). XML: VISION_UNITS, UnitDuration 30 s, filter KindOf VEHICLE / INFANTRY.
+    Prediction (XML + E199's 0/1/1/1/1): the Tsunami and both conscripts seen 4 in 5 passes from entry for 450
+    passes, then not (about 360); the outsider never. Simulator: Japan / Soviet hosts are gaps, the spies never
+    enter, all zero."""
+    t = Test()
+    t.counters = [('Unitvis entries', 'entries'), ('Unitvis veh', 'veh'), ('Unitvis inf', 'inf')]
+    walker = m.find(m.role('walker').name)
+    t.waypoints['Unitvis west'] = (walker.x - 1200, walker.y)
+    t.scripts = [Script('Unitvis start', [], [('SET_MILLISECOND_TIMER', 'Unitvis enter', 10.0)] + [
+        ('UNIT_CHANGE_OBJECT_STATUS', obj.name, 'NO_ATTACK', 1) for obj in m.objects]),
+        Script('Test - Unitvis enter', [('TIMER_EXPIRED', 'Unitvis enter')], [
+            ('NAMED_GARRISON_SPECIFIC_BUILDING', m.role(k + ' spy').name, m.role(k).name) for k in ('veh', 'inf')] + [
+            ('MOVE_NAMED_UNIT_TO', walker.name, 'Unitvis west')])]
+    for k, unit in (('veh', 1), ('inf', 1000)):
+        gone = 'Unitvis gone ' + k
+        t.scripts += [Script('Unitvis count ' + k, [('FLAG', gone, 0)],
+                             [('INCREMENT_COUNTER', unit, 'Unitvis entries')], once=False),
+                      Script('Unitvis latch ' + k, [('NAMED_NOT_DESTROYED', m.role(k + ' spy').name, NOT)],
+                             [('SET_FLAG', gone, 1)])]
+    for role, unit, row in (('tank', 1, 'veh'), ('outsider', 1000, 'veh'), ('still', 1, 'inf'), ('walker', 1000, 'inf')):
+        t.scripts.append(Script('Unitvis see ' + role, [('NAMED_DISCOVERED', m.player('p1'), m.role(role).name)],
+                                [('INCREMENT_COUNTER', unit, 'Unitvis ' + row)], once=False))
+    t.expect = [('entries', 1, 'ever>=', 1, 50)]
+    t.bench = [('bench_watch', dict(seconds=50, every=1, sheet=False, lines=3))]
+    return t
+
+
 CHECKS = {'engine_infvis': {'a': check, 'b': check_soviet, 'c': check_japan, 'd': check_unentered},
-          'engine_infvis3': {'a': trio, 'b': trio_allied, 'c': trio_still, 'd': trio_still_s4}}
+          'engine_infvis3': {'a': trio, 'b': trio_allied, 'c': trio_still, 'd': trio_still_s4},
+          'engine_infunit': {'a': units}}

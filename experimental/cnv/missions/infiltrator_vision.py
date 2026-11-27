@@ -30,4 +30,20 @@ def trio():
     return m
 
 
-MISSION = {'engine_infvis': mission, 'engine_infvis3': trio}
+def units():
+    """A411 VISION_UNITS hosts our levels have (a4 Japan war factory, a2 / a5 Soviet barracks), each its own idle owner
+    (s2 / s3: s1 walks idle units away, A410 H7), a spy 180 south; markers 1400+ from both spies: a Tsunami and a
+    Japan infantry (the vehicle filter's outsider), a still and a walking conscript."""
+    m = Mission(name='CampInfUnit', map=infiltrator_batch, units=[])
+    for lane, host, site, side in (('veh', 'JapanWarFactory', 'air', 's2'), ('inf', 'SovietBarracks', 'infantry', 's3')):
+        m.put(host, site, side=side, role=lane, name='Unitvis host ' + lane)
+        m.put('AlliedInfiltrationInfantry', site, 0, -180, role=lane + ' spy', name='Unitvis spy ' + lane)
+    for role, template, site, dx, side in (('tank', 'JapanAntiVehicleVehicleTech1', 'air marker', 0, 's2'),
+                                          ('outsider', 'JapanAntiInfantryInfantry', 'air marker', 300, 's2'),
+                                          ('still', 'SovietAntiInfantryInfantry', 'infantry marker', 0, 's3'),
+                                          ('walker', 'SovietAntiInfantryInfantry', 'infantry marker', -300, 's3')):
+        m.put(template, site, dx, 0, side=side, role=role, name='Unitvis ' + role)
+    return m
+
+
+MISSION = {'engine_infvis': mission, 'engine_infvis3': trio, 'engine_infunit': units}
