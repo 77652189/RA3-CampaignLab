@@ -20,7 +20,8 @@ _paths = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_paths)
 
 GUARDS = ['tests/guards/test_architecture.py', 'tests/guards/test_docs.py',
-          'tests/guards/test_no_program_addresses.py']   # 11-13 an address reached simai.py past a Claude line's close
+          'tests/guards/test_no_program_addresses.py',   # 11-13 an address reached simai.py past a Claude line's close
+          'tests/guards/test_kernel.py', 'tests/test_sim_forwarders.py']   # 11-26/27 E274, E280 grew the centre twice
 INVENTORY_PATHS = ('experimental/cnv/inventory',)
 PAGES = 'docs/engine/inventory'   # the generated pages: gitignored, generated on demand, never committed (ADR 0030)
 # the architecture guards that build or walk the levels (each 5-100 s): they judge content, so they run only when the
