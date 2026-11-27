@@ -1,0 +1,11 @@
+# Bench readings of checks/engine_knock_arc.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# engine_knock_kami (A393): counters yuri man, yuri near, rocket man, rocket near -- still on the spot (a 3 box);
+# yuri's V4 carries the kamikaze's MetaImpactNugget verbatim, rocket's without ShockWaveArc; near 12 east.
+
+[[reading]]
+id = "the_kamikazes_arc_shock_at_a_projectiles_detonation_reaches_no_one"
+scene = {build = "engine_knock_kami", check = "a", until = 20, shot_clock = true}
+bench = "CampKKamiA_mcp_1126_211950 (11-26, A393): 1 1 1 1 to s10.87, 1 1 0 0 from s11.73 to the end; ra3ext: rocket's two shocked at frame 174 (centre the detonation (2300, 3750, 219)), yuri's none -- as predicted from engine_knock_arc b"
+proves = "engine/data/units MetaImpact parse (Arc + LEECHED_TARGET_ACTIVE + STUNNED*, no filter) + engine/combat/meta_impact.launch: an arc shock at a projectile's detonation shocks no grounded body; without the arc the same shock knocks both"
+item = "武器效果 MetaImpactNugget:弹体爆心弧"
+expect = ["vals(rows)[-1] == [1, 1, 0, 0]", "vals(rows)[10] == [1, 1, 1, 1]"]

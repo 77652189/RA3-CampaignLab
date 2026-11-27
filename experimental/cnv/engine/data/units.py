@@ -278,7 +278,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v52.json')    # v52: PsyonicBlast's infantry shock (A391); v51: inherited armour (A387 h); v50: the dog's pounce (A386); v49: the SPN's StatusBitFlagsExclude (A374); v48: the shotgun's self-centred arc shock (A363); v47: the grapple nugget (E226); v46: the lift's retail filter; v45: the link guns' ally filter; v44: + taper (DamageDealtAtSelfPosition); v43: weapons from the data port (W1), the cache keeps `sets`; v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v53.json')    # v53: King Oni's arc shocks (A393); v52: PsyonicBlast's infantry shock (A391); v51: inherited armour (A387 h); v50: the dog's pounce (A386); v49: the SPN's StatusBitFlagsExclude (A374); v48: the shotgun's self-centred arc shock (A363); v47: the grapple nugget (E226); v46: the lift's retail filter; v45: the link guns' ally filter; v44: + taper (DamageDealtAtSelfPosition); v43: weapons from the data port (W1), the cache keeps `sets`; v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
 ARMOR_DEFAULT = 100.0           # a damage type an armour does not name: taken in full (a guess)
@@ -420,6 +420,7 @@ def _weapons(texts, base_table=None):
                 # predicates and delayed filtered shocks remain explicit gaps.
                 target_filter = None
                 forbidden = _attr(h, 'ForbiddenTargetModelCondition', '').split()
+                stunned = set(forbidden) == {'STUNNED', 'STUNNED_STANDING_UP', 'STUNNED_FLAILING'}
                 children = list(_blocks(inner or '', 'SpecialObjectFilter'))
                 if len(children) == 1:
                     fh, fi = children[0]
@@ -434,7 +435,7 @@ def _weapons(texts, base_table=None):
                             and relation in ('ENEMIES', 'ALLIES')
                             # CampKSG b removed only the ENEMIES exclusion.
                             and (status_exclude is not None or relation == 'ENEMIES')
-                            and set(forbidden) == {'STUNNED', 'STUNNED_STANDING_UP', 'STUNNED_FLAILING'}
+                            and stunned
                             and not re.sub(r'<SpecialObjectFilter\b[^>]*>.*?</SpecialObjectFilter>',
                                            '', inner, flags=re.S).strip()
                             and 'ShockwaveDelaySeconds' not in fields):
@@ -453,9 +454,9 @@ def _weapons(texts, base_table=None):
                             and _num(_attr(h, 'ShockWaveZMult', '1')) == 0):
                         target_filter = dict(magnetic_ground=True, include_templates=things)
                     # CampKKG: exact retail Rush infantry selector with its
-                    # scripted status gate; Arc/model conditions remain gaps.
+                    # scripted status gate; King Oni's three stun conditions as the Sickle's (A393).
                     if (attrs == dict(Rule='ANY', Include='INFANTRY') and not fi.strip()
-                            and not forbidden
+                            and (not forbidden or stunned)
                             and not re.sub(r'<SpecialObjectFilter\b[^>]*>.*?</SpecialObjectFilter>',
                                            '', inner, flags=re.S).strip()
                             and _attr(h, 'ForbiddenTargetObjectStatus') == 'LEECHED_TARGET_ACTIVE'
@@ -470,9 +471,10 @@ def _weapons(texts, base_table=None):
                 # CampKOG isolates this status, CampKKG adds only infantry.
                 # Native leech lifecycle and other combinations remain gaps.
                 object_gate = (_attr(h, 'ForbiddenTargetObjectStatus') == 'LEECHED_TARGET_ACTIVE'
-                               and not forbidden
+                               and (not forbidden or stunned)
                                and ((not target_filter and not (inner or '').strip())
-                                    or target_filter == dict(rush_infantry=True))
+                                    or target_filter == dict(rush_infantry=True)
+                                    or (target_filter or {}).get('relation') == 'ENEMIES')
                                and 'ShockwaveDelaySeconds' not in fields
                                and 'InvertShockWave' not in fields)
                 # A363: the retail shotgun (Arc 5d + Forbidden STUNNED_FLAILING, no filter); its arc runs about the
@@ -481,13 +483,17 @@ def _weapons(texts, base_table=None):
                 shotgun = (not (inner or '').strip() and forbidden == ['STUNNED_FLAILING']
                            and re.fullmatch(r'\d+(\.\d+)?d', _attr(h, 'ShockWaveArc', '0d')) is not None
                            and not fields & {'ShockwaveDelaySeconds', 'InvertShockWave'})
-                if ((not (inner or '').strip() and not forbidden) or target_filter or shotgun) and fields <= {
+                # A393 engine_knock_oni: King Oni's melee / rush arcs over its infantry filters; engine_knock_kami:
+                # the kamikaze's, no filter
+                oni = (object_gate and stunned and (target_filter is not None or not (inner or '').strip())
+                       and re.fullmatch(r'\d+(\.\d+)?d', _attr(h, 'ShockWaveArc', '0d')) is not None)
+                if ((not (inner or '').strip() and not forbidden) or target_filter or shotgun or oni) and fields <= {
                         'id', 'ShockWaveAmount', 'ShockWaveRadius', 'ShockWaveZMult', 'ShockWaveTaperOff',
                         'ShockwaveDelaySeconds', 'InvertShockWave',
-                        *(['ShockWaveArc'] if shotgun else []),
+                        *(['ShockWaveArc'] if shotgun or oni else []),
                         *(['ShockWaveClearRadius'] if _attr(h, 'ShockWaveClearRadius') == 'false' else []),   # default
                         *(['ForbiddenTargetObjectStatus'] if object_gate else []),
-                        *(['ForbiddenTargetModelCondition'] if target_filter or shotgun else [])} and all(
+                        *(['ForbiddenTargetModelCondition'] if target_filter or shotgun or oni else [])} and all(
                         _attr(h, field) is not None for field in
                         ('ShockWaveAmount', 'ShockWaveRadius')):
                     seconds = _secs(_attr(h, 'ShockwaveDelaySeconds', '0s'))
@@ -504,9 +510,11 @@ def _weapons(texts, base_table=None):
                                   taper=_num(_attr(h, 'ShockWaveTaperOff', '0')))
                     if object_gate:
                         effect['forbidden_status'] = ['LEECHED_TARGET_ACTIVE']
-                    if shotgun:
+                    if shotgun or oni:
                         effect['forbid_flailing'] = True
-                    if shotgun and 'ShockWaveArc' in fields:
+                    if oni:         # INFERRED as the Sickle's: lying / getting up = the landing hold
+                        effect['forbid_stunned'] = True
+                    if (shotgun or oni) and 'ShockWaveArc' in fields:
                         effect['arc'] = float(_attr(h, 'ShockWaveArc')[:-1])
                     if 'InvertShockWave' in fields:
                         effect['invert'] = invert == 'true'

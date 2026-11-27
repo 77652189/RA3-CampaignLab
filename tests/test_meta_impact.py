@@ -89,7 +89,7 @@ def test_meta_impact_arc_probe_replays_plain_neighbour_and_retains_filter_gap():
     restricted, = e.bodies[name('yuri', 'gun')].weapons
     assert 'MetaImpactNugget' in restricted['unmodeled_effects']
     assert restricted['meta_impacts'][0]['arc'] == 5.0
-    assert 'Arc' in e.unmodeled[(sim.GAP_WEAPON, 'MetaImpactNugget')]['what']
+    assert (sim.GAP_WEAPON, 'MetaImpactNugget') not in e.unmodeled      # A393: no one shocked, no gap
     # These match the recorded negative, but are fail-closed launch behaviour (the arc gap).
     for part, x in (('man',800), ('near',820)):
         b = e.bodies[name('yuri', part)]

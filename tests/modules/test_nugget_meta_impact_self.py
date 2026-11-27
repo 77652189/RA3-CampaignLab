@@ -47,8 +47,31 @@ def test_the_shotgun_shocks_from_its_feet_along_its_line(weapon_world, monkeypat
         assert got[SPOTS[k]] == pytest.approx(BENCH_V[k], abs=1e-4)
 
 
-def test_an_arc_shock_at_a_projectiles_detonation_is_a_gap(weapon_world):
-    """The arc's axis at a projectile's detonation is unmeasured (engine_knock_arc b): no flight, a gap."""
+@pytest.mark.parametrize('self_flag', [' DamageDealtAtSelfPosition="true"', ''])
+def test_king_onis_instant_arc_shock_goes_off_at_its_feet(weapon_world, monkeypatch, self_flag):
+    """engine_knock_oni a: an instant arc shock is centred on the shooter's feet with or without
+    DamageDealtAtSelfPosition, and 135d reaches 82 deg off its line (half-angle = the arc); the bench's speed."""
+    s, fire = weapon_world
+    elevation = np.full((40, 48), 400.0)
+    s.ground = Ground(SimpleNamespace(DIMS=(48, 40, 0), WATERLINE=320, ground=lambda: SimpleNamespace(e=elevation)))
+    gun = s.add('gun', 'AlliedAntiInfantryInfantry', 'Player_1', 200, 200)
+    man = s.add('man', 'AlliedAntiInfantryInfantry', 'Soviet_1', 225, 200)
+    out = s.add('out', 'AlliedAntiInfantryInfantry', 'Soviet_1', 205, 165)      # bench (35, 5) facing +y
+    got, velocity = [], simunits.meta_impact_velocity
+    monkeypatch.setattr(simunits, 'meta_impact_velocity',
+                        lambda *a, **kw: got.append(velocity(*a, **kw)) or got[-1])
+    fire(f'<WeaponTemplate id="SampleHit"{self_flag} WeaponSpeed="999999.0"><Nuggets>'
+         '<MetaImpactNugget ShockWaveAmount="89" ShockWaveRadius="75.0" ShockWaveZMult="1.0" ShockWaveArc="135d" '
+         'ForbiddenTargetObjectStatus="LEECHED_TARGET_ACTIVE" '
+         'ForbiddenTargetModelCondition="STUNNED STUNNED_STANDING_UP STUNNED_FLAILING">'
+         '<SpecialObjectFilter Rule="ANY" Include="INFANTRY"></SpecialObjectFilter></MetaImpactNugget>'
+         '</Nuggets></WeaponTemplate>', man, gun)
+    assert {man.serial, out.serial} <= set(s.impact_flights) and gun.serial not in s.impact_flights
+    assert (0.4362, -3.0536, 0.5671) in [pytest.approx(v, abs=1e-3) for v in got]
+
+
+def test_an_arc_shock_at_a_projectiles_detonation_reaches_no_one(weapon_world):
+    """engine_knock_arc b / engine_knock_kami a: a V4's arc shock at its detonation shocks no one (INFERRED axis)."""
     s, _ = weapon_world
     gun = s.add('gun', 'AlliedAntiInfantryInfantry', 'Player_1', 200, 200)
     man = s.add('man', 'AlliedAntiInfantryInfantry', 'Soviet_1', 225, 200)
@@ -57,5 +80,4 @@ def test_an_arc_shock_at_a_projectiles_detonation_is_a_gap(weapon_world):
     s.volleys = []
     s.queue_projectile_hit(s.frame_now(), man, 0, gun, weapon, (man.x, man.y, impact_ground_z(s, man.x, man.y)))
     s.deal(1 / 15)
-    assert not s.impact_flights
-    assert 'Arc' in s.unmodeled[(GAP_WEAPON, 'MetaImpactNugget')]['what']
+    assert not s.impact_flights and (GAP_WEAPON, 'MetaImpactNugget') not in s.unmodeled

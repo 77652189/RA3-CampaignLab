@@ -41,8 +41,9 @@ def launch(host, weapon, centre, attacker, axis=None, delayed=False):
     stay explicit gaps; no airborne relaunch. After landing the body keeps still landing_hold frames
     (tick: knock_hold, read by move).
     INFERRED selection: feet-centre sphere. Sickle relation uses the launcher. An arc (the shotgun's) keeps the
-    bodies whose bearing from the centre is within arc / 2 of `axis` (INFERRED half; bench 0 deg in, 39 deg out);
-    without an axis (a projectile's detonation: engine_knock_arc b, the axis unmeasured) it is a gap.
+    bodies whose bearing from the centre is within arc of `axis` (A393 engine_knock_oni: 135d takes 82 deg off, so
+    not arc / 2; the shotgun's 5d 0 deg in, 39 deg out);
+    without an axis (a projectile's detonation: engine_knock_arc b, engine_knock_kami a) it shocks no one.
     The whole nugget therefore retains its unmodeled registration.
     """
     world, peers, gap = host.world, host.peers, host.gap
@@ -55,7 +56,8 @@ def launch(host, weapon, centre, attacker, axis=None, delayed=False):
             continue
         arc = effect.get('arc')
         if arc is not None and axis is None:
-            gap(TAG, 'Arc 只量过射手脚下为圆心的瞬发写法；弹体爆心的弧轴未量')
+            # engine_knock_arc b / engine_knock_kami a (A393): a V4's 5d arc shock reaches neither the man at its
+            # detonation nor one 12 / 20 east, 20 past. INFERRED: no grounded body (the axis unknown; a plane's dive)
             continue
         target_filter = effect.get('target_filter')
         magnetic = target_filter and target_filter.get('magnetic_ground')
@@ -110,9 +112,11 @@ def launch(host, weapon, centre, attacker, axis=None, delayed=False):
             if arc is not None:
                 dx, dy = b.x - centre[0], b.y - centre[1]
                 if math.hypot(dx, dy) > 1e-6 and abs(math.degrees(
-                        math.atan2(axis[0]*dy - axis[1]*dx, axis[0]*dx + axis[1]*dy))) > arc / 2:
+                        math.atan2(axis[0]*dy - axis[1]*dx, axis[0]*dx + axis[1]*dy))) > arc:
                     continue
             if effect.get('forbid_flailing') and b.serial in flights:   # INFERRED: STUNNED_FLAILING = in flight
+                continue
+            if effect.get('forbid_stunned') and peers.knock_hold.get(b.serial, -1) > now:  # lying / standing up
                 continue
             height, resistance = host.body_of(b.template)
             if effect['amount'] < resistance:

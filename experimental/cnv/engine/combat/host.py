@@ -526,8 +526,9 @@ class Damage:
                                     shots_due(by, gun, dt, t)
                                     break
                     shocks = not projectile and (w.get('meta_impacts') or w.get('delayed_meta_impacts'))
-                    if shocks and w.get('at_self'):
-                        # the shotgun's shocks (A363) and Omega's delayed ones (A381) from its feet at the shot
+                    if shocks and (w.get('at_self') or any('arc' in e for e in w.get('meta_impacts', []))):
+                        # the shotgun's shocks (A363) and Omega's delayed ones (A381) from its feet at the shot; an
+                        # instant arc shock too without DamageDealtAtSelfPosition (A393 engine_knock_oni rush lane)
                         meta_impact.fire_at_self(host, w, by, t)
                     elif shocks and w.get('delayed_meta_impacts'):
                         # an instant hit's delayed shocks (Katana): centred on the target's half height (INFERRED)

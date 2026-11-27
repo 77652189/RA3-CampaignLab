@@ -1,0 +1,12 @@
+# Bench readings of checks/engine_knock_oni.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Counters: melee in, melee out, rush beyond, rush before -- each man still on his spot (a 3 box), 1 / 0.
+# Each shock's centre and speed is in the run's ra3ext.log and the check's docstring (module test:
+# tests/modules/test_nugget_meta_impact_self.py).
+
+[[reading]]
+id = "king_onis_arc_shocks_go_off_at_its_feet_and_reach_82_degrees_off_its_line"
+scene = {build = "engine_knock_oni", check = "a", until = 12, shot_clock = true}
+bench = "CampKOniA_mcp_1126_211718 (11-26, A393): 1 1 1 1 to s5.87, 0 0 0 0 from s6.6 to the end (one shot at frame 92); predicted 0 1 0 1 (half-angle arc / 2, the rush centred on its target): wrong"
+proves = "engine/data/units MetaImpact parse (Arc + LEECHED_TARGET_ACTIVE + STUNNED* + Rule ANY Include INFANTRY) + engine/combat/meta_impact.launch / host: an instant arc shock is centred on the shooter's feet with or without DamageDealtAtSelfPosition, the arc's half-angle is the arc (135d takes the man 82 deg off)"
+item = ["武器效果 MetaImpactNugget:鬼王瞬发弧"]
+expect = ["vals(rows)[-1] == [0, 0, 0, 0]", "vals(rows)[5] == [1, 1, 1, 1]"]
