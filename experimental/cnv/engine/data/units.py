@@ -1321,25 +1321,28 @@ def frozen_armor(template, own=None, condition='SECONDARY_DAMAGE'):
     return _fight_data()['armors'].get(a) if a else None
 
 
-def bridge_generation_counts(template, length, own=None):
+def bridge_generation_counts(template, length, own=None, *, head=None):
     """Count-only model for the two measured HB_Bridge_02 lengths (270/700).
 
     No world bodies/positions, pathing, health sharing or repair are generated.
     Other lengths/configurations return None: rounding beyond these samples is
-    INFERRED. Read the XML so overrides cannot silently reuse retail results.
+    INFERRED. Read the XML or use the caller's resolved BridgeBuilder block so
+    overrides cannot silently reuse retail results.
     """
     if template != 'HB_Bridge_02' or length not in (270, 700):
         return None
     def read(xml):
-        for head, _ in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'BridgeBuilder'):
-            return {key: _attr(head, key) for key in (
-                'EndCap', 'EndCap2', 'EndCapLen', 'CenterPiece', 'CenterPieceLen',
-                'CenterPieceB', 'CenterPieceBLen', 'GateHouse', 'GateHouse2', 'Width')}
+        return next((attrs for attrs, _ in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S),
+                                                   'BridgeBuilder')), None)
+    head = _chain(template, own, read) if head is None else head
+    if not head:
         return None
-    data = _chain(template, own, read)
+    data = {key: _attr(head, key) for key in (
+        'EndCap', 'EndCap2', 'EndCapLen', 'CenterPiece', 'CenterPieceLen',
+        'CenterPieceB', 'CenterPieceBLen', 'GateHouse', 'GateHouse2', 'Width')}
     fields = ('EndCap', 'EndCap2', 'CenterPiece', 'CenterPieceB', 'GateHouse')
     suffixes = ('End', 'End2', 'Center', 'Center2', 'GateHouse')
-    if not data or any(data[k] != 'HB_Bridge_02_' + v for k, v in zip(fields, suffixes)):
+    if any(data[k] != 'HB_Bridge_02_' + v for k, v in zip(fields, suffixes)):
         return None
     if tuple(_num(data[k]) for k in ('EndCapLen', 'CenterPieceLen', 'CenterPieceBLen')) != (75, 150, 150) \
             or data['GateHouse2'] not in (None, data['GateHouse']) or _num(data['Width']) != 190:

@@ -733,7 +733,7 @@ class Sim:
                 b.team = crew
                 self.active.add(crew)
             b.angle = facing(o)                         # as the built map puts it (the player's north, others' south)
-        simbridge.gatehouses(self, placed)              # a named bridge's two (engine_bridgefix)
+        simbridge.place_parts(self, placed)             # measured bridge parts
         import platprops
         for k, o in enumerate(getattr(mission.map, 'SCENERY', [])):
             if o.template in platprops.STRUCTURE:

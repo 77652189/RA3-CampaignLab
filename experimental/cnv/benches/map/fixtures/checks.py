@@ -295,6 +295,7 @@ def engine_bridgesegment():
     base = engine_bridgebuilder()['MISSION']['engine_bridgebuilder']
     proxy = 'Bridge short 0'
     center, ref = 'HB_Bridge_02_Center', 'Short center ref'
+    bands = tuple(f'Long center {i}' for i in range(1, 5))
 
     def mission():
         m = base()
@@ -337,7 +338,33 @@ def engine_bridgesegment():
         t.bench = [('bench_watch', dict(seconds=22, every=1, sheet=False, lines=4))]
         return t
 
-    return dict(MISSION={'engine_bridgesegment': mission}, CHECKS={'engine_bridgesegment': {'a': check}})
+    def long_centers(m):
+        """E298: one long-proxy hit identifies the positions; the bands identify the types."""
+        from parts import square
+
+        proxy = m.role('long 0').name
+        start = next(o for o in m.objects if o.name == proxy)
+        t = Test()
+        t.counters = [(band, f'长中{i}') for i, band in enumerate(bands, 1)]
+        t.scripts = [
+            Script('Hit long proxy', [('TIMER_EXPIRED', 'Hit long')], [
+                ('NAMED_DAMAGE', start.name, 200)]),
+            Script('Start long probe', [], [('SET_MILLISECOND_TIMER', 'Hit long', 8.0)]),
+            Script('Reset center bands', [], [('SET_COUNTER', band, 0) for band in bands], once=False),
+        ]
+        # These are the original bands used to identify the four ua: positions.
+        for i, band in enumerate(bands, 1):
+            t.areas[band] = square(start.x + 150 * i, start.y, 75)
+            for template, other, value in ((center, center + '2', 1), (center + '2', center, 2)):
+                t.scripts.append(Script(f'{band} type {value}', [
+                    ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', m.player('neutral'), 2, n, unit, band)
+                    for n, unit in ((1, template), (0, other))], [('SET_COUNTER', band, value)], once=False))
+        t.expect = [(label, 4, '==', value, 12) for (_, label), value in zip(t.counters, (1, 2, 1, 2))]
+        t.bench = [('bench_watch', dict(seconds=14, every=1, sheet=False, lines=4))]
+        return t
+
+    return dict(MISSION={'engine_bridgesegment': mission},
+                CHECKS={'engine_bridgesegment': {'a': check, 'b': long_centers}})
 
 
 def engine_bridgefix():

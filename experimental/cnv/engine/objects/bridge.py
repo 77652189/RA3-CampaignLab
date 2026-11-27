@@ -7,13 +7,13 @@ bridge start (object flags 16) followed by its end (32) gets its BridgeBuilder's
 (ManagedImmortalBody.manager: the start's name's proxy -- the end's when the end has the same name, as j07, the one a
 script's NAMED_DAMAGE of that name hits). Bench run 2 (CampBridgeFixA_mcp_1122_202537): the gatehouse reads 100, 1
 after the proxy took 20000, 100 again once an engineer went in (order.capture_due); it keeps its owner. Not modelled:
-the bridge's pieces, a broken bridge closing its deck to the paths (sim.py 'bridge deck': walkable whatever its health)."""
+center health sharing, pieces outside the measured long-bridge centers, and broken-deck pathing."""
 import engine.data.units as simunits
 from engine.kernel import interfaces
 from engine.ports import templates
-from engine.world.handle import CIV
+from engine.world.handle import CIV, free_key
 
-GAP = '仅HB_Bridge_02整体代理脚本伤害、桥头堡血量随代理与工程师修桥已量；有效HP/内部下限映射INFERRED，其他配置、桥段生成、断桥通行未建模'
+GAP = 'HB_Bridge_02整体代理伤害、桥头堡血量与修桥、向东700桥的中段落点已量；有效HP/内部下限映射INFERRED，其他桥段生成、血量联动和断桥通行仍gap'
 
 
 def proxy_health(world, template):
@@ -24,8 +24,9 @@ def proxy_health(world, template):
     return simunits.manager_proxy_health(template, world.own)
 
 
-def gatehouses(world, objects):
-    """After the map's objects are placed (Sim.__init__): every named start / end pair's two gatehouses."""
+def place_parts(world, objects):
+    """After the map load, place named pairs' gatehouses and the measured long bridge centers."""
+    add = world.add
     for start, end in zip(objects, objects[1:]):
         if not start.name or getattr(start, 'flags', None) != 16 or getattr(end, 'flags', None) != 32:
             continue
@@ -34,6 +35,15 @@ def gatehouses(world, objects):
         proxy = world.bodies.get(start.name)
         if not first or proxy is None:
             continue
+        owner = world.players.get(start.side, CIV)
         for k, (template, at) in enumerate(((first, start), (templates.attr(head, 'GateHouse2') or first, end)), 1):
-            g = world.add(f'{start.name}_GateHouse{k}', template, world.players.get(start.side, CIV), at.x, at.y)
+            g = add(f'{start.name}_GateHouse{k}', template, owner, at.x, at.y)
             g.find(interfaces.Body).manager = proxy.find(interfaces.Body)
+        if (end.template != start.template or end.x - start.x != 700 or end.y != start.y
+                or simunits.bridge_generation_counts(start.template, 700, head=head) is None):
+            continue
+        # E298: HB_Bridge_02 eastbound in Niagara, engine_bridgesegment:b.
+        a, b = (templates.attr(head, field) for field in ('CenterPiece', 'CenterPieceB'))
+        for i, template in enumerate((a, b, a, b), 1):
+            name = free_key(world, '#bridge center {}'.format, i)
+            add(name, template, owner, start.x + 150 * i, start.y)
