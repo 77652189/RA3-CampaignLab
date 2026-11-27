@@ -573,34 +573,35 @@ bench_id = "engine_aivital"
 id = "vital_named_bench_replay[aivitalon lane0]"
 scene = {build = "aivitalon", check = "a", until = 61}
 bench = "aivitalon:a s55-s60: lane 0 (counter lane0) reads 24 every second."
-proves = "simai native-status filter: the script-controlled ATTACHED slice and the lane counters"
+proves = "nothing yet: lane 0 reads 24 from s1.2, before the s10 wake -- two counted in its goal area that the sim's four javelins (x 3590, the area ends at 3490) are not in; a count-area question, not a target"
 expect = "[v[0] for t, v in zip(times, vals(rows)) if 55 <= t <= 60] == [24] * 6"
-mismatch = "sim 114; bench 24"
+mismatch = "sim 4; bench 24"
 
 [[reading]]
 bench_id = "engine_aivital"
 id = "vital_named_bench_replay[aivitalon lane1]"
 scene = {build = "aivitalon", check = "a", until = 61}
 bench = "aivitalon:a s55-s60: lane 1 (counter lane1) reads 4 every second."
-proves = "simai native-status filter: the script-controlled ATTACHED slice and the lane counters"
+proves = "simai targets VitalObjectStatus: a candidate needs the bit (ATTACHED set / cleared by script); a script's AIRBORNE_TARGET on a ground tank does not stay, so the three airborne hosts find none"
+item = "AI 目标/AITargetingHeuristic.VitalObjectStatus"
 expect = "[v[1] for t, v in zip(times, vals(rows)) if 55 <= t <= 60] == [4] * 6"
-mismatch = "sim 104; bench 4"
 
 [[reading]]
 bench_id = "engine_aivital"
 id = "vital_named_bench_replay[aivitalon lane2]"
 scene = {build = "aivitalon", check = "a", until = 61}
 bench = "aivitalon:a s55-s60: lane 2 (counter lane2) reads 4 every second."
-proves = "simai native-status filter: the script-controlled ATTACHED slice and the lane counters"
+proves = "simai targets VitalObjectStatus: a candidate needs the bit (ATTACHED set / cleared by script); a script's AIRBORNE_TARGET on a ground tank does not stay, so the three airborne hosts find none"
+item = "AI 目标/AITargetingHeuristic.VitalObjectStatus"
 expect = "[v[2] for t, v in zip(times, vals(rows)) if 55 <= t <= 60] == [4] * 6"
-mismatch = "sim 104; bench 4"
 
 [[reading]]
 bench_id = "engine_aivital"
 id = "vital_named_bench_replay[aivitalon lane3]"
 scene = {build = "aivitalon", check = "a", until = 61}
 bench = "aivitalon:a s55-s60: lane 3 (counter lane3) reads 140 every second."
-proves = "simai native-status filter: the script-controlled ATTACHED slice and the lane counters"
+proves = "simai targets VitalObjectStatus: a candidate needs the bit (ATTACHED set / cleared by script); a script's AIRBORNE_TARGET on a ground tank does not stay, so the three airborne hosts find none"
+item = "AI 目标/AITargetingHeuristic.VitalObjectStatus"
 expect = "[v[3] for t, v in zip(times, vals(rows)) if 55 <= t <= 60] == [140] * 6"
 
 [[reading]]
@@ -608,7 +609,7 @@ bench_id = "engine_aivital"
 id = "vital_named_bench_replay[aivitaloff lane0]"
 scene = {build = "aivitaloff", check = "a", until = 61}
 bench = "aivitaloff:a s55-s60: lane 0 (counter lane0) reads 24 every second."
-proves = "simai native-status filter: the script-controlled ATTACHED slice and the lane counters"
+proves = "nothing yet: lane 0 reads 24 from s1.2, before the s10 wake -- two counted in its goal area that the sim's four javelins (x 3590, the area ends at 3490) are not in; a count-area question, not a target"
 expect = "[v[0] for t, v in zip(times, vals(rows)) if 55 <= t <= 60] == [24] * 6"
 mismatch = "sim 4; bench 24"
 
@@ -617,7 +618,8 @@ bench_id = "engine_aivital"
 id = "vital_named_bench_replay[aivitaloff lane1]"
 scene = {build = "aivitaloff", check = "a", until = 61}
 bench = "aivitaloff:a s55-s60: lane 1 (counter lane1) reads 4 every second."
-proves = "simai native-status filter: the script-controlled ATTACHED slice and the lane counters"
+proves = "simai targets VitalObjectStatus: a candidate needs the bit (ATTACHED set / cleared by script); a script's AIRBORNE_TARGET on a ground tank does not stay, so the three airborne hosts find none"
+item = "AI 目标/AITargetingHeuristic.VitalObjectStatus"
 expect = "[v[1] for t, v in zip(times, vals(rows)) if 55 <= t <= 60] == [4] * 6"
 
 [[reading]]
@@ -625,7 +627,8 @@ bench_id = "engine_aivital"
 id = "vital_named_bench_replay[aivitaloff lane2]"
 scene = {build = "aivitaloff", check = "a", until = 61}
 bench = "aivitaloff:a s55-s60: lane 2 (counter lane2) reads 4 every second."
-proves = "simai native-status filter: the script-controlled ATTACHED slice and the lane counters"
+proves = "simai targets VitalObjectStatus: a candidate needs the bit (ATTACHED set / cleared by script); a script's AIRBORNE_TARGET on a ground tank does not stay, so the three airborne hosts find none"
+item = "AI 目标/AITargetingHeuristic.VitalObjectStatus"
 expect = "[v[2] for t, v in zip(times, vals(rows)) if 55 <= t <= 60] == [4] * 6"
 
 [[reading]]
@@ -633,7 +636,8 @@ bench_id = "engine_aivital"
 id = "vital_named_bench_replay[aivitaloff lane3]"
 scene = {build = "aivitaloff", check = "a", until = 61}
 bench = "aivitaloff:a s55-s60: lane 3 (counter lane3) reads 4 every second."
-proves = "simai native-status filter: the script-controlled ATTACHED slice and the lane counters"
+proves = "simai targets VitalObjectStatus: a candidate needs the bit (ATTACHED set / cleared by script); a script's AIRBORNE_TARGET on a ground tank does not stay, so the three airborne hosts find none"
+item = "AI 目标/AITargetingHeuristic.VitalObjectStatus"
 expect = "[v[3] for t, v in zip(times, vals(rows)) if 55 <= t <= 60] == [4] * 6"
 
 # Bench readings of benches/ai/targets/checks.py#engine_aiwake (format: experimental/cnv/readings.py; runner: tests/conformance).

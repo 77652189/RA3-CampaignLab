@@ -223,10 +223,13 @@ def unit_change_object_status(sim, name, a, script, unit=None):
     # `unit`: the member a team action picked (the object itself, not a reference of its name: 11-19 sweep)
     b = unit if unit is not None else sim.body(a[0])
     st = a[1][2] if isinstance(a[1], tuple) else a[1]
-    if b and st != 'NEXT_MOVE_IS_REVERSE':  # A310 engine_hull pace: set at s0, a script never reads it (INFERRED: not kept)
+    # bits the engine keeps itself, a script's does not stay: NEXT_MOVE_IS_REVERSE (A310 engine_hull pace: set at s0, a
+    # script never reads it, INFERRED) and AIRBORNE_TARGET (C engine_aivital: set on three ground tanks at s0, read 0
+    # from the first sample; module.status_now has it in the air; a script's clear in the air not benched)
+    if b and st not in ('NEXT_MOVE_IS_REVERSE', module.AIRBORNE):
         (b.script_status.add if a[2] else b.script_status.discard)(st)
         simmodifier.modify(sim, b)
-    if st not in ACTED_STATUS | AI_ONLY_STATUS:
+    if st not in ACTED_STATUS | AI_ONLY_STATUS | {module.AIRBORNE}:
         sim.gap(GAP_ACTION, refined(name, a), f'状态位 {st} 只记下来；模拟器只认 {"、".join(sorted(ACTED_STATUS))}')
 
 

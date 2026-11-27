@@ -1882,7 +1882,7 @@ class Brain:
         rr = df.TOWER_LIST_R
         for k in (0, 1, -1, 2, -2):
             x, y = yard.x + rr * math.cos(a + k * step), yard.y + rr * math.sin(a + k * step)
-            if world.ground.open('ground', x, y, place=True) and all(math.hypot(x - tx, y - ty) >= r + tr + GAP
+            if self.open_at(x, y) and all(math.hypot(x - tx, y - ty) >= r + tr + GAP
                                                      for tx, ty, tr in taken):
                 return x, y
         return None
@@ -1932,6 +1932,10 @@ class Brain:
         `distance` of it (distance <= 0: no search). Bench aiopn1900 / aiopn2250: every node on the map counts, the
         distance from the node (open_nodes' clear). The search's edge (< or <=) INFERRED."""
         return bool(self.open_nodes(miners=True, near=False, clear=distance))
+
+    def open_at(self, x, y):
+        """A footprint's centre on open ground (the placement searches' cell test)."""
+        return self.world.ground.open('ground', x, y, place=True)
 
     def allied_ok(self, x, y):
         """CanBuildInAlliedBuildRadii (B212 read, work/re l4_allied_radii.md): unless the personality says true, the
@@ -1995,7 +1999,7 @@ class Brain:
 
         def fits(x, y, n):                          # the footprint inside the active border (INFERRED)
             if not (x0 + reach <= x <= x1 - reach and y0 + reach <= y <= y1 - reach
-                    and world.ground.open('ground', x, y, place=True)
+                    and self.open_at(x, y)
                     and all(math.hypot(x - tx, y - ty) >= r + tr + GAP for tx, ty, tr in taken)
                     and self.allied_ok(x, y)):
                 return False

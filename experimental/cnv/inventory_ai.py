@@ -184,14 +184,6 @@ NOTES = {
         '三strict xfail：后命中门证据、FriendlyStructure绕过布尔、具名选择差异。'
         '世界层缺真实受伤时钟，HP差两秒不能替代；两局耗完、暂停不晋升；'
         '见work/re/c_underattack_reopen_report.md；27关范围仍见c_underattack_scope.json'),
-    '目标/AITargetingHeuristic.VitalObjectStatus': (GUESSED,
-        'C engine_aivital aivitalon/off:a：四原名宿主、脚本状态置/清对照；'
-        's55-60原打包状态*100+目标区*10+家中计数分别24/4/4/140与24/4/4/4。'
-        'ATTACHED置位到目标4、清位留家4，按名回放吻合；仅脚本位子集。'
-        '三地面样本的AIRBORNE_TARGET始终读0，模型却保留；路0区域重叠且位置差异未解。'
-        'tests/test_vital_status_c.py断言原图读数，四strict xfail保留状态/位置差异；'
-        '缺真实飞行/落地状态入口、同帧候选资格及原附着生命周期，整字段不晋升。'
-        '见work/re/c_vital_report.md'),
     '目标/AITargetingHeuristic.SortType=ClosestToEnemy': (BENCHED,
         'C aiclosest:a：D158 target_picks同帧f16四槽按过滤分组选择塔/塔/电厂/电厂，'
         'tests/test_closest_enemy_c.py按名回放目标选择并断言实机候选/forbid/最近敌距；'
