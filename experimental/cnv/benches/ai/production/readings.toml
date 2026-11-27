@@ -1464,6 +1464,41 @@ expect = ["125 <= after('工程队', 0, 11) <= 132 and 141 <= after('工程队',
 
 [[reading]]
 bench_id = "engine_aiskirm"
+id = "cleanups_first_commit_leaves_the_two_lowest_ids_to_the_capture_team"
+scene = {build = "aiskirmc", check = "m", until = 170, teams = true}
+bench = """\
+aiskirmc:m (C's CNVTeams log, 15-frame samples, A rounds 190-193): AlliedCaptureTech_MEDIUM (Engineer tactic, \
+CreateUnits AlliedEngineer 1, MaxUnits 4, NEVER_RELEASE) absent at f1951, empty and inactive at f1966 -- the same \
+sample as BalancedCleanup's first team (its opening: the et reading above). Cleanup's first commit (f1966) leaves \
+exactly two in defense, the two lowest ids 3171 / 3172; they stay there, unclaimed, until the capture team commits \
+three at once at f2206 (after f2191): a new id 3181 (the engineer) and the pair; defense is then empty"""
+proves = """\
+simai team recruit (model teams.escort_count / recruit, INFERRED 2 = MaxUnits 4 - the CreateUnits slot's 1 + 1): the \
+two lowest ids wherever they are stay out of Cleanup's commit, the ones in defense stay there until the capture \
+team goes with them and its one engineer (here the scouts hold the two lowest, so defense keeps none -- A round 200)"""
+let = {first = "next(r for r in teams() if r['state_key'] == 'BalancedCleanup' and r['members'])", ids = "lambda names: sorted(int(n.split()[1]) for n in names)", now = "[r for r in teams() if r['frame'] == first['frame'] and r['phase'] != 'done']", left = "[m['name'] for r in now if r['state_key'] == 'LandDefense_MEDIUM' for m in r['members']]", low = "ids(m['name'] for r in now for m in r['members'])[:2]", cap = "[r for r in teams() if r['state_key'] == 'AlliedCaptureTech_MEDIUM' and r['frame'] == 2206]", gone = "min(r['frame'] for r in teams() if r['state_key'] == 'AlliedCaptureTech_MEDIUM' and r['members'])"}
+expect = [
+    "not set(low) & set(ids(m['name'] for m in first['members'])) and set(ids(left)) <= set(low)",
+    "len(cap) == 1 and cap[0]['phase'] != 'done' and set(left) <= {m['name'] for m in cap[0]['members']}",
+    "sum(m['name'].endswith(' AlliedEngineer') for m in cap[0]['members']) == 1",
+    "all(set(left) <= {m['name'] for r in teams() if r['frame'] == f and r['state_key'] == 'LandDefense_MEDIUM' and r['phase'] != 'done' for m in r['members']} for f in range(first['frame'], gone))",
+]
+
+[[reading]]
+bench_id = "engine_aiskirm"
+id = "cleanups_first_commit_takes_seven_of_the_nine_defenders"
+scene = {build = "aiskirmc", check = "m", until = 170, teams = true}
+bench = """\
+aiskirmc:m (C's CNVTeams log): f1951 one active defense team of 9 (ids 3171-3179); f1966 Cleanup active with 7 \
+(3173-3179), defense active with the other 2 (3171 / 3172). work/re/c_release_eight_report.md"""
+proves = "simai team release: Cleanup's first commit takes the defenders less the two held, and goes with them"
+let = {first = "next(r for r in teams() if r['state_key'] == 'BalancedCleanup' and r['members'])", original = "{m['name'] for m in [r for r in teams() if r['state_key'] == 'LandDefense_MEDIUM' and r['frame'] < first['frame'] and r['members']][-1]['members']}", moved = "{m['name'] for m in first['members']}", kept = "{m['name'] for r in teams() if r['state_key'] == 'LandDefense_MEDIUM' and r['frame'] == first['frame'] and r['phase'] != 'done' for m in r['members']}", went = "next((r for r in teams() if r['run'] == first['run'] and r['phase'] == 'go'), {'members': []})"}
+expect = ["len(original) == 9 and len(moved) == 7 and moved < original", "kept == original - moved",
+          "{m['name'] for m in went['members']} == moved"]
+mismatch = "Bench 9 -> 7 moved and 2 kept; the model's Cleanup takes all 9 at f1952 (none kept: its two lowest ids are scouts, the hold falls on them)"
+
+[[reading]]
+bench_id = "engine_aiskirm"
 id = "best_unit_expected_picks_the_counter_infantry"
 scene = {build = "aiskvinf", check = "z", until = 186}
 each = [{build = "aiskvinf", chosen = "维和总数", other = "标枪总数", bare = 169, by = 164, n = 7},

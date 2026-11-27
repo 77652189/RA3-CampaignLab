@@ -37,6 +37,36 @@ expect = [
     "{(r['步兵在家'], r['步兵数']) for r in plateau} == {(0, 0)}",
 ]
 
+[[reading]]
+bench_id = "engine_aialphaclose"
+id = "alpha_observer_team_fills_before_the_wake_then_forms_up_goes_and_strikes"
+scene = {build = "aialobslo", check = "a", until = 17, teams = true}
+each = [{build = "aialobslo"}, {build = "aialobshi"}]
+bench = """\
+E99 / E101 CNVTeams (work/re e99_compare.json, aialobslo): the SimpleAttack team empty at f17, 4 members at f21 -- \
+before the s10 wake (aialobsw, the wake held to s30, keeps it); f26 a formation move to 3601.6 / 3294.6, the \
+members idle again one by one f48-f71; f74 the move to the target; micro state 6 at f230"""
+proves = "simai SimpleAttack (B round 161 / 194): the named team fills from the first frame, forms up beside itself, then goes, then state 6"
+let = {at = "lambda f: [r for r in teams() if r['frame'] == f]", form = "min(r['frame'] for r in teams() if r['phase'] == 'form')", go = "min(r['frame'] for r in teams() if r['phase'] == 'go')", six = "min(r['frame'] for r in teams() if r['state'] == 6)"}
+expect = [
+    "len(at(21)) == 1 and len(at(21)[0]['members']) == 4",
+    "form < go < six",
+    "abs(sum(m['pos'][1] for m in at(go)[0]['members']) / len(at(go)[0]['members']) - 3294.6) < 25.0",
+]
+
+[[reading]]
+bench_id = "engine_aialphaclose"
+id = "alpha_observer_is_in_state_six_at_the_benched_frame"
+scene = {build = "aialobslo", check = "a", until = 17, teams = true}
+each = [{build = "aialobslo"}, {build = "aialobshi"}]
+bench = "E99 (aialobslo / aialobshi): micro state 6 at f230 (8 before, while the team walks to the target)"
+proves = "simai SimpleAttack: the team's state on the bench's own logic frame"
+expect = "[r['state'] for r in teams() if r['frame'] == 230] == [6]"
+mismatch = """\
+B round 200: bench form f26 / go f74 / state 6 f230; the model (form-up b830b09) form f2 / go f55 / state 6 f240 \
+(8 at f230) -- its team fills at f1 (bench f21) and the walk to state 6 takes 185 frames (bench 156); needs the \
+members' positions on the bench's walk, not a constant"""
+
 # Bench readings of benches/ai/tactics/checks.py#engine_aibasedef (format: experimental/cnv/readings.py; runner: tests/conformance).
 # EnterBaseDefenses / EnterBaseDefensesWhenIdle (bench 2026-11-09).
 

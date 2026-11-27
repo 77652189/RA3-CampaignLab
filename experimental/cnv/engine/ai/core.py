@@ -105,8 +105,8 @@ INCOME_WINDOW = 90.0    # s: IncomeAdvantage's deposit window (read 11-25, the t
 # map container's campaign personality and its states (bench engine_inform_ai, B E238); not there = SDK only
 RETAIL_AI = os.path.join(labpaths.WORK, 'retailref', 'ai_states_sdk.xml')
 EXPANSIONS ={'SimpleExpansion', 'ExactExpansion'}     # the act kinds whose members unpack (Brain.approach)
-# the engine's word for a tactic type in its team names where it is not the type itself (C's team log
-# tests/fixtures/c_release_teams/aiskirm_m.txt: Tactic="Engineer" -> AlliedCaptureTech_MEDIUM_EngineerTactic_0_0)
+# the engine's word for a tactic type in its team names where it is not the type itself (C's team log of
+# aiskirmc:m, readings engine_aiskirm: Tactic="Engineer" -> AlliedCaptureTech_MEDIUM_EngineerTactic_0_0)
 TACTIC_NAME_WORDS = {'Engineer': 'EngineerTactic'}
 PLACE_DELAY = 1                     # bench aiopen f1-f3 (opening.PLACE_DELAY): owned 1 frame after the head is full
 RING = (260.0, 400.0, 540.0, 680.0)     # INFERRED: the rings a yard puts its structures on

@@ -636,7 +636,7 @@ NOTES = {
         '传送前模型开的一侧也离900（台上不离）仍strict xfail。旧记录：'
         '专用engine_aiaesthetics aiaeson/aiaesoff固定Distance=2000，仅切美学开关；'
         '两组各5条PASS：on先离300、传送后回900再离，off回双圈，存活/锁存均1；'
-        'tests/test_simai_bench_c.py关闭组完整轨迹已回放；探针战术附加属性现传入消费者；'
+        '关闭组完整轨迹的读数 benches/ai/tactics/readings.toml#engine_aidistance::tactic_distance_replays_observed_excursion；探针战术附加属性现传入消费者；'
         'E108按D83实际调用回放：首次遇敌gate=0仍发，后续102次gate=0不发、两次gate=1发；'
         '完整模拟首发153对台191且漏461，选敌/成员目的地/ready仍gap，'
         '读数aiaeson_stand_moves_at_f191_and_f461标mismatch；见 work/re/e108_aesthetics_gate.md'),
@@ -664,7 +664,7 @@ NOTES = {
         '台上高的8→6 f230→0（集火）f290，低的8→6 f230→1（撤退）f470、从不进0；模型高的6 f240→0 f270、'
         '低的6 f240→1 f480、从不进0，正常断言；精确帧和低的一侧后段8/6/1循环、血量/存活结局仍strict xfail。旧记录：'
         'engine_aialphahp 旧固定70%对照；engine_aialphaclose 独立延迟守军、仅阈值0.01/0.9不同；'
-        'tests/test_simai_bench_c.py 保留读数回放，有限诊断不等于字段闭环；'
+        '读数 benches/ai/tactics/readings.toml#engine_aialphaclose::alpha_observer_team_fills_before_the_wake_then_forms_up_goes_and_strikes（f230 状态 6 那条标 mismatch），有限诊断不等于字段闭环；'
         '目标适用条件与回放差异仍gap，见 work/re/c_alpha_close_report.md'),
     '微操/AIMicroManagerData.AlphaStrikeTargetTimeToKill': (BENCHED,
         'B219：tests/test_ai_alpha_switch.py 按名跑 aialobttk（= aialobshi 只把 TimeToKill 1000 改 0.01，CNVTeams宿主，'

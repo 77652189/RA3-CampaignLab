@@ -707,8 +707,8 @@ def engine_aidistance():
     RESULTS: both builds PASS (five endpoint checks each). Small returns to the
     900 square at s33, 300 at s41. Large leaves 300 at s15 before the teleport,
     returns inside 900 at s34, then leaves 900 again at s56. Both remain alive.
-    The model matches endpoints but misses the large group's excursion: strict
-    xfail in test_simai_bench_c.py. No inventory promotion; aesthetics remains gap.
+    The model then matched endpoints but missed the large group's excursion; it
+    now holds: readings.toml#engine_aidistance. Aesthetics remains gap.
 
     E92: the initial Guardian's ID persists across 68 position samples. Its
     (300, 900) square occupancy changes at frames 166/256/451/541/871:
