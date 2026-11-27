@@ -77,7 +77,7 @@ FORWARDER_CALLS = {
 # the line the failure prints, in the same commit (review rr #8: a names-only count let a swap through). Packages are
 # engine.<layer> and the top-level sim*.py files.
 SIM_SURFACE = {
-    'engine.ai': 'blocks*11 bodies*4 commands*3 enemy*2 flags frame_now*3 ground*8 human*2 level living*24 '
+    'engine.ai': 'blocks*11 bodies*4 commands*3 enemy*2 flags frame_now*3 ground*7 human*2 level living*24 '
                  'note*4 own*15 players*6 relation relations*3 t*4 waypoints*2 who*4 world xml_of*2',
     'engine.combat': 'attachment_tick attachments*4 can_hit change*2 cold_of*3 death_blasts*2 emp_disabled*2 firing '
                      'first_death*4 frame_now*15 gap*5 garrison*2 ground*6 guessed has_model_condition hostile infiltrators '

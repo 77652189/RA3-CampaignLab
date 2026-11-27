@@ -702,12 +702,13 @@ class Brain:
                 answer = False                                   # read (D175 why=noloco): no locomotor -> no way
             else:
                 grid = 'water' if surface == 'Water' else 'ground'   # read: cell type Water 7 / Land 0
-                ok = lambda p: world.ground.open(grid, *p)           # noqa: E731
+                ground = world.ground
+                ok = lambda p: ground.open(grid, *p)                 # noqa: E731
                 theirs = self.base_object(them)
                 a = st.spot((mine.x, mine.y), ok, self.path_rng)
                 b = st.spot((theirs.x, theirs.y), ok, self.path_rng)
-                way = world.ground.walks(types.SimpleNamespace(surface=stats['surface'], kinds=stats.get('kinds', ())))
-                answer = a is not None and b is not None and world.ground.route(way, a, b) is not None
+                way = ground.walks(types.SimpleNamespace(surface=stats['surface'], kinds=stats.get('kinds', ())))
+                answer = a is not None and b is not None and ground.route(way, a, b) is not None
         self.paths[key] = (self.frame, answer)
         return answer
 
