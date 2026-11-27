@@ -44,3 +44,12 @@ bench = "A407 CampInfVis3B: no spy sent to the Japan yard; its near marker seen 
 proves = "the a run's Japan reveal is not InfiltratorContain VISION: the same marker is discovered at the same pass with no entry"
 expect = "win(22, 40, 'japan') == [353] * 19 and rows[-1]['soviet'] >= 600"
 mismatch = "simulator: the Japan near marker is never discovered without an entry; bench sees it at pass 353"
+
+[[reading]]
+id = "spy_vision_probe_range_marker_seen_without_entry"
+scene = {build = "engine_infvis", check = "d", until = 36}
+bench = "A408 CampInfVisD (head d185110b): no enemy spy sent; enemy/ally/vision = 11100/11100/0 s1-s15, 11100/11100/1 s16-s36"
+proves = "a/b/c's near-marker discovery (s16-s19) is not InfiltratorContain VISION: with no entry it is seen at s16, a's own second"
+expect = "matches(sample(1, 15), [11100, 11100, 0]) and matches(sample(16, 36), [11100, 11100, 1])"
+let = {sample = "lambda lo, hi: [v for t, v in zip(times, vals(rows)) if lo <= t <= hi]", matches = "lambda got, wanted: bool(got) and all(v == wanted for v in got)"}
+mismatch = "simulator: the near marker is never discovered without an entry (vision 0 to s36); bench 1 from s16"

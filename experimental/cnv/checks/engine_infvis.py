@@ -14,7 +14,7 @@ activation delay is a sampled fit (INFERRED), not a measured engine mechanism.
 from parts import NOT, Script, Test, counted
 
 
-def check(m):
+def check(m, send=('enemy', 'ally')):
     t = Test()
     p, ally = m.player('p1'), m.player('s2')
     t.scripts = [Script('Test - start', [], [
@@ -25,7 +25,7 @@ def check(m):
         for role in ('enemy', 'ally', 'enemy spy', 'ally spy', 'near', 'far', 'control')]),
         Script('Test - enter', [('TIMER_EXPIRED', 'Vision enter')], [
             ('NAMED_GARRISON_SPECIFIC_BUILDING', m.role(role + ' spy').name, m.role(role).name)
-            for role in ('enemy', 'ally')])]
+            for role in send])]
     for role, side in (('enemy', 's1'), ('ally', 's2')):
         c = 'Vision ' + role
         counted(c, role, t, health=m.role(role).name)
@@ -79,6 +79,15 @@ def check_japan(m):
     return check(m)
 
 
+def check_unentered(m):
+    """d (A408 H4): a without the enemy spy's entry -- the control a/b/c lacked. A407 saw a marker discovered with
+    no entry on another map; if the near marker is still seen around s16 here, a/b/c's reveal is not VISION either.
+    Prediction (the simulator): enemy stays 11100, near never seen."""
+    t = check(m, send=('ally',))
+    t.expect = [('vision', 0, '==', 0, 7), ('enemy', 0, '==', 11100, 18)]
+    return t
+
+
 def trio(m, send=('allied', 'soviet', 'japan')):
     """A406: the three yards in one run, counted per script pass (not per captured second).
 
@@ -119,5 +128,5 @@ def trio_allied(m):
     return trio(m, send=('allied',))
 
 
-CHECKS = {'engine_infvis': {'a': check, 'b': check_soviet, 'c': check_japan},
+CHECKS = {'engine_infvis': {'a': check, 'b': check_soviet, 'c': check_japan, 'd': check_unentered},
           'engine_infvis3': {'a': trio, 'b': trio_allied}}
