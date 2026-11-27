@@ -73,10 +73,10 @@ proves = "sim.Sim.blocks: a BaseRockBig STRUCTURE (NO_COLLIDE) is in everyone's 
 expect = ["t[-1]['穿心'] == 111", "u[-1]['穿心'] == 111"]
 
 [[reading]]
-id = "w_a_toppling_crushable_obstacle_with_a_shape_holds_infantry_up"
+id = "w_the_soviet_fence_holds_infantry_up"
 scene = {build = "engine_a1tollw", check = "w", until = 20}
 bench = "CampA1TollWW (11-26 E266): 穿心 1110, 到时甲 139139155, 到时乙 174139 -- the conscript round MY_ROCKS03 and ST_SOVIETFENCE01, straight through GE_BENCH, HB_BENCH01, TH_LAMPPOST04 (no Shape)"
-proves = "sim.Sim.blocks: a topple CRUSHABLE_OBSTACLE with a Shape is in infantry's way (the topple short cut only for the others)"
+proves = "sim.Sim.blocks: ST_SOVIETFENCE01 holds infantry up in this layout"
 expect = ["rows[-1]['穿心'] == 1110", "rows[-1]['到时乙'] // 1000 >= 160"]
 
 [[reading]]

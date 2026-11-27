@@ -769,8 +769,11 @@ class Sim:
     def blocks(self, b, place=False):
         """What of the way a body takes up: a wall of ours its bar (or disc, square), a building its round. place:
         what a new structure's placement keeps clear of instead (an ore node's round, not its routing plate)."""
-        if b.topple and not ('CRUSHABLE_OBSTACLE' in b.kinds and b.radius):
-            return None                    # engine_topple / E266 a1tollw: only a shaped CRUSHABLE one holds infantry
+        if b.topple:
+            # engine_topple b: infantry crosses OK_Lantern01. E266/E269 measured the fence controls;
+            # treating other shaped CRUSHABLE_OBSTACLE props as infantry blockers is INFERRED.
+            if b.template.lower() == 'ok_lantern01' or not ('CRUSHABLE_OBSTACLE' in b.kinds and b.radius):
+                return None
         if b.template in self.walls:
             p = self.walls[b.template]
             if p.get('shape') == 'disc':
