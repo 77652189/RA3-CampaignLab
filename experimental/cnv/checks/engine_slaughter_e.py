@@ -25,7 +25,7 @@ import labpaths
 from checks.engine_modulebatch import native
 from checks import engine_scripts8 as s8
 from maps import infiltrator_batch
-from parts import Mission, Script, Test, Unit, kindof, square
+from parts import Mission, Script, Test, Unit, counted, kindof, square
 
 
 def carrier(ident, strip=False, hardpoint=False):
@@ -505,15 +505,70 @@ def check_y(m):
     return t
 
 
+def mission_producer(strip=False):
+    """Keep E291's water positions and use retail carriers on both lanes."""
+    m = Mission(name='CampDrone' + ('Off' if strip else 'On'), map=infiltrator_batch, ext=True)
+    for lane, x in [('kill', -2510), ('keep', -1110)]:
+        m.put('AlliedAntiStructureShip', 'ship', x, 400, role=lane + ' host', name=lane + ' carrier')
+        m.put('SovietAntiAirShip', 'ship', x, 900, side='s1', role=lane + ' target', name=lane + ' target')
+        m.waypoint(lane, lane + ' sortie', 'ship', x, 650)
+    drone = 'AlliedAttackDrone'
+    m.spawns.add(drone)
+    if strip:
+        source = Path(labpaths.SDK3) / 'SageXML/Allied/Units' / (drone + '.xml')
+        xml, count = re.subn(r'<DieOnProducerDeathUpdate\b[^>]*/>', '', source.read_text(encoding='utf-8-sig'))
+        assert count == 1
+        m.assets.append(('DroneProducerControl.xml', xml, 'GameObject:' + drone))
+        m.replaces.append('GameObject:' + drone)
+    return m
+
+
+def check_producer(m):
+    """INFERRED from the XML: both lanes launch; only the stock drone dies when its producer dies.
+
+    Keep both targets alive, and require aircraft in both regions before killing
+    either host. Regional counts cannot identify the producer of an individual drone.
+    """
+    t, p1 = Test(), m.player('p1')
+    frame, gate = 'E306Frame', 'E306Gate'
+    t.counters = [(frame, '帧'), (gate, '门')]
+    quiet, orders, both_out = [], [], []
+    for lane, label in [('kill', '击毁侧'), ('keep', '存活侧')]:
+        host, target = m.role(lane + ' host').name, m.role(lane + ' target').name
+        t.areas[lane] = square(*m.point(lane), 690)
+        quiet.extend(('UNIT_CHANGE_OBJECT_STATUS', name, 'NO_ATTACK', 1) for name in (host, target))
+        orders.extend([('UNIT_CHANGE_OBJECT_STATUS', host, 'NO_ATTACK', 0), ('NAMED_ATTACK_NAMED', host, target)])
+        t.scripts.append(Script('Test - heal ' + lane, [('NAMED_NOT_DESTROYED', target)],
+                                [('UNIT_SET_HEALTH', target, 100)], once=False))
+        both_out.extend([('PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA', p1, 3, 1, kindof('AIRCRAFT'), lane),
+                         ('NAMED_NOT_DESTROYED', target), ('NAMED_NOT_DESTROYED', host)])
+        counted('E306Air' + lane, label, t, kind=kindof('AIRCRAFT'), area=lane, player=p1, most=10)
+    t.scripts[:0] = [
+        Script('Test - frame', [], [('INCREMENT_COUNTER', 1, frame)], once=False),
+        Script('Test - quiet', [], [('MAP_REVEAL_ALL_PERM', p1), *quiet]),
+        Script('Test - attack', [('COUNTER', frame, 2, 600)], orders),
+        Script('Test - kill producer', [('COUNTER', frame, 3, 600), *both_out],
+               [('NAMED_KILL', m.role('kill host').name), ('SET_COUNTER', gate, 1)]),
+        Script('Test - producer dead', [('COUNTER', gate, 2, 1), ('NAMED_DESTROYED', m.role('kill host').name),
+                                        ('NAMED_NOT_DESTROYED', m.role('keep host').name)],
+               [('SET_COUNTER', gate, 2)]),
+    ]
+    t.expect = [('门', 0, 'ever==', 2)]
+    s8.watch(t, 55., .5)
+    return t
+
+
 MISSION = {'engine_slaughter_e': mission, 'engine_slaughter_p': lambda: mission('CampSlaughterP', ('p1', 'p1')),
            'engine_slaughter_q': mission_q, 'engine_slaughter_r': mission_r, 'engine_slaughter_s': mission_s,
-           'engine_slaughter_u': mission_u, 'engine_slaughter_v': mission_v, 'engine_slaughter_y': mission_y}
+           'engine_slaughter_u': mission_u, 'engine_slaughter_v': mission_v, 'engine_slaughter_y': mission_y,
+           'engine_droneproducer_on': mission_producer, 'engine_droneproducer_off': lambda: mission_producer(True)}
 CHECKS = {'engine_slaughter_e': {'a': check, 'b': lambda m: check(m, corrected=True)},
           'engine_slaughter_p': {'p': check_p}, 'engine_slaughter_q': {'q': check_q},
           'engine_slaughter_r': {'r': check_r}, 'engine_slaughter_s': {'s': check_s, 't': lambda m: check_s(m, True)},
           'engine_slaughter_u': {'u': check_u},
           'engine_slaughter_v': {'v': check_v, 'w': lambda m: check_v(m, controlled=True)},
-          'engine_slaughter_y': {'y': check_y}}
+          'engine_slaughter_y': {'y': check_y},
+          'engine_droneproducer_on': {'a': check_producer}, 'engine_droneproducer_off': {'a': check_producer}}
 # Each arm's drones are counted by its own player, so the hosts (and targets) swap sides: a confound, held here
 # as the one freedom; both arms read 0 (a negative baseline). Put both on p1 and count by area when E170 reopens.
 CONTROL_ARMS = {'engine_slaughter_e': ('On', 'Off', 'side'), 'engine_slaughter_p': ('On', 'Off')}

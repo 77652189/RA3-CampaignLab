@@ -120,3 +120,19 @@ expect = ["counter('E291Frame') == 1050 and rows[-1]['出机位'] == 7",
           "any(r['出机位'] == 7 and r['原版机'] == r['删模块机'] == 1 for r in rows if 610 <= r['完成帧'] <= 635)",
           "rows[-1]['原版机'] == 0 and rows[-1]['删模块机'] == 1",
           "all(r['原版机'] == 0 and r['删模块机'] == 1 for r in rows if r['完成帧'] >= 650)"]
+
+[[reading]]
+id = "stock_producer_death_probe_never_reaches_the_sortie_gate"
+scene = {build = "engine_droneproducer_on", check = "a", until = 55}
+bench = "E306 CampDroneOnA_mcp_1127_144318: f45-f870, both aircraft counts and the kill/death gate stay at 0."
+proves = "This setup never reaches the paired sortie prerequisite for killing a producer. It provides no observation of DieOnProducerDeathUpdate after a producer dies. See work/re/e306_droneproducer.md."
+expect = ["counter('E306Frame') >= 800",
+          "all(r['门'] == r['击毁侧'] == r['存活侧'] == 0 for r in rows)"]
+
+[[reading]]
+id = "stripped_producer_death_probe_never_reaches_the_sortie_gate"
+scene = {build = "engine_droneproducer_off", check = "a", until = 55}
+bench = "E306 CampDroneOffA_mcp_1127_144711: f45-f870, both aircraft counts and the kill/death gate stay at 0."
+proves = "Removing DieOnProducerDeathUpdate does not make this setup reach the paired sortie prerequisite. With neither build reaching it, post-death drone survival is unmeasured. See work/re/e306_droneproducer.md."
+expect = ["counter('E306Frame') >= 800",
+          "all(r['门'] == r['击毁侧'] == r['存活侧'] == 0 for r in rows)"]
