@@ -316,7 +316,7 @@ def engine_aicreate():
     Initial-position matching identifies 3166/3167 as placed Peacekeepers; attributing
     new IDs to the isolated Guardian production is INFERRED (no template log field).
     The model still dispatches three Peacekeepers at f152; no field is promoted.
-    Selected engine samples and model regressions: tests/test_simai_bench_c.py;
+    Model reading: readings.toml#engine_aicreate (the samples above in its bench text);
     full evidence: work/re/c_create_teams_report.md.
     """
     from parts import Test, Script, counted, square

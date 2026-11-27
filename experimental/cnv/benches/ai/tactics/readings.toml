@@ -213,6 +213,25 @@ expect = [
 ]
 mismatch = "Model s70 production is four Guardians versus retail three, with one extra at home in both builds. The production consumer remains a separate gap."
 
+[[reading]]
+bench_id = "engine_aicreate"
+id = "create_units_team_goes_between_the_samples_it_turns_active_with_its_members"
+scene = {build = "aicr1c", check = "a", until = 45, teams = true}
+each = [{build = "aicr1c", before = 301, after = 316, guardians = 1, peacekeepers = 2}, {build = "aicr3c", before = 631, after = 646, guardians = 3, peacekeepers = 0}]
+bench = """\
+CNVTeams (2026-11-12, 15-frame samples): MinUnits 1 -- f301 empty / inactive, f316 three members and active (new 3176 and \
+the placed Peacekeepers 3166 / 3167); MinUnits 3 -- f316 one, f481 two, both inactive, f646 three and active (new \
+3176 / 3177 / 3178; new ids taken as the isolated Guardian production, INFERRED). work/re/c_create_teams_report.md"""
+proves = "simai CreateUnits slot: the team waits for MinUnits of its UnitName, then goes with them and the placed recruits"
+let = {first = "next(r for r in teams() if r['state_key'] == 'CNVStateTF' and r['members'])"}
+expect = [
+    "before < first['frame'] <= after",
+    "len(first['members']) == 3",
+    "sum(m['name'].endswith(' AlliedAntiVehicleVehicleTech1') for m in first['members']) == guardians",
+    "sum('Peacekeeper' in m['name'] for m in first['members']) == peacekeepers",
+]
+item = ["AI 组队招人/CreateUnits.MinUnits", "AI 组队招人/CreateUnits.UnitName"]
+
 # Bench readings of benches/ai/tactics/checks.py#engine_aicrush (format: experimental/cnv/readings.py; runner: tests/conformance).
 # Crush kills the guards on contact (bench 2026-11-09, readings in the check's docstring).
 
@@ -472,6 +491,19 @@ expect = [
     "at(65)['坦克总数'] == 1",
     "(at(65)['圈300'], at(65)['圈900']) == (home, home)",
 ]
+
+[[reading]]
+bench_id = "engine_aidistance"
+id = "tactic_distance_replays_observed_excursion"
+scene = {build = "aidist250", check = "a", until = 76}
+each = [{build = "aidist250", before = [[1, 1]], after = [[0, 0], [0, 1], [1, 1]]}, {build = "aidist2000", before = [[1, 1], [0, 1]], after = [[0, 0], [0, 1], [0, 0]]}]
+bench = """\
+(圈300, 圈900) changes before / after the teleport out (work/re/c_distance_report.md, aidist*__a.json): Distance 250 \
+stays in both, then out -> into 900 -> into 300; 2000 leaves 300 before the teleport, then out -> into 900 -> out \
+again (CNVTeams, the same Guardian f166 / 256 / 451 / 541 / 871: 11 -> 01 -> 00 -> 01 -> 00); the tank alive throughout"""
+proves = "simai StaticDefense Tactic.Distance (E108 stand): the Guardian's square-by-square path home and away"
+let = {seq = "lambda out: (lambda q: [p for i, p in enumerate(q) if i == 0 or p != q[i - 1]])([[r['圈300'], r['圈900']] for r in rows if bool(r['曾出圈']) == out])"}
+expect = ["all(r['坦克总数'] == 1 for r in rows)", "seq(False) == before", "seq(True) == after"]
 
 # Bench readings of benches/ai/tactics/checks.py#engine_aiengineer (format: experimental/cnv/readings.py).
 
@@ -1237,13 +1269,32 @@ expect = "(first('家300', lambda v: v == 0) <= 12 and first('敌300', lambda v:
 [[reading]]
 bench_id = "engine_airelease"
 id = "never_release_named_team_observation_replays_bench"
-scene = {build = "airelnever", check = "a", until = 66}
+scene = {build = "airelnever", check = "a", until = 66, teams = true}
 each = [{build = "airelnever"}, {build = "airelprio"}]
 bench = "Both retail lanes read absent defense/attack 99/99, two live tanks and initial-hold latch 0 throughout (never s1-70, priority s1-73)."
 proves = "simai named-team counters: return 99 when the legacy HUD probe finds no matching named defense or attack team"
 let = {at = "lambda second: next(r for t, r in zip(times, rows) if second <= t < second + 1)"}
 expect = "all(tuple(at(s)[k] for k in ('防御人数', '进攻人数', '坦克总数', '曾防御量')) == (99, 99, 2, 0) for s in (25, 55, 65))"
 mismatch = "Retail defense/attack 99/99, model 0/0. CNVTeams resolves membership while the legacy script counters still have a naming gap."
+
+[[reading]]
+bench_id = "engine_airelease"
+id = "never_release_keeps_the_pair_priority_hands_it_to_attack"
+scene = {build = "airelnever", check = "a", until = 66, teams = true}
+each = [{build = "airelnever", never = true}, {build = "airelprio", never = false}]
+bench = """\
+CNVTeams (2026-11-12): both first defend with the two placed tanks (ids 3166 / 3167, f166; one active team of two at \
+f301); at f601 and f976 NEVER_RELEASE still holds both in its active defense team and attack is absent or empty, \
+priority has handed the same two to its active attack team (in (526, 541]) and defense is absent or empty. \
+work/re/c_release_teams_report.md"""
+proves = "simai team release: NEVER_RELEASE keeps its recruits, RELEASE_TO_PRIORITY hands them to the higher state"
+let = {held = "lambda f, k: {m['name'] for r in teams() if r['frame'] == f and r['phase'] != 'done' and r['state_key'] == k for m in r['members']}", pair = "{'UNIT - CNV AI Tank 1', 'UNIT - CNV AI Tank 2'}"}
+expect = [
+    "held(301, 'CNVStateTF') == pair and not held(301, 'CNVReleaseAttack')",
+    "all(held(f, 'CNVStateTF' if never else 'CNVReleaseAttack') == pair for f in (601, 976))",
+    "not any(held(f, 'CNVReleaseAttack' if never else 'CNVStateTF') for f in (601, 976))",
+]
+item = "AI 组队招人/TeamTemplate.ReleaseType=NEVER_RELEASE"
 
 # Bench readings of benches/ai/tactics/checks.py#engine_airetreat (format: experimental/cnv/readings.py; runner: tests/conformance).
 # The team state: retreat and EngagePassiveTargets (bench 2026-11-08 / 11-10; l4_micro_retreat.md, l4_micro_engage.md

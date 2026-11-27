@@ -1,7 +1,5 @@
 """C-line replays of named AI bench counters; evidence: work/re/c_release_report.md."""
 import importlib.util
-from collections import Counter
-from functools import lru_cache
 from pathlib import Path
 
 import pytest
@@ -255,121 +253,6 @@ def test_release_eight_named_model_replays_carrier_partial_transfer():
     assert {m['name'] for r in retained for m in r['members']} == original - transferred
     activated = next(r for r in rows if r['run'] == first['run'] and r['phase'] == 'go')
     assert {m['name'] for m in activated['members']} == transferred
-
-
-def _create_units_observation(build):
-    """Selected complete engine samples; pointer fields removed, values unchanged."""
-    import teamlog
-    rows = teamlog.samples(ROOT / 'tests/fixtures/c_create_teams' / (build + '.txt'))
-    return [(frame, next(t for t in teams if t['names'][1] == '7203be5f_SimpleAttack_0_0'))
-            for frame, teams in rows]
-
-
-@pytest.mark.parametrize('build, expected', [
-    ('aicr1c', [(31, 0, 0), (316, 3, 1)]),
-    ('aicr3c', [(31, 0, 0), (316, 1, 0), (481, 2, 0), (646, 3, 1)]),
-])
-def test_create_units_engine_team_samples(build, expected):
-    """Assert logged counts/active bits; exact conversion lies between samples."""
-    rows = _create_units_observation(build)
-    changes = []
-    for frame, team in rows:
-        assert len(team['ids']) == team['n']
-        state = (team['n'], team['active'])
-        if not changes or state != changes[-1][1:]:
-            changes.append((frame, *state))
-    assert changes == expected
-    assert {i for i, _, _ in rows[-1][1]['ids']} == (
-        {3176, 3166, 3167} if build == 'aicr1c' else {3176, 3177, 3178})
-
-
-@lru_cache(maxsize=2)
-def _create_units_team_go(build):
-    w = simai_run.run(build, 'a', until=45, lib=simai.model()['xmldata'].Library())
-    brain, = w.brains.values()
-    return next(e for e in brain.ai.teams.log if e[1] == 'go' and e[2][0] == 'CNVStateTF')
-
-
-@pytest.mark.parametrize('build', ['aicr1c', 'aicr3c'])
-def test_create_units_replays_observed_activation_interval(build):
-    rows = _create_units_observation(build)
-    first = next(i for i, (_, team) in enumerate(rows) if team['active'])
-    assert rows[first - 1][0] < _create_units_team_go(build)[0] <= rows[first][0]
-
-
-@pytest.mark.parametrize('build', ['aicr1c', 'aicr3c'])
-def test_create_units_replays_observed_first_members(build):
-    # Initial Peacekeeper IDs are fixed by their placed positions; new Guardian
-    # attribution uses the isolated opener and total counters (INFERRED).
-    expected = ['AlliedAntiVehicleVehicleTech1'] * (1 if build == 'aicr1c' else 3)
-    if build == 'aicr1c':
-        expected += ['AlliedAntiInfantryInfantry'] * 2
-    assert Counter(_create_units_team_go(build)[3]) == Counter(expected)
-
-
-@pytest.mark.parametrize('build, expected_before, expected_after', [
-    ('aidist250', [(1, 1)], [(0, 0), (0, 1), (1, 1)]),
-    pytest.param('aidist2000', [(1, 1), (0, 1)], [(0, 0), (0, 1), (0, 0)],
-                 marks=pytest.mark.xfail(
-                     condition=not (simai.available() and hasattr(simai.model()['tactics'].TacticsBlock, 'stand')),
-                     strict=True, raises=AssertionError, reason=(
-                     'Legacy EngineModel lacks the E108 stand consumer: retail leaves the 300 square '
-                     'before displacement, returns to the 900 square, then leaves again. '
-                     'CNVTeams confirms the same Guardian at frames 166/256/451/541/871: '
-                     '11->01->00->01->00, while the model only has 11->00. '
-                     'Stand-point, order source and readiness remain unobserved; '
-                     'see work/re/e_distance_e92.md.'))),
-])
-def test_tactic_distance_replays_observed_excursion(build, expected_before, expected_after):
-    """Assert measured location transitions, independent of capture-clock seconds."""
-    w = simai_run.run(build, 'a', until=76, lib=simai.model()['xmldata'].Library())
-    labels = [label for _, label in w.sim.test.counters]
-    rows = [dict(zip(labels, values)) for _, values in w.sim.series]
-    # Original retail sequences: work/re/c_distance_report.md and the two
-    # aidist*__a.json recordings. Keep displacement and survival in every row.
-    assert rows
-    assert all(row['坦克总数'] == 1 for row in rows)
-    for displaced, expected in ((False, expected_before), (True, expected_after)):
-        transitions = []
-        for row in rows:
-            if bool(row['曾出圈']) != displaced:
-                continue
-            pos = row['圈300'], row['圈900']
-            if not transitions or pos != transitions[-1]:
-                transitions.append(pos)
-        assert transitions == expected, (build, displaced, transitions)
-
-
-@pytest.mark.parametrize('build', ['airelnever', 'airelprio'])
-def test_never_release_engine_members_and_model_replay(build):
-    """Same retail member IDs first defend, then stay/transfer; no HUD-name inference."""
-    import teamlog
-    source = ROOT / 'tests/fixtures/c_release_teams' / (build + '.txt')
-    defense = 'CNVStateTF_StaticDefense'
-    attack = 'CNVReleaseAttack_SimpleAttack'
-    initial = teamlog.members(source, defense, 301)
-    assert len(initial) == 1 and {m[0] for m in initial[0]} == {3166, 3167}
-    never = build == 'airelnever'
-    for frame in (601, 976):
-        assert teamlog.team_sizes(source, defense if never else attack, frame) == [2]
-        # Empty instances are periodically removed; absence is not the primary evidence.
-        assert teamlog.team_sizes(source, attack if never else defense, frame) in ([], [0])
-        held = teamlog.members(source, defense if never else attack, frame)
-        assert {m[0] for m in held[0]} == {3166, 3167}
-        teams = teamlog.at(source, frame)
-        actual = [t for t in teams if t['names'][1].lower().startswith(teamlog._hashed(defense if never else attack))]
-        assert len(actual) == 1 and actual[0]['active'] == 1
-    w = simai_run.run(build, 'a', until=66, record=True, lib=simai.model()['xmldata'].Library())
-    brain, = w.brains.values()
-    original = {'UNIT - CNV AI Tank 1', 'UNIT - CNV AI Tank 2'}
-    for frame in (301, 601, 976):
-        observed = {state: set() for state in ('CNVStateTF', 'CNVReleaseAttack')}
-        for row in brain.rec['frames']:
-            if row['frame'] == frame and row['phase'] != 'done':
-                observed[row['state_key']].update(m['name'] for m in row['members'])
-        destination = 'CNVStateTF' if frame == 301 or never else 'CNVReleaseAttack'
-        assert observed[destination] == original
-        assert observed['CNVReleaseAttack' if destination == 'CNVStateTF' else 'CNVStateTF'] == set()
 
 
 def test_capture_tech_opens_with_the_cleanup_on_the_tech_building_share():

@@ -560,8 +560,8 @@ NOTES = {
     '组队招人/TeamTemplate.ReleaseType=NEVER_RELEASE': (BENCHED,
         'engine_airelease airelnever/airelprio仅ReleaseType不同；CNVTeams两组f166防御激活持3166/3167，'
         'priority在(526,541]同两ID转进攻，never保留至末样本；'
-        'tests/test_simai_bench_c.py::test_never_release_engine_members_and_model_replay按名跑两台、'
-        '断言实机ID/n/active及模型f301/601/976成员归属；仅固定两辆车的保留/转队，'
+        '读数 experimental/cnv/benches/ai/tactics/readings.toml#engine_airelease::never_release_keeps_the_pair_priority_hands_it_to_attack 跑两台、'
+        '核对模型f301/601/976成员归属（实机ID/n/active写在读数的bench里）；仅固定两辆车的保留/转队，'
         '精确激活/转队时钟、priority后段短暂第三ID及其他释放模式仍gap；见 work/re/c_release_teams_report.md'),
     '组队招人/TeamTemplate.ReleaseType': (BENCHED,
         'engine_aiskirm aiskirm:m 实机（11-11 CampAISkirmM_mcp_1111_221811）s125-128防御8/清扫99，s129防御0/清扫8，'
@@ -614,12 +614,12 @@ NOTES = {
         'CreateUnits具名槽不查此门（INFERRED）；见 work/re/b220_recruit_combat.md'),
     '组队招人/CreateUnits.MinUnits': (BENCHED,
         'engine_aicreate aicr1c/aicr3c：最低1在(301,316]帧激活，最低3在(631,646]帧激活；'
-        '后者f316一人/f481两人均未激活；tests/test_simai_bench_c.py按名回放激活区间和成员；'
+        '后者f316一人/f481两人均未激活；读数 experimental/cnv/benches/ai/tactics/readings.toml#engine_aicreate::create_units_team_goes_between_the_samples_it_turns_active_with_its_members 核对激活区间和成员；'
         '仅孤立单槽位最低数1/3，多槽位/替补/MaxUnits仍gap；s70额外造兵另有strict xfail；'
         '见 work/re/e_create_e88.md'),
     '组队招人/CreateUnits.UnitName': (BENCHED,
         'engine_aicreate aicr1c/aicr3c：最低1是一名新成员加两名已知预摆维和，最低3等三名新成员；'
-        'tests/test_simai_bench_c.py按名回放首次组成；新成员兵种由固定生产归属仍INFERRED；'
+        '读数 experimental/cnv/benches/ai/tactics/readings.toml#engine_aicreate::create_units_team_goes_between_the_samples_it_turns_active_with_its_members 核对首次组成；新成员兵种由固定生产归属仍INFERRED；'
         '仅指定最低数优先再普通补位，不是排他过滤；其他兵种/多槽位/替补仍gap；'
         '见 work/re/e_create_e88.md'),
     '战术/Tactic.Distance': (BENCHED,
@@ -629,7 +629,7 @@ NOTES = {
         '专用engine_aidistance aidist250/aidist2000保留AI队、同次传送1200，仅Distance不同；'
         's65小组圈300/900=1/1，大组0/0，存活均1；两组各5条PASS、模型末态匹配；'
         '大组实机传送前离300、传送后回900再离，模型美学轨迹strict xfail；'
-        '精确边界/动态队成员仍gap，不晋升；tests/test_simai_bench_c.py；见 work/re/c_distance_report.md'),
+        '精确边界/动态队成员仍gap，不晋升；读数 experimental/cnv/benches/ai/tactics/readings.toml#engine_aidistance::tactic_distance_replays_observed_excursion；见 work/re/c_distance_report.md'),
     '战术/Tactic.UseAestheticsManager': (BENCHED,
         'D145晋升：experimental/cnv/benches/ai/production/readings.toml#engine_aiaesthetics::tactic_aesthetics_switch_after_displacement 按名跑 aiaeson/aiaesoff，'
         '传送出圈后开的一侧回900再离开（s65 圈300/900=0/0）、关的一侧回双圈（1/1），模型两边都对上，正常断言；'
