@@ -1947,6 +1947,7 @@ def aiskirm_bench():
         'aiskmrd': lambda: mission('CampAISkMRD', aidata=AIDATA_RUNS['aiskmrd']),   # check fm: MaxRecruitDistance 1
         'aiskts': lambda: mission('CampAISkTS', aidata=AIDATA_RUNS['aiskts']),      # check fm: TeamSeconds 600
         'aiskgf': lambda: mission('CampAISkGF', aidata=AIDATA_RUNS['aiskgf']),      # check fm: GroupFudge 200
+        'aiskwp': lambda: mission('CampAISkWP', aidata=AIDATA_RUNS['aiskwp']),      # check fm: wealth five
         'aiskga': lambda: mission('CampAISkGA', armydef=GATHERER_RUN),              # check fm: Gatherer canary
         'aiskew': lambda: mission('CampAISkEW', armydef=ENERGY_WALL_RUN),           # check fm: EnergyProducer + WallPiece
     }

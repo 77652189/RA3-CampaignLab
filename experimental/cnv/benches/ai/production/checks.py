@@ -2965,6 +2965,7 @@ def engine_aiskirm():
               'aiskmrd': {'fm': fm},
               'aiskts': {'fm': fm},
               'aiskgf': {'fm': fm},
+              'aiskwp': {'fm': fm},
               'aiskga': {'fm': fm},
               'aiskew': {'fm': fm},
               'aiskn1': {'fm': fm},

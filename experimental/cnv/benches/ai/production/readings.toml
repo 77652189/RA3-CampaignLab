@@ -875,6 +875,23 @@ expect = ["146 <= times[first] <= 176", "15 <= times[three] - times[first] <= 35
 
 [[reading]]
 bench_id = "engine_aiskirm"
+id = "the_wealth_constants_leave_the_skirmish_team_as_stock"
+item = ["AI 全局常量/AIData.ResourcesWealthy", "AI 全局常量/AIData.ResourcesPoor", "AI 全局常量/AIData.TeamWealthyMod",
+        "AI 全局常量/AIData.TeamPoorMod", "AI 全局常量/AIData.TeamResourcesToBuild"]
+scene = {build = "aiskwp", check = "fm", until = 250}
+bench = """\
+B 11-27 aiskwp (aiskwp__fm 07:17, PASS; ResourcesWealthy 0, ResourcesPoor 100000, TeamWealthyMod / TeamPoorMod 100, \
+TeamResourcesToBuild 100 spliced into the global stream -- the .big differs from aiskfon's in that one global.bin span) \
+reads as aiskfon run beside it, to a second or two: 激流到 1 at s157 / s156, 3 at s185 / s186, 6 at s216-s229 / \
+s215-s229, home again by s238 / s238, the next wave home by s271 / s270. The program \
+reads the five only on Generals' AIPlayer team building -- pick a map team template by priority, build a named one, \
+can the player afford it (work/re l4_aidata_readers.md) -- not the skirmish team maker"""
+proves = "simai team maker: the skirmish attack team waits on no wealth timer and no team-cost reserve"
+let = {first = "next(i for i, r in enumerate(rows) if r['激流到'] >= 1)", three = "next(i for i, r in enumerate(rows) if r['激流到'] >= 3)"}
+expect = ["146 <= times[first] <= 176", "15 <= times[three] - times[first] <= 35", "rows[-1]['激流到'] == 0"]
+
+[[reading]]
+bench_id = "engine_aiskirm"
 id = "use_formations_false_leaves_the_skirmish_team_as_stock"
 item = "AI 全局常量/AIData.UseFormations"
 scene = {build = "aiskfof", check = "fm", until = 250}
