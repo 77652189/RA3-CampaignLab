@@ -315,6 +315,7 @@ NOTES = {
     (NUGGET, 'AttributeModifierNugget'): (GUESSED, '部分：engine_weaponfx attribute实测涂靶ARMOR150%；engine_spnret a实测单个PLAYER升级Required/Forbidden读取施法者玩家，普通/高科技ARMOR150/200%、晚段74/69%血，tests/test_special_power_nugget.py回放；数据1.1s且9s前到期，到期帧未测；OBJECT升级/owner/筛选/范围形式仍未验证'),
     (NUGGET, 'LineDamageNugget'): (GUESSED, '部分：engine_weaponfx line探针；实测PASS90/90/90/100验证动态线长及穿透，圆形边界GUESSED，筛选与静态线未模拟'),
     (MODULE, 'Body/ActiveBody'): (GUESSED, 'simunits.stats 读 MaxHealth（只有生命值；受伤状态、回血等另算）'),
+    (MODULE, 'Body/ManagedImmortalBody'): (BENCHED, '仅 HB_Bridge_02 的 GateHouse1：代理受伤后两座桥头堡均从 100% 到 1%，修好的回到 100%，未修对照留在 1%。直接伤害、致死保护、其他桥型和桥段未对拍'),
     (MODULE, 'Body/ManagerBody'): (BENCHED, '已测范围：engine_managerbody a/b原版HB_Bridge_02，270/700长度整体代理脚本伤害200后均80%、致命量后1%且存活，tests/test_simmanagerbody.py按名重放；gap：有效HP取CenterPiece及内部1%下限映射仍INFERRED，内部最大血量/伤害转发/显示下限待核；HV_Bridge_01等其他模板/配置、桥段共享血量/损毁/维修未对拍；按总控11-11收尾决定登记模块已对拍，不表示这些gap已验证，不拆分分母'),
     (MODULE, 'Behaviors/BridgeBuilder'): (BENCHED, '已测范围：engine_bridgebuilder:a已量HB_Bridge_02长度270/700，EndCap/EndCap2/CenterPiece/CenterPieceB/GateHouse数量1/1/1/0/2及1/1/2/2/2；engine_bridgebuilder_b:b已量原版HB桥首16+Bridge1a桥尾32混合构型，两长度HB数量不变、五类Bridge1物件均0；tests/test_simbridgebuilder.py按名核计数模型与读数编码，simunits仅有限数量模型；gap：HV_Bridge_01等其他桥型/配置/长度、桥段物体生成/位置、断桥通行未建模（桥头堡生成、血量随代理、工程师修桥见engine_bridgefix）；按总控11-11收尾决定登记模块已对拍，不表示这些gap已验证，不拆分分母'),
     (MODULE, 'AI/AIUpdate'): (GUESSED, 'Sim.fight / 移动（单位 AI 的状态机细项按引擎 B 的 AI 清单推进）'),

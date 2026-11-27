@@ -47,7 +47,7 @@ expect = "all(v[:4] == [128, 128, 128, 8] for v in vals(rows))"
 [[reading]]
 bench_id = "engine_bridgefix"
 id = "an_engineer_mends_a_broken_bridge_at_its_gatehouse"
-item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_CaptureBuilding"
+item = ["脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_CaptureBuilding", "物体模块 Body/ManagedImmortalBody"]
 scene = {build = "engine_bridgefix", check = "a", until = 40}
 bench = "a, run 2 (CampBridgeFixA_mcp_1122_202537), 门a 态a 态b 门c: s1-s6 100 1110 110 100 | s7-s13 1 1110 110 1 | s14 1 1101 101 1 | s15-s17 1 1111 111 1 | s18-s68 100 1110 111 1"
 proves = "engine/objects/bridge.py + order.capture_due: a named bridge's gatehouses '<start>_GateHouse1' (at the start, within 150) / '2' read their proxy's health (100, 1 once broken); an engineer pressed at a broken bridge's gatehouse walks up, is used up and mends the bridge to 100, the gatehouse keeping its owner; at a whole bridge's gatehouse he stays (b); a broken bridge nobody enters stays at 1 (c). The seconds of the walk (the next reading) left free"

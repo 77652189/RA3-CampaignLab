@@ -164,8 +164,10 @@ class ManagedActiveBody(Body):
 
 @factory.module('ManagedImmortalBody')
 class ManagedImmortalBody(Body):
-    """Read as not immortal, as the reader it replaced (immortal_body named ImmortalBody alone): not benched. manager:
-    its bridge proxy's Body (engine/objects/bridge.py, a gatehouse), whose percent it reads (engine_bridgefix a)."""
+    """A linked gatehouse reads its bridge proxy's health percent (engine_bridgefix a).
+
+    Direct damage and lethal protection remain unmeasured. The local immortality flag follows the old
+    reader, which only checked for ImmortalBody (INFERRED)."""
     manager = None
 
     def percent(self):
