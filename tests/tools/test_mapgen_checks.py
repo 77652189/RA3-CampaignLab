@@ -133,3 +133,29 @@ def test_failed_channel_draws_its_best_route_bottleneck(tmp_path):
     root = ElementTree.parse(svg)
     witness = root.find(".//{http://www.w3.org/2000/svg}circle[@data-world-x='500'][@data-world-y='300']")
     assert witness is not None and float(witness.attrib['cx']) > 30
+
+
+def test_level_boundary_keeps_one_opening():
+    sketch = Design({
+        'version': 2,
+        'blocks': {
+            'woods': {'height': 3, 'use': 'woodland', 'at': [150, 120]},
+            'clearing': {'height': 3, 'use': 'wildland', 'at': [150, 390]},
+        },
+        'borders': {
+            'edge': {'line': [[0, 0], [450, 0], [450, 500], [0, 500], [0, 0]]},
+            'trees': {'line': [[0, 200], [270, 290], [450, 290]], 'pass': [],
+                      'segments': {'gap': {'span': [310, 390], 'pass': ['foot']}}},
+        },
+        'relations': {
+            'through': {'type': '通不通', 'from': 'woods', 'to': 'clearing',
+                        'who': 'foot', 'only_via': 'trees.gap'},
+        },
+    })
+    plan = terrain.from_design(sketch, terrain.TerrainPlan(), 'test')
+    ground = terrain.expand(plan, {'kits': {}}, 106, 111, 30)
+    frame = terrain.design_frame(sketch, ground, 0, 30)
+    result = MapBuild(plan, frame.close(ground), None, Layout(()), sketch, frame, ())
+    assert result.check_relations()['through'].status == 'pass'
+    assert ground.raw[53, 40] == ground.raw[59, 63]
+    assert ground.blocked[53, 40] and not ground.blocked[59, 63]

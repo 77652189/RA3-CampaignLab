@@ -5,7 +5,7 @@ from random import Random
 
 import numpy as np
 
-from experimental.mapgen.campaign_writer import labpaths, noise_field
+from experimental.mapgen.campaign_writer import labpaths, noise_field, rules
 
 
 ART = Path(labpaths.SDK3) / 'Art' / 'Terrain'
@@ -23,12 +23,20 @@ USE_CLASS = {
     'oldtown': 'Road', 'residential': 'Road', 'industrial': 'Road', 'dock': 'Road', 'square': 'Road',
     'suburb': 'Grass', 'park': 'Grass', 'woodland': 'Grass', 'wildland': 'Grass',
     'farm': 'Dirt', 'canyon': 'Dirt', 'water': 'Sand',
+    'snow': 'Snow', 'snow_woodland': 'Snow', 'ice': 'Snow',
 }
 # A style without the requested class borrows that class from a fixed donor.
 # Heidelberg has one Dirt entry, Yucatan has no Cliff and only coastal Reef/Rock.
 FALLBACK = {'Road': 'Heidelberg', 'Grass': 'Heidelberg', 'Dirt': 'Yucatan',
-            'Cliff': 'Cape_Cod', 'Sand': 'Santa_Monica', 'Rock': 'Yucatan'}
+            'Cliff': 'Cape_Cod', 'Sand': 'Santa_Monica', 'Rock': 'Yucatan', 'Snow': 'Iceland'}
 CLIFF_DONOR = {'Heidelberg': 'Gibraltar'}
+WINTER_SURFACES = {
+    # Murmansk and Iceland mix a continuous Solvang snow bed with exposed
+    # Iceland ground and dirty snow. The scored Solvang tile reads as ice.
+    'snow': ('Snow_Solvang01', 'Snow_Iceland04', 'Snow_Solvang08'),
+    'snow_woodland': ('Snow_Solvang08', 'Snow_Solvang10', 'Snow_Solvang01'),
+    'ice': ('Snow_Solvang02', 'Snow_Solvang09', 'Snow_Solvang03'),
+}
 
 
 def _asset(label, asset):
@@ -63,7 +71,8 @@ def paint(plan, library, ground, roadbed=None):
     ground_kit, ground_class, asset = catalogue[plan.ground]
     _asset(backdrop, asset)
     textures = np.full(ground.raw.shape, plan.ground, object)
-    roles = ((ground.ramp & ~ground.blocked, 'ramp'), (ground.shore, 'shore'), (ground.blocked, 'cliff'))
+    cliff = ground.blocked & (rules.slope(ground.raw / rules.RAW_PER_OURS) > rules.STEEP)
+    roles = ((ground.ramp & ~ground.blocked, 'ramp'), (ground.shore, 'shore'), (cliff, 'cliff'))
     surfaces = [block.surface for block in plan.blocks]
     for owner, surface in enumerate(surfaces):
         if surface is None:
@@ -83,13 +92,16 @@ def paint(plan, library, ground, roadbed=None):
                 raise ValueError(f'block {label}: unknown use {surface.use}')
             kind = USE_CLASS[surface.use]
             rng = Random(f'{label}:{surface.seed}')
-            base, *accents = _palette(kits, kit, kind, label, rng, 3)
+            winter = WINTER_SURFACES.get(surface.use)
+            base, *accents = ([_asset(label, catalogue[name][2]) for name in winter] if winter else
+                              _palette(kits, kit, kind, label, rng, 3))
             textures[mask] = base
             j, i = np.nonzero(mask)
             if accents and i.size:
-                # Smooth patches at 12 cells (120 world units), with a high cutoff for sparse accents.
-                noise = noise_field(rng.getrandbits(32), 12, i, j)
-                for accent, patch in zip(accents, (noise > 0.82, noise < 0.18)):
+                # Broad wind-scoured patches on snow; smaller accents elsewhere.
+                noise = noise_field(rng.getrandbits(32), 22 if winter else 12, i, j)
+                lower, upper = (0.28, 0.72) if winter else (0.18, 0.82)
+                for accent, patch in zip(accents, (noise > upper, noise < lower)):
                     textures[j[patch], i[patch]] = accent
             if surface.ground_texture is not None:
                 entry = catalogue.get(surface.ground_texture)
@@ -100,7 +112,8 @@ def paint(plan, library, ground, roadbed=None):
             cells = mask & role_mask
             if cells.any() or (surface is None and role == 'ramp' and ground.ramp.any()):
                 ramp_class = 'Rock' if kind == 'Dirt' else 'Dirt'
-                role_class = {'cliff': 'Cliff', 'shore': 'Sand', 'ramp': ramp_class}[role]
+                role_class = {'cliff': 'Cliff', 'shore': 'Snow' if ground_class == 'Snow' else 'Sand',
+                              'ramp': ramp_class}[role]
                 name, = _palette(kits, kit, role_class, label, rng, 1)
                 textures[cells] = name
                 if role == 'ramp' and surface is None:

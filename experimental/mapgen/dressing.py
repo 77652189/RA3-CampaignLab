@@ -463,6 +463,20 @@ def _edges(finish, block, spans, groups, cover, rocks, trees, rng):
                 finish.put(block, facade, budget, _sprigs(trees, rng, at, angle, [tree]))
 
 
+def _woodland(finish, block, trees, rng):
+    # Start from the irregular woodland outline. Groups overlap visually
+    # inward, while the established lane and flat-pad guards reserve openings.
+    ring = finish.sketch.rings[block]
+    for a, b in pairwise(ring):
+        _, _, angle, length = _axes(a, b)
+        for station in range(5 * int(CELL), int(length), 12 * int(CELL)):
+            edge = _offset(a, angle, station + rng.uniform(-CELL, CELL), 0)
+            for layer, depth in enumerate((rng.uniform(2, 6), rng.uniform(7, 21))):
+                at = _offset(edge, angle, 0, depth * CELL)
+                group = _sprigs(trees, rng, at, angle, [(-22, 4), (2, -9), (24, 16)])
+                finish.put(block, f'woods {a} {station} {layer}', SET_PIECE_BUDGET, group)
+
+
 def expand(sketch, ground, roadbed, layout, library, kits, sage, border):
     """Place kit scenery after ground, roads, paint and building lock have been resolved."""
     finish = _Finish(sketch, ground, roadbed, layout, library, kits, sage, border)
@@ -472,7 +486,7 @@ def expand(sketch, ground, roadbed, layout, library, kits, sage, border):
             if block:
                 edges[block].append(span)
     for block, spec in sketch.blocks.items():
-        if spec.get('kind') == 'water':
+        if spec.get('kind') == 'water' or spec['use'] == 'ice':
             continue
         kit = kits[block]
         rng = Random(sketch.block_seed(block))
@@ -483,6 +497,8 @@ def expand(sketch, ground, roadbed, layout, library, kits, sage, border):
         if spec['use'] in TOWN | {'square', 'park'} or finish.locked.get(block):
             _front(finish, block, groups, cover, rng)
         _edges(finish, block, edges[block], groups, cover, rocks, trees, rng)
+        if spec['use'] == 'snow_woodland':
+            _woodland(finish, block, trees, rng)
         if spec['use'] in NATURAL and 'at' in spec:
             at = spec['at']
             angle = rng.uniform(-math.pi, math.pi)

@@ -103,3 +103,38 @@ def test_block_kit_selects_ground_buildings_and_scenery(tmp_path, monkeypatch):
     assert {piece.template for piece in result.scenery if piece.x > 750} == {'p_tree'}
     assert dict(result.layout.blocks)['port'][0].template == 'P_House'
     assert result.ground.textures[65, 145] == 'Grass_Port'
+
+
+def test_winter_woods_leave_a_building_pad_and_ice_bare(slice_inputs, tmp_path, monkeypatch):
+    monkeypatch.setattr(paint, 'ART', tmp_path)
+    monkeypatch.setattr(build.labpaths, 'SDK3', str(tmp_path))
+    (tmp_path / 'texture').touch()
+    library = slice_inputs[4]
+    winter_tiles = (
+        'Snow_Solvang01', 'Snow_Iceland04', 'Snow_Solvang08', 'Snow_Solvang10',
+        'Snow_Solvang02', 'Snow_Solvang09', 'Snow_Solvang03',
+    )
+    library['texture_kits'] = {'Town': {'Snow': [
+        {'id': tile, 'Texture': 'texture', 'BumpTexture': 'texture'} for tile in winter_tiles
+    ]}}
+    data = {
+        'version': 2,
+        'blocks': {
+            'woods': {'height': 3, 'use': 'snow_woodland', 'at': [300, 250]},
+            'frozen': {'height': 3, 'use': 'ice', 'at': [300, 700]},
+        },
+        'borders': {
+            'edge': {'line': [[0, 0], [600, 0], [600, 950], [0, 950], [0, 0]]},
+            'bank': {'line': [[0, 500], [600, 500]], 'pass': ['foot', 'vehicle', 'amphibian']},
+        },
+        'points': {'pad': {'block': 'woods', 'at': [120, 120]}},
+        'relations': {'room': {'type': '放得下', 'point': 'pad', 'side': 200}},
+    }
+    design_file, library_file = tmp_path / 'design.json', tmp_path / 'library.json'
+    design_file.write_text(json.dumps(data))
+    library_file.write_text(json.dumps(library))
+    result = build.build(design_file, library_file, TerrainPlan(ground='Snow_Solvang01'), kit='Town_T')
+    assert {p.template for p in result.scenery} == {'t_tree'}
+    assert all(p.y < 500 and max(abs(p.x - 120), abs(p.y - 120)) > 100 for p in result.scenery)
+    assert 'Snow_Solvang02' in result.ground.textures[95:115, 45:75]
+    assert result.check_relations()['room'].status == 'pass'

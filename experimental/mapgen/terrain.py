@@ -85,6 +85,7 @@ class TerrainPlan:
     cliff: str = 'Cliff_Gibraltar1'
     shore: str = 'Sand_SantaMonica01'
     quays: tuple = ()
+    closed_edges: tuple = ()  # same-height land cuts, each an (a, b) world segment
 
 
 @dataclass(frozen=True)
@@ -180,7 +181,7 @@ def from_design(sketch, plan, kit):
                                          spec.get('ground_texture')))
                    for name, points in faces.items() if (spec := sketch.blocks[name]).get('kind') != 'water')
     water = plan.water or _design_water(sketch)
-    cliffs, ramps, quays = [], [], []
+    cliffs, ramps, quays, closed_edges = [], [], [], []
     for border in sketch.borders:
         for (a, b), _, _ in sketch.border_edges[border]:
             left, right = sketch.sides[a, b]
@@ -196,13 +197,13 @@ def from_design(sketch, plan, kit):
                 points = tuple(tuple(map(float, p)) for p in ((a, b) if diff > 0 else (b, a)))
                 high = left if diff > 0 else right
                 cliffs.append(Cliff(*points, sketch.blocks[high].get('kit', kit)))
-        if plan.ramps:
-            continue
         sections = []
         for a, b, left, right, name in sketch.border_sections(border):
             if left and right and sketch.medium(left) == sketch.medium(right) == LAND:
                 diff = sketch.blocks[left]['height'] - sketch.blocks[right]['height']
-                if diff and sketch.base_pass.get(name):
+                if not diff and sketch.base_pass.get(name) == frozenset():
+                    closed_edges.append((a, b))
+                if not plan.ramps and diff and sketch.base_pass.get(name):
                     if not sections or sections[-1][0] != name or sections[-1][1][-1][1] != a:
                         sections.append((name, []))
                     sections[-1][1].append((a, b, diff))
@@ -225,7 +226,8 @@ def from_design(sketch, plan, kit):
             low = (np.add(a, b) / 2) - uphill * (RAMP_LENGTH * abs(diff) / 2)
             ramps.append(Ramp(tuple(low), tuple(uphill), abs(diff), width, narrow))
     return replace(plan, blocks=(*plan.blocks, *blocks), water=water, quays=(*plan.quays, *quays),
-                   cliffs=plan.cliffs or tuple(cliffs), ramps=plan.ramps or tuple(ramps))
+                   cliffs=plan.cliffs or tuple(cliffs), ramps=plan.ramps or tuple(ramps),
+                   closed_edges=(*plan.closed_edges, *closed_edges))
 
 
 def polygon_mask(points, x, y, distances=False):
@@ -511,6 +513,11 @@ def expand(plan, library, width, height, border):
     # A 20-unit routing cell straddles two 10-unit terrain samples.
     blocked |= (rules.edit_region(lip) & (raw > waterline)) | foot_ramp_sides
     textures[blocked] = plan.cliff
+    for a, b in plan.closed_edges:
+        along, across = strip_coordinates(x, y, a, unit_direction(np.subtract(b, a)))
+        beyond_end = along - np.clip(along, 0, math.dist(a, b))
+        # Cover the diagonal of a cell so a diagonal boundary cannot leak.
+        blocked |= across**2 + beyond_end**2 <= CELL**2 / 2
     pieces, issues, cover = _cliffs(plan, library, base, at, x, y, ramps)
     pieces += _quay_pieces(plan, library, raw, border)
     cover |= lip

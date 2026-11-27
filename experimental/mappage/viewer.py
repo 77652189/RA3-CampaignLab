@@ -44,11 +44,13 @@ PAGE = Template("""<!doctype html>
   .legend label, summary { cursor: pointer; }
   .key { border-left: 8px solid; padding-left: 5px; }
   .land-key { border-color: #94db9c; } .water-key { border-color: #67e0ff; }
+  .ice-key { border-color: #cedcf5; }
   .road-key { border-color: #ffe197; } .border-key { border-color: #fbad84; }
   .passage-key { border-color: #edb3ff; } .point-key { border-color: #f5f8ff; }
   main:has(#design-toggle:not(:checked)) .design-layer { display: none; }
   .face { fill: #94db9c; fill-opacity: .14; stroke: #94db9c; stroke-opacity: .5; }
   .water { fill: #67e0ff; stroke: #67e0ff; }
+  .ice { fill: #cedcf5; stroke: #cedcf5; }
   .road, .border, .passage { fill: none; stroke-width: 2; }
   .road { stroke: #ffe197; } .border { stroke: #fbad84; stroke-dasharray: 4 3; }
   .passage { stroke: #edb3ff; stroke-width: 3; }
@@ -57,6 +59,7 @@ PAGE = Template("""<!doctype html>
                pointer-events: none; filter: drop-shadow(0 1px 2px #080d10); }
   [hidden] { display: none; }
   .pass { --state: #a6ecc1; } .fail { --state: #ffac97; }
+  .pending { --state: #ffe197; }
   .highlight, .verdict { color: var(--state); }
   aside { position: relative; }
   .relations { position: absolute; inset: 35px 0 0; overflow-y: auto; border-top: 1px solid #425058; }
@@ -82,6 +85,7 @@ PAGE = Template("""<!doctype html>
       <div class="legend">
         <label><input type="checkbox" id="design-toggle" checked> 设计层</label>
         <span class="key land-key">陆地</span><span class="key water-key">水面</span>
+        $ice_key
         <span class="key road-key">路</span><span class="key border-key">界</span>
         <span class="key passage-key">过口</span><span class="key point-key">点</span>
       </div>
@@ -169,7 +173,7 @@ def _overlay(sketch, bounds):
     for name, ring in sketch.rings.items():
         block = sketch.blocks[name]
         outline = ' '.join(line(r) + ' Z' for r in (ring, *(sketch.rings[n] for n in children[name])))
-        kind = 'water' if block.get('kind') == 'water' else 'land'
+        kind = 'water' if block.get('kind') == 'water' else 'ice' if block['use'] == 'ice' else 'land'
         add(name, f'face {kind}', path(outline, 'fill-rule="evenodd"'),
             f'{name} · {block["use"]} · 高度档 {block["height"]}')
     for name in sketch.roads:
@@ -202,7 +206,7 @@ def write_viewer(directory, *, title, sketch, answers, bounds, retail_label, scr
     report = [f'# {title}', '', f'原厂对照：{retail_label}', '']
     for index, (name, answer) in enumerate(ordered):
         active = index == 0
-        verdict = '未通过' if answer.status == 'fail' else '通过'
+        verdict = {'fail': '未通过', 'pending': '待展开', 'pass': '通过'}[answer.status]
         places = '、'.join(answer.place)
         rows.append(
             f'<details data-relation="{index}" class="{answer.status}"{" open" if active else ""}>'
@@ -232,6 +236,7 @@ def write_viewer(directory, *, title, sketch, answers, bounds, retail_label, scr
     scale = 100 if width < 2000 else 500
     page = PAGE.substitute(
         title=escape(title), retail=escape(retail_label),
+        ice_key='<span class="key ice-key">河冰</span>' if any(b['use'] == 'ice' for b in sketch.blocks.values()) else '',
         width=f'{width:g}', height=f'{height:g}', scale=scale, scale_percent=f'{100 * scale / width:g}',
         definitions=definitions, design_layer=layer, highlights=''.join(highlights),
         relations=''.join(rows) or '<p>这张设计没有声明关系。</p>',
