@@ -79,7 +79,7 @@ def test_mapgen_terrain_geometry_and_both_files(tmp_path, monkeypatch):
     assert struct.unpack_from('<I8fI', standing, 21) == (4, 0., 0., 1000., 0., 1000., 400., 0., 400., 200)
 
 
-def test_exposed_ramp_verge_is_grass_without_opening_the_steep_side(tmp_path, monkeypatch):
+def test_exposed_ramp_shoulder_blends_rock_without_opening_the_steep_side(tmp_path, monkeypatch):
     monkeypatch.setattr(paint, 'ART', tmp_path)
     (tmp_path / 'surface').touch()
 
@@ -90,6 +90,7 @@ def test_exposed_ramp_verge_is_grass_without_opening_the_steep_side(tmp_path, mo
     library = {'kits': {kit: {}}, 'texture_kits': {
         'Heidelberg': {'Grass': tiles('Grass_Heidelberg01'), 'Dirt': tiles('Dirt_Heidelberg01')},
         'Gibraltar': {'Cliff': tiles('Cliff_Gibraltar1')},
+        'Yucatan': {'Rock': tiles('Rock_Yucatan01')},
     }}
     plan = TerrainPlan(
         blocks=(Block(((0, 500), (1000, 500), (1000, 1000), (0, 1000)), 4,
@@ -101,9 +102,10 @@ def test_exposed_ramp_verge_is_grass_without_opening_the_steep_side(tmp_path, mo
     # The one-cell shoulder ends at x400. The drop still blocks at x390.
     assert ground.blocked[47, 39] and not ground.blocked[47, 50]
     assert dressed.blocked is ground.blocked and dressed.raw is ground.raw
-    assert dressed.textures[47, 39] == 'Grass_Heidelberg01'
+    assert dressed.textures[47, 39] == 'Rock_Yucatan01'
     assert dressed.textures[47, 50] == 'Dirt_Heidelberg01'
     assert dressed.textures[49, 20] == 'Cliff_Gibraltar1'
+    assert dressed.edge_texture(39, 49, 39, 50, dressed.textures[50, 39]) == dressed.textures[50, 39]
 
 
 def test_straight_cliff_continues_across_a_face_split():
@@ -135,11 +137,52 @@ def test_vladivostok_wall_fits_the_run_up_to_the_ramp_shoulders():
         ramps=(Ramp((241, 110), (0, 1), 1, 200),),
     )
     ground = expand(plan, library, 49, 36, 0)
-    # The shoulders cut [131, 351]. The 131-unit run fits 74 + 57;
-    # the 130-unit run would need a pitch of 56 and keeps one centred piece.
-    assert [(p.x, p.y) for p in ground.pieces] == [(37, 226), (94, 226), (416, 226)]
+    # The shoulders cut [131, 351]. The 131-unit run fits 74 + 57.
+    # The 130-unit run would need a pitch of 56. Put its one piece next
+    # to the shoulder, at 351 + 37, with the slack at the map edge.
+    assert [(p.x, p.y) for p in ground.pieces] == [(37, 226), (94, 226), (388, 226)]
     assert any('56 units uncovered at ends of [351, 481]' in issue for issue in ground.issues)
     assert ground.hidden[19, :14].all() and not ground.hidden[19, 14:36].any()
+    assert ground.hidden[19, 36:43].all()
+
+    short_arm = replace(plan,
+                        blocks=(Block(((0, 200), (424, 200), (424, 350), (0, 350)), 4),),
+                        cliffs=(Cliff((0, 200), (424, 200), kit), Cliff((424, 200), (424, 350), kit)))
+    # The 73-unit arm from x351 to the bend at x424 is only one unit short.
+    fitted = expand(short_arm, library, 49, 36, 0)
+    assert fitted.pieces[2] == terrain.Piece('VL_CliffWall02', 387.5, 226, 0)
+
+
+def test_corner_piece_uses_the_kit_ports_and_leaves_no_straight_piece_at_the_vertex():
+    kit = 'Test'
+    library = {'kits': {kit: {
+        'cliffs': [dict(template='Wall', length=80, offset_y=-10, height_steps=1, samples=20)],
+        'cliff_corners': [dict(template='Corner', straight='Wall', steps=1, turn=90, heading=-90,
+                               origin=(10, 10), reach=(40, 40))],
+    }}}
+    plan = TerrainPlan(blocks=(Block(((0, 100), (300, 100), (300, 400), (0, 400)), 4),),
+                       cliffs=(Cliff((109, 100), (300, 100), kit), Cliff((300, 100), (300, 300), kit)))
+    ground = expand(plan, library, 41, 41, 0)
+    assert [(p.template, p.x, p.y, p.angle) for p in ground.pieces] == [
+        ('Corner', 290, 110, 0), ('Wall', 149, 110, 0), ('Wall', 220, 110, 0),
+        ('Wall', 290, 180, np.pi / 2), ('Wall', 290, 260, np.pi / 2)]
+    assert ground.hidden[9, 28] and ground.hidden[12, 31]
+    assert ground.cliff_joints[9, 29] and not ground.cliff_joints[9, 24]
+    ground.blend = terrain.Blend('backdrop', None, None)
+    assert ground.edge_texture(30, 9, 30, 10, 'edge') == 'edge'
+
+    # A matching side of the actual bank can meet a corner fitting even
+    # when the plan only specifies the front wall.
+    lip = replace(plan, cliffs=plan.cliffs[:1])
+    assert expand(lip, library, 41, 41, 0).pieces[0] == terrain.Piece('Corner', 290, 110, 0)
+
+    # With no matching profile the inside corner extends both axes by
+    # 10 tan(90° / 2), while holding the far end of each leg clear.
+    inside = replace(plan,
+                     blocks=(Block(((0, 200), (200, 200), (200, 0), (400, 0), (400, 400), (0, 400)), 4),),
+                     cliffs=(Cliff((100, 200), (200, 200), kit), Cliff((200, 200), (200, 100), kit)))
+    wall = expand(inside, library, 41, 41, 0)
+    assert [(p.template, p.x, p.y) for p in wall.pieces] == [('Wall', 170, 210), ('Wall', 210, 170)]
 
 
 def test_measured_short_cliff_fills_a_straight_run_on_the_same_axis():

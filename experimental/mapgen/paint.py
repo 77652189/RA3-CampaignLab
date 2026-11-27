@@ -120,12 +120,19 @@ def paint(plan, library, ground, roadbed=None):
                 if role == 'ramp':
                     fixed.add(name)
         shoulder = mask & ground.ramp_edges & ~ground.hidden
-        # On winter terrain let the local snow meet the exposed rock.
-        if kind != 'Snow' and shoulder.any():
+        # A bare steep cut takes rock; the tread keeps its selected surface.
+        exposed = shoulder & cliff
+        if exposed.any() and (kits.get(kit, {}).get('Rock') or kits.get(FALLBACK['Rock'], {}).get('Rock')):
+            rock, = _palette(kits, kit, 'Rock', label, Random(f'{kit}:ramp cut'), 1)
+            textures[exposed] = rock
+        elif named_texture is not None and kind != 'Snow':
+            textures[exposed] = named_texture
+        verge = shoulder & ~ground.blocked
+        if kind != 'Snow' and verge.any():
             if named_texture is None:
                 named_texture, = _palette(kits, kit, 'Dirt' if kind == 'Dirt' else 'Grass', label,
                                           Random(f'{kit}:ramp verge'), 1)
-            textures[shoulder] = named_texture
+            textures[verge] = named_texture
 
     road_material = asphalt = None
     if roadbed is not None and roadbed.paved.any():

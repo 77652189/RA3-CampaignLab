@@ -88,3 +88,14 @@ def test_library_groups_inherits_and_reports_missing_sources(tmp_path, monkeypat
     assert data["blocking"]["aa_wall"]["evidence"] == "benched"
     library.main()
     assert output.read_bytes() == fresh
+
+    xml("BaseObjects/BaseCliffWall.xml", '<GameObject id="BaseCliffWall" KindOf="NO_COLLIDE"/>')
+    xml("Civilian/Second_BB/Optimized_Props/Corner.xml", '<GameObject id="BB_Corner" inheritFrom="BaseCliffWall"/>')
+    corner = dict(template='BB_Corner', straight='AA_Wall', steps=1, turn=90, heading=-90,
+                  origin=[10, 10], reach=[40, 40])
+    write(work / "mapgen_probe/cliff_joints.json", json.dumps({"Second_BB": [corner]}))
+    library.main()
+    data = json.loads(output.read_bytes())
+    fitted, = library.cliff_corners(data, "First_AA", 1, "AA_Wall")
+    assert fitted == {**corner, "source": "work/mapgen_probe/cliff_joints.json", "evidence": "measured_from_maps"}
+    assert data["blocking"]["bb_corner"]["cls"] == "none"

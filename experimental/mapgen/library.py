@@ -89,6 +89,16 @@ def straight_cliff(library, kit, steps):
     return name, length, offset, pitch or length, filler, short
 
 
+def cliff_corners(library, kit, steps, straight):
+    """Corner profiles are paired with the straight piece whose ends they meet."""
+    kits = library['kits']
+    style = kits.get(kit, {})
+    donor = next((e.get('borrowing', {}).get('from', kit) for e in style.get('cliffs', ())
+                  if e['template'] == straight), kit)
+    return (entry for entry in kits[donor].get('cliff_corners', ())
+            if entry['steps'] == steps and entry['straight'] == straight)
+
+
 def _read(path, source, load, issues):
     try:
         return load(path)
@@ -304,6 +314,20 @@ def _blocking(rows, source, issues):
     return table
 
 
+def _corner_blocking(sage, asset):
+    """A corner with the unmodified non-colliding base needs no footprint override."""
+    path = sage / asset['source'].removeprefix('sdk/SageXML/')
+    obj = next(o for o in sdk_xml(path).iter('GameObject') if o.get('id') == asset['template'])
+    if obj.get('inheritFrom') != 'BaseCliffWall' or 'KindOf' in obj.attrib or obj.find('Behaviors') is not None:
+        return None
+    source = 'BaseObjects/BaseCliffWall.xml'
+    base = next(sdk_xml(sage / source).iter('GameObject'))
+    if 'NO_COLLIDE' in base.get('KindOf', '').split():
+        return {'cls': 'none', 'foot': '不挡', 'vehicle': '不挡', 'crush': '—',
+                'basis': 'inherits NO_COLLIDE', 'source': f'sdk/SageXML/{source}', 'evidence': 'inferred'}
+    return None
+
+
 def build_library(sage, work):
     """Read SageXML and local probe exports without writing anything."""
     issues = set()
@@ -323,11 +347,28 @@ def build_library(sage, work):
         borrowing, source = probe(borrowing_path)
         if borrowing is not None:
             _borrow_cliffs(kits, borrowing, source, issues)
+    blocking, source = probe("logs/e266_prop_blocking.json")
+    blocking = _blocking(blocking, source, issues) if blocking is not None else {}
+    corner_path = "mapgen_probe/cliff_joints.json"
+    if (work / corner_path).is_file():
+        profiles, source = probe(corner_path)
+        for kit, entries in (profiles or {}).items():
+            style = kits.get(kit, {})
+            assets = {e['template']: e for category in ('props', 'destructibles')
+                      for e in style.get(category, ())}
+            for entry in entries:
+                if {entry['template'], entry['straight']} <= assets.keys():
+                    style.setdefault('cliff_corners', []).append(
+                        {**entry, 'source': source, 'evidence': 'measured_from_maps'})
+                    key = entry['template'].casefold()
+                    if key not in blocking and (basis := _corner_blocking(sage, assets[entry['template']])):
+                        blocking[key] = basis
+                else:
+                    issues.add(('invalid_cliff_corner', source, f'{kit}: {entry["template"]}'))
     setpieces, source = probe("mapgen_probe/setpieces.json")
     if setpieces is not None:
         setpieces = {"units": setpieces["units"], "groups": [
             {**group, "source": source, "evidence": "measured_from_maps"} for group in setpieces["groups"]]}
-    blocking, source = probe("logs/e266_prop_blocking.json")
     mood_path = "mapgen_probe/atmosphere.json"
     moods = probe(mood_path)[0] if (work / mood_path).is_file() else None
     return {
@@ -337,7 +378,7 @@ def build_library(sage, work):
         "texture_kits": textures,
         "retail_moods": moods or {},
         "setpieces": setpieces,
-        "blocking": _blocking(blocking, source, issues) if blocking is not None else {},
+        "blocking": blocking,
         "issues": [{"kind": kind, "source": source, "detail": detail} for kind, source, detail in sorted(issues)],
     }
 
