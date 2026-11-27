@@ -71,27 +71,22 @@ the game ran, so h's negatives are about the fields, not a build that dropped th
 expect = "rows[0]['箱子位'] == 15 and rows[-1]['箱子位'] == 2 and all(r['满血位'] == 0 for r in rows)"
 
 [[reading]]
-id = "no_secret_file_lid_opens"
+id = "a_script_move_through_an_attribute_crate_neither_takes_nor_opens_it"
 scene = {build = "engine_secretfile_e", check = "a", until = 14}
-bench = "CampSecretFileA_mcp_1126_195411: 箱盖 = 0 throughout f45–f257"
-proves = "Neither native secret file showed USER_1 in the bench where neither spawned."
-expect = "all(r['箱盖'] == 0 for r in rows)"
+bench = "CampSecretFileA_mcp_1127_060542, counters (存活, 经过, 箱盖): 7 0 0 f44–f82; 7 7 0 f90–f257"
+proves = """AttributeCrateCollide (RA3's: the Uprising secret files cloned on RA3's schema, no KillOnPickup / ApplyToSelf, \
+modifier USER_1): one neutral creation action makes both clones and the retail HealCrate (存活 7); a Peacekeeper sent \
+through each by a script move crosses its centre (经过 7 from f90) and all three crates stay, no crate shows USER_1 \
+(箱盖 0) -- a script move is no collect order, for the attribute crate as for the heal crate (a397_crate.md)"""
+expect = "rows[-1]['存活'] == 7 and all(r['箱盖'] == 0 for r in rows)"
 
 [[reading]]
-id = "all_three_movers_reach_the_footprint_centres"
+id = "infantry_walk_over_the_secret_file_boxes"
 scene = {build = "engine_secretfile_e", check = "a", until = 14}
-bench = "CampSecretFileA_mcp_1126_195411: 经过 = 0 through f82; 7 from f91 through f257"
-proves = "All three infantry crossed their crate's measured or intended footprint centre."
+bench = "CampSecretFileA_mcp_1127_060542: 经过 0 through f82, 7 from f90"
+proves = "Each Peacekeeper's script move takes it over its crate's centre, the two BOX-shaped files as the HealCrate"
 expect = "rows[-1]['经过'] == 7"
-mismatch = "Sim ends at 4 (only the HealCrate lane); the bench ends at 7, with neither file present. See work/re/e270_secretfile.md."
-
-[[reading]]
-id = "secret_file_templates_do_not_spawn_in_this_bench"
-scene = {build = "engine_secretfile_e", check = "a", until = 14}
-bench = "CampSecretFileA_mcp_1126_195411: 存活 = 4 throughout f45–f257 (HealCrate only)"
-proves = "The same neutral creation action created HealCrate but neither native secret file in this custom map."
-expect = "rows[-1]['存活'] == 4"
-mismatch = "Sim creates both secret files and HealCrate (7); the custom game bench creates only HealCrate (4). See work/re/e270_secretfile.md."
+mismatch = "Sim ends at 4: only the HealCrate lane's mover reaches the centre; the two file lanes' do not (bench 7)."
 
 [[reading]]
 id = "a_script_move_halfway_does_not_keep_the_crate"

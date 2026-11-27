@@ -9,6 +9,8 @@ IsHumanOnlyPickupInSinglePlayerCampaign default true; E146's movers sent *onto* 
 Veh movers take their crate as they pass -- it goes; the collector and the collector's units within 100 go to full
 (On man, On near), not the far one, not s2's; Off's crate stays and heals none; Foe's s2 mover leaves its crate.
 """
+import re
+
 from maps import probe_range
 from parts import Mission, Script, Test, square
 from checks import engine_scripts8 as s8
@@ -172,13 +174,35 @@ def hyp_check(m):
     return t
 
 
-SECRET_FILES = (('SS_SecretFile1', 'switch'), ('SS_SecretFile2', 'low'), ('HealCrate', 'removed'))
+SECRET_FILES = (('CNVSecretFile1', 'switch'), ('CNVSecretFile2', 'low'), ('HealCrate', 'removed'))
 FILE_TEAM = 'PlyrNeutral/teamCNVSecretFiles'
 
 
+def secret_file(k):
+    """Uprising's SS_SecretFile<k> (Y01 / Y02; in no RA3 stream or map) with the HealCrate's art and RA3's schema:
+    RA3's CrateCollide has no KillOnPickup, its AttributeCrateCollide no ApplyToSelf (the build stops on them), so
+    both go -- what is left is RA3's crate: modifier to the collector, crate gone on pickup. Its modifier (Uprising's
+    static stream: ModelConditionsSet USER_1, nothing else -- a400_ocl_attack.md) comes along under a new id; the
+    client sound, portraits and collapse OCL (Uprising-only assets) go."""
+    new = f'CNVSecretFile{k}'
+    u = clone(f'Civilian/Shiro_Sanitarium_SS/Buildings/SS_SecretFile{k}.xml', f'SS_SecretFile{k}', new)
+    heal = clone('Neutral/Crates/HealCrate.xml', 'HealCrate', new).xml
+    x = re.sub(r'<Include[^>]*source="(ART|DATA:(Civilian|BaseObjects))[^"]*"\s*/>|(KillOnPickup|ApplyToSelf)="\w+"',
+               '', u.xml)
+    x = x.replace('</Includes>', '<Include type="all" source="ART:NPHealCrate.w3x" /></Includes>')
+    for tag in ('Draws', 'ClientBehaviors', 'CreateObjectDie', 'ObjectCreationList'):
+        x = re.sub(rf'<{tag}\b.*?</{tag}>', re.search(rf'<{tag}\b.*?</{tag}>', heal, re.S).group()
+                   if tag == 'Draws' else '', x, count=1, flags=re.S)
+    x = re.sub(r'(SelectPortrait|ButtonImage)="\w+"', lambda g: re.search(g.group(1) + '="\\w+"', heal).group(), x)
+    x = x.replace('"AttributeModifier_SecretFile"', f'"{new}Mod"').replace(
+        '</AssetDeclaration>', f'<AttributeModifier id="{new}Mod" ModelConditionsSet="USER_1" /></AssetDeclaration>')
+    u.xml = x
+    return u
+
+
 def secret_files_mission():
-    """E270: use the native templates by name, without compiling the unsupported crate XML."""
-    m = Mission(name='CampSecretFile', map=probe_range, units=[])
+    """E270 (A400 ②): the two secret-file clones and the retail HealCrate, created by one script action."""
+    m = Mission(name='CampSecretFile', map=probe_range, units=[secret_file(1), secret_file(2)])
     m.ext = True
     m.teams['secretFiles'] = FILE_TEAM
     for template, lane in SECRET_FILES:
@@ -190,12 +214,11 @@ def secret_files_mission():
 
 
 def secret_files(m):
-    """Both files keep the crate alive and apply AttributeModifier_SecretFile to themselves.
+    """Three neutral crates made by one script action, a Peacekeeper sent through each by a script move.
 
-    Predict the native files exist alongside the HealCrate creation control (mask 7)
-    and all movers reach the box footprints (mask 7). Whether the modifier sets
-    USER_1, the lid animation condition, is INFERRED; predict mask 3 and latch it.
-    E270 measured 4/7/0: the native files never spawned on this custom map.
+    Predicted: all three made and kept (mask 7: a script move is no collect order, a397_crate.md), all movers
+    cross (7), no crate shows USER_1 (0: RA3 hangs the modifier on the collector, and none collects).
+    E270's first run measured 4/7/0 on a build the files were never in (a400_ocl_attack.md).
     """
     t = Test()
     create, move = [], []
@@ -223,7 +246,7 @@ def secret_files(m):
     s8.total(t, 'FileLive', '存活', live)
     t.counters.extend([('FileCross', '经过'), ('FileLid', '箱盖')])
     s8.frames(t, 'FileClock', '帧', [])
-    t.expect = [('存活', 0, '==', 7), ('经过', 0, 'ever==', 7), ('箱盖', 0, 'ever==', 3)]
+    t.expect = [('存活', 0, '==', 7), ('经过', 0, 'ever==', 7), ('箱盖', 0, '==', 0)]
     s8.watch(t, 14., .5)
     return t
 
