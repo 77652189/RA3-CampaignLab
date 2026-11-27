@@ -33,27 +33,6 @@ def test_point_native_water_search_finds_a_non_object_target(build):
     # object: its recorded (0, 0) is not evidence for the chosen location.
 
 
-@pytest.mark.parametrize('build', [
-    pytest.param('aipointwater', marks=pytest.mark.xfail(strict=True,
-        reason='Point selector replays observed candidates, but the world still has no '
-               'random Point search provider. See work/re/c_point_resume_report.md.')),
-    'aipointtiny',
-])
-def test_point_named_selection_matches_native(build):
-    if not simai.available():
-        pytest.skip('no private AI model')
-    native = resumed_picks(build)
-    assert native
-    w = simai_run.run(build, 'a', until=3)
-    brain = w.brains['Soviet_1']
-    picks = [text for _, kind, text in brain.ai.log
-             if kind == 'target' and text.startswith('CNVStateTP: ')]
-    if native[0]['found']:
-        assert picks
-    else:
-        assert picks == []
-
-
 @pytest.mark.parametrize('build', ['aipointwater', 'aipointtiny'])
 def test_point_original_controls_and_public_records(build):
     path = Path(simai.labpaths.WORK) / 're/c_point_measured.json'

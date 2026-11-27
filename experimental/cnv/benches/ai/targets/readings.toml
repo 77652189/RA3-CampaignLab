@@ -693,3 +693,21 @@ bench = "C 2026-11-12 (one run, PASS; c_shore_measured.json): aishorelo, aishore
 proves = "simai CloseToShore target filter: a limit of 1 rounds to a disc of 0 pathfinding cells, the plant's own (dry) cell, no water in it: no target (read: work/re b1127_shore.md)"
 expect = "set(win(1, 61, '坦克在家')) == {4} and set(win(1, 61, '坦克出门')) == {0}"
 item = ["AI 目标/AITargetingHeuristic.MaxDistanceToShore", "AI 目标/AITargetingHeuristic.HeuristicType=EnemyStructureCloseToShore"]
+
+[[reading]]
+bench_id = "engine_aipoint"
+id = "a_water_point_search_takes_the_team_off_home"
+scene = {build = "aipointwater", check = "a", until = 32}
+bench = "C 11-15 aipointwater:a (CampPointWaterA_mcp_1115_213059; c_point_resume_report.md, d166_point.md): f16 SearchRange 1500 around the east yard (3850,3400), 40 tries, 38 in the map, 8 on water, takes the nearest (2890,3011) -- 总数 / 在家 4 / 0 every second s16-s47 (s25-26 not sampled)."
+proves = "simai Point search (world point_search): a uniform disc around the base, the Location surface qualifies, no threat sample -> the nearest; the team leaves for it"
+expect = "set(win(16, 24, '在家')) == {0} and set(win(16, 24, '总数')) == {4}"
+item = "AI 目标/AITargetingHeuristic.HeuristicType=Point"
+
+[[reading]]
+bench_id = "engine_aipoint"
+id = "a_point_search_of_range_one_finds_no_water"
+scene = {build = "aipointtiny", check = "a", until = 32}
+bench = "C 11-15 aipointtiny:a (CampPointTinyA_mcp_1115_213437, PASS): SearchRange 1 from the yard on land, f16-f226 40 tries 0 qualified, found 0 -- 总数 / 在家 4 / 4 every second s1-s40."
+proves = "simai Point search: every point within 1 of the yard is land, nothing qualifies, the slot stays empty and the team home"
+expect = "set(win(1, 30, '在家')) == {4}"
+item = "AI 目标/AITargetingHeuristic.HeuristicType=Point"

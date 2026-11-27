@@ -352,6 +352,7 @@ class Brain:
         self.path_rng = random.Random(host.seed)    # the spot's start angles (the engine: the logic random)
         self.tower_rng = random.Random(host.seed)   # a base defence's angle and radius jitter (its own: no other draw moves)
         self.place_rng = random.Random(host.seed + 7)   # the general placement's angle and radius draws (its own too)
+        self.point_rng = random.Random(host.seed + 11)  # a Point heuristic's search draws (point_search; its own)
         self._protos = {}               # template -> a Body never placed (expected: the candidate)
         self.yard_q = {}                # yard serial, or (serial, 'defense') -> [job]
         self.yard_rest = {}             # the same key -> the last frame it starts nothing (the one after a put)
@@ -377,6 +378,7 @@ class Brain:
                             # E81/E87: Location uses terrain, including stationary water structures.
                             # INFERRED at shorelines, bridges and for airborne targets.
                             water_at=lambda x, y: (g := self.world.ground).z(x, y) < g.water,
+                            point_search=self.point_search,
                             expansion_candidates=(self.expansion_candidates
                                                   if (self.settings.facts.get('dual bases')
                                                       or self.settings.facts.get('expansion')) else None))
@@ -553,6 +555,27 @@ class Brain:
         ys = [b for b in self.world.living() if b.owner == player and 'STRUCTURE' in b.kinds and not b.scenery]
         y = next((b for b in ys if 'CONSTRUCTION_YARD' in b.kinds), ys[0] if ys else None)
         return (y.x, y.y) if y else None
+
+    def point_search(self, h):
+        """D166 (work/re/d166_point.md): a Point heuristic's own random search around its base -- up to 40 points
+        uniform in the SearchRange disc, stopping at 10 that qualify; one qualifies inside the playable map (aipointwater:
+        the 2 of 40 left out were past x 5000) on the Location's surface. No threat sample is taken (None: the model
+        falls back to the nearest). INFERRED: the base = the first yard (the bench's MAIN_BASE / PREFER_OLDEST);
+        the draws are our own (the engine's random order is not reproduced)."""
+        if not self.yards():
+            return None
+        tg, g = self.host.mod['targets'], self.world.ground
+        import platmap
+        size = [(n - 2 * g.b) * platmap.CELL for n in g.e.shape]
+        rng, (ox, oy), out = self.point_rng, self.home, []
+        for _ in range(40):
+            if sum(c.ok for c in out) == 10:
+                break
+            a, r = rng.uniform(0, 2 * math.pi), h.search_range * math.sqrt(rng.random())
+            x, y = ox + r * math.cos(a), oy + r * math.sin(a)
+            if 0 <= x <= size[1] and 0 <= y <= size[0]:
+                out.append(tg.PointCandidate((x, y), ('Water' if self.view.water_at(x, y) else 'Land') in h.location))
+        return tg.PointSearch((ox, oy), tuple(out))
 
     def expansion_candidates(self, heuristic, origin):
         """D104: select a base before choosing its nearest eligible ore.

@@ -65,7 +65,7 @@ BRAIN = {
     'ai': MODEL, 'tactics': MODEL, 'targets': MODEL, 'defense': MODEL, 'micro': MODEL, 'powers': MODEL,
     'view': MODEL, 'base': MODEL, 'bases': MODEL,
     # the brain's own
-    'paths': STATE, 'path_rng': STATE, 'tower_rng': STATE, 'place_rng': STATE, 'yard_q': STATE, 'yard_rest': STATE,
+    'paths': STATE, 'path_rng': STATE, 'tower_rng': STATE, 'place_rng': STATE, 'point_rng': STATE, 'yard_q': STATE, 'yard_rest': STATE,
     'unit_q': STATE, 'made': STATE, 'wrappers': STATE,'trace': STATE, 'born': STATE, 'frame': STATE, 'last_expansion': STATE,
     'woke': STATE, 'ids': STATE, 'hp': STATE, 'hurt_at': STATE, 'seen_t': STATE, 'fired': STATE, 'home': STATE,
     'rec': STATE, '_rec_runs': STATE, '_rec_mem': STATE, '_rec_bodies': STATE,
