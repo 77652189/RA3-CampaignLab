@@ -113,7 +113,6 @@ scene = {build = "engine_a1tolly", check = "y", until = 20}
 bench = "CampA1TollYY (11-26 E269): lane 2 at the seam of a straight 34-unit pair misses the center gate and arrives in 141 frames (open 139)."
 proves = "the straight pair's centerline does not behave like open ground for infantry"
 expect = "rows[-1]['穿心'] // 10 % 10 == 0"
-mismatch = "sim 穿心 11, bench 1: sim crosses the center gate of the straight pair; exact clearance is a gap, see work/re/handoff-e-archive.md E269."
 
 [[reading]]
 id = "z_the_staggered_niagara_fence_seam_lets_a_conscript_through"
@@ -121,7 +120,6 @@ scene = {build = "engine_a1tollz", check = "z", until = 20}
 bench = "CampA1TollZZ (11-26 E269): 穿心 11; lanes 1–5 arrive in 139, 139, 140, 141, 174 frames. The conscript crosses the translated Niagara pair's center gate at the open lane's pace."
 proves = "a conscript can cross the staggered Cape Cod fence seam at the tested alignment"
 expect = "rows[-1]['穿心'] == 11"
-mismatch = "sim 穿心 1, bench 11: sim misses the staggered seam. SDK box trials break the straight control; see work/re/handoff-e-archive.md E269."
 
 [[reading]]
 id = "ys_the_straight_seam_opens_once_lane_and_pair_move_off_the_grid"
@@ -129,7 +127,6 @@ scene = {build = "engine_a1tollys", check = "ys", until = 20}
 bench = "CampA1TollYSYs (11-27 A399): 穿心 1110 from s5; lanes 1–5 arrive in 141, 139, 139, 139, 141 frames. y's straight pair and its lane moved together 0 / 5 / 10 / 14 / 18 off the 20-unit grid: lanes 2–4 cross the center gate."
 proves = "the program's box footprint (step 2, cell trunc(x / 20), a sample marks its cell only 7 or more from every cell edge unless CLASSIFY_ENTIRE_FOOTPRINT): predicted 1110; Generals' half-cell sampling, no margin and whole-cell sampling predict 0 / 0 / 1100"
 expect = "rows[-1]['穿心'] == 1110"
-mismatch = "sim 穿心 1, bench 1110: the sim's fence footprint is not the program's; for E (E269), the rule in work/re/a398_fence.md A399."
 
 [[reading]]
 id = "yz_all_five_conscripts_reach_their_goals"

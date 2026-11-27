@@ -801,7 +801,7 @@ class Sim:
         run, infantry's as a vehicle's (11-08 engine_block foot: IFV, peacekeeper ordered 3 s later went round by the
         gap, s13 / s22); a CRUSHABLE_OBSTACLE infantry's only, vehicles drive through (E256 engine_a1toll)."""
         bodies, soft = self.living(), lambda b: 'CRUSHABLE_OBSTACLE' in b.kinds
-        self.ground.set_blocks(*([s for s in (self.blocks(b, place) for b in bodies if keep(b)) if s] for place, keep
+        self.ground.set_blocks(*([s for s in (simpath.routing_shape(b, self.blocks(b, place), place) for b in bodies if keep(b)) if s] for place, keep
                                  in ((False, lambda b: not soft(b)), (True, lambda b: True), (False, soft))))
 
     # ---- the world

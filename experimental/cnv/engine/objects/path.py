@@ -90,7 +90,7 @@ def route_grid(ground, surface):
 def can_way(ground, surface, p, q, closest=False):
     """Whether Ground.way returns a path, using exactly its snapped endpoints."""
     grid = route_grid(ground, surface)
-    a, z = grid.endpoint(ground.cell(*p)), grid.endpoint(ground.cell(*q))
+    a, z = (grid.endpoint(cell) for cell in ground.route_cells(surface, p, q))
     # Ground.closest always has at least a itself to fall back to (an empty path).
     return a is not None and z is not None and (bool(closest) or a == z or grid.connected(a, z))
 
@@ -149,9 +149,36 @@ class Sight:
         return sees(self.flat, self.w, (c0[0] * d, c0[1] * d), (c1[0] * d, c1[1] * d))
 
 
+SAMPLED_BOX = 'sampled box'
+
+
+def box_cells(shape):
+    """Routing cells marked by a box's 2-unit samples (A399, work/re/a398_fence.md)."""
+    x, y, angle, hx, hy, entire, _ = shape
+    c, s = math.cos(angle), math.sin(angle)
+    cells = set()
+    for i in range(math.ceil(hx)):
+        u = 2 * i - hx
+        for j in range(math.ceil(hy)):
+            v = hy - 2 * j
+            gx, gy = (x + u * c - v * s) / GRID, (y + u * s + v * c) / GRID
+            if entire or (int(gx - 0.35) == int(gx + 0.35) and int(gy - 0.35) == int(gy + 0.35)):
+                cells.add((int(gy), int(gx)))
+    return cells
+
+
+def routing_shape(body, shape, place):
+    if place or body.template.upper() not in ('CC_WOODFENCE01', 'CC_WOODFENCE02') or shape is None:
+        return shape
+    # Both Cape Cod templates use the same SDK box, offset in the object's local axes.
+    c, s = math.cos(body.angle), math.sin(body.angle)
+    return (body.x - 0.05 * c + 0.01 * s, body.y - 0.05 * s - 0.01 * c, body.angle,
+            14.4234, 7.1, 'CLASSIFY_ENTIRE_FOOTPRINT' in body.kinds, SAMPLED_BOX)
+
+
 def covered(shapes, x, y, side=0.0):
     """Cells whose point (x, y: world coordinates, x along axis 1 and y along axis 0, both rising) is inside any of
-    `shapes`: (x, y, angle, length, thick[, centres]) a bar, or (x, y, r) a round building (Ground.set_blocks).
+    `shapes`: (x, y, angle, length, thick[, centres]) a bar, (x, y, r) a round building, or a sampled routing box.
     Each shape is tested on the cells of its own bounding box only. A bar marked `centres` (a measured prop of BARS)
     thinner than the game's 10 cell (CELL) is tested on the centres of the CELL cells in each cell's `side` square
     north-east of its point instead (any one inside shuts it): bench 11-22 engine_block gn / gr, GV_Ring02 bars 5.3
@@ -162,6 +189,13 @@ def covered(shapes, x, y, side=0.0):
     m = np.zeros(x.shape, bool)
     xs, ys = x[0], y[:, 0]
     for s in shapes:
+        if s[-1] == SAMPLED_BOX:
+            # INFERRED: the fine sight mask uses the same classified cells for these footprints.
+            for row, col in box_cells(s):
+                j0, j1 = np.searchsorted(ys, (row * GRID, (row + 1) * GRID))
+                i0, i1 = np.searchsorted(xs, (col * GRID, (col + 1) * GRID))
+                m[j0:j1, i0:i1] = True
+            continue
         r = s[2] if len(s) == 3 else math.hypot(s[3], s[4]) / 2
         offs = (0.0,) if len(s) < 6 or not s[5] or s[4] >= platmap.CELL or not side else \
             np.arange(platmap.CELL / 2, side, platmap.CELL)
@@ -562,7 +596,9 @@ class Ground:
         f = m | self._mask(foot) if foot else m
         self.placed = m if place is None else self._mask(place)
         coarse_changed = (m != self.blocked).any() or (f != self.foot).any()
-        if coarse_changed or any(old != new and not np.array_equal(self._fine_mask(old), self._fine_mask(new))
+        sampled_changed = self.foot_shapes != foot_shapes and (
+            {s for s in self.foot_shapes if s[-1] == SAMPLED_BOX} != {s for s in foot_shapes if s[-1] == SAMPLED_BOX})
+        if coarse_changed or sampled_changed or any(old != new and not np.array_equal(self._fine_mask(old), self._fine_mask(new))
                                  for old, new in ((self.shapes, shapes), (self.foot_shapes, foot_shapes))):
             self.blocked, self.foot, self.version, self.cache = m, f, self.version + 1, {}
             self.shapes, self.foot_shapes = shapes, foot_shapes
@@ -677,6 +713,26 @@ class Ground:
         import platmap
         return (int(round((y / platmap.CELL + self.b) / self.d)), int(round((x / platmap.CELL + self.b) / self.d)))
 
+    def route_cells(self, surface, p, q):
+        a, z = self.cell(*p), self.cell(*q)
+        if surface != 'foot':
+            return a, z
+        if 'sampled footprints' not in self.cache:
+            boxes = [s for s in self.foot_shapes if s[-1] == SAMPLED_BOX]
+            self.cache['sampled footprints'] = (~self._mask(boxes)).tobytes() if boxes else None
+        mask = self.cache['sampled footprints']
+        if mask is None:
+            return a, z
+        ox, oy = self.world((0, 0))
+        c, d = ((math.floor((y - oy) / GRID), math.floor((x - ox) / GRID)) for x, y in (p, q))
+        h, w = self.foot.shape
+        # INFERRED: keep the existing lattice endpoints except where rounding changes which sampled cells
+        # the straight route crosses. The wood fence probes measure this for horizontal routes.
+        if (a, z) != (c, d) and all(0 <= j < h and 0 <= i < w for j, i in (a, z, c, d)):
+            if sees(mask, w, a, z) != sees(mask, w, c, d):
+                return c, d
+        return a, z
+
     def shore(self, x, y, water):
         """GRID x the length from (x, y)'s cell to the nearest cell of the other kind (water for one on land, not water
         afloat), the AI's CloseToShore distance (the game's disc of cells, work/re b1127_shore.md); inf with none.
@@ -727,7 +783,7 @@ class Ground:
     def way(self, surface, p, q, closest):
         from skimage import graph
         grid = route_grid(self, surface)
-        a, z = grid.endpoint(self.cell(*p)), grid.endpoint(self.cell(*q))
+        a, z = (grid.endpoint(cell) for cell in self.route_cells(surface, p, q))
         if a is None or z is None:
             return None
         key = (surface, z)
