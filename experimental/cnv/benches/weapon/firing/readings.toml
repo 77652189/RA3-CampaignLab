@@ -108,6 +108,27 @@ proves = "sim guard: a guarding unit does not chase a target driving off out of 
 mismatch = "sim walks up at s8, follows the tank to F (远 1 from s22) and kills it at s29; bench never leaves, stops firing at 50 (s12; why not read)"
 expect = ["all(r['远'] == 0 for r in rows)", "rows[-1]['坦克血'] >= 50"]
 
+# B 11-27: grt / grs -- the Guardian born at F (700 north of S) and told at birth to guard S, so it walks back past T
+# (80 beside its walk, 400 north of S); grs splices GuardEnemyReturnScanRate 3600000 ms (stock 1000) into the global
+# stream. CampAqG18/19Frames_mcp_1127_081614 / 081457 read second for second the same: 远 起点 近敌 坦克血 = 1 0 1 100 s1,
+# 87 s2-3, 74 s4-5, 60 s6-7, 0 1 0 60 from s8 to s33.
+
+[[reading]]
+bench_id = "engine_acquire"
+id = "guard_return_scan_rate_an_hour_leaves_the_walk_home_as_stock"
+item = "AI 全局常量/AIData.GuardEnemyReturnScanRate"
+scenes = {rt = {build = "acquire_grt400", check = "frames", until = 33}, rs = {build = "acquire_grs400", check = "frames", until = 33}}
+let = {home = "lambda r: next(i for i, x in enumerate(r) if x['起点'] == 1)", hurt = "lambda r: next(i for i, x in enumerate(r) if x['坦克血'] < 100)"}
+bench = """\
+both runs the same: the guard fires at T as it walks past (60 left), never stops nor turns to it, is home at s8 and \
+fires no more. The field is the return state's scan interval (work/re l4_aidata_readers.md: first scan at a random \
+0 to its frames, then every interval, for an enemy within MaxRetaliateDistance x 0.3); a tank fires on the move, so \
+the scan adds nothing here -- this shows the field changes nothing in this scene, not where it would bite (a unit \
+that cannot fire on the move)"""
+proves = "sim order_guard: a guard walking home fires on the move and does not stop for an enemy beside its way -- GuardEnemyReturnScanRate is not read"
+expect = ["[list(r.values()) for r in rt] == [list(r.values()) for r in rs]", "hurt(rt) < home(rt) <= 12",
+          "all(r['起点'] == 1 and r['坦克血'] == rt[home(rt)]['坦克血'] for r in rt[home(rt):])", "rt[-1]['坦克血'] > 0"]
+
 # Bench readings of benches/weapon/firing/checks.py#engine_bezier_e (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]

@@ -44,7 +44,7 @@ def engine_acquire():
     from parts import Script, Test, counted, square
 
     VARIANTS = ('idle180', 'idle260', 'idle400', 'guard260', 'guard400', 'am260', 'am400', 'idle200', 'idle220', 'idle240',
-                'hold180', 'hold220', 'agg220', 'agg240', 'agg260', 'gst450', 'gsc450', 'gch450')
+                'hold180', 'hold220', 'agg220', 'agg240', 'agg260', 'gst450', 'gsc450', 'gch450', 'grt400', 'grs400')
     ATK, TANK = 'UNIT - CNV Aq Atk', 'UNIT - CNV Aq Tank'
     RUN = 25.0
     STANCE = {'hol': 2, 'agg': 1}   # UNIT_SET_STANCE at birth: HOLD_POSITION / AGGRESSIVE (GUARD 0 is the default)
@@ -59,7 +59,8 @@ def engine_acquire():
         t.areas['Test Start'] = square(sx, sy, 60.0)
         t.areas['Test Guard'] = square(sx, sy, 100.0)
         t.areas['Test End'] = square(*m.point('e'), 100.0)
-        g = v[0] == 'g' and v[1] != 'u'     # gst / gsc / gch: guard from birth, the tank in to N at 4 s, off to F at 14 s
+        g = v[:2] in ('gs', 'gc')           # gst / gsc / gch: guard from birth, the tank in to N at 4 s, off to F at 14 s
+        r = v[:2] == 'gr'                   # grt / grs: born at F, guard S from birth: the walk back passes T
         t.areas['Test Near'] = square(*m.point('n' if g else 't'), 200.0)
         t.scripts.append(Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', p1),
                                                      ('UNIT_CHANGE_OBJECT_STATUS', TANK, 'NO_ATTACK', 1),
@@ -67,33 +68,34 @@ def engine_acquire():
                                                      ('SET_MILLISECOND_TIMER', 'Test Go', 2.0)]))
         t.scripts.append(Script('Test - make', [('TIMER_EXPIRED', 'Test Make')],
                                 [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', ATK, 'AlliedAntiVehicleVehicleTech1',
-                                  m.team('s1'), m.mark('s')), ('UNIT_SET_TEAM', ATK, team)]
+                                  m.team('s1'), m.mark('f' if r else 's')), ('UNIT_SET_TEAM', ATK, team)]
                                 + ([('UNIT_SET_STANCE', ATK, STANCE[v[:3]])] if v[:3] in STANCE else [])
-                                + (m.order('guard', [ATK], 'Test Guard', 's1', crew='Aq') if g else [])))
+                                + (m.order('guard', [ATK], 'Test Guard', 's1', crew='Aq') if g or r else [])))
         go = ('TIMER_EXPIRED', 'Test Go')
-        if g:
+        if g or r:
             t.areas['Test Far'] = square(*m.point('f'), 180.0)
+            counted('CNV_Aq_F', '远', t, named=ATK, area='Test Far')
+        if g:
             t.scripts += [Script('Test - in', [], [('SET_MILLISECOND_TIMER', 'Test In', 4.0),
                                                    ('SET_MILLISECOND_TIMER', 'Test Off', 14.0)]),
                           Script('Test - tank in', [('TIMER_EXPIRED', 'Test In')],
                                  m.order('move', [TANK], m.mark('n'), crew='AqT')),
                           Script('Test - tank off', [('TIMER_EXPIRED', 'Test Off')],
                                  m.order('move', [TANK], m.mark('f'), crew='AqT'))]
-            counted('CNV_Aq_F', '远', t, named=ATK, area='Test Far')
         elif v.startswith('guard'):
             t.scripts.append(Script('Test - order', [go], m.order('guard', [ATK], 'Test Guard', 's1', crew='Aq')))
         elif v.startswith('am'):
             t.scripts.append(Script('Test - order', [go], m.order('attack_move', [ATK], m.mark('e'), 's1', crew='Aq')))
         t.areas['Test Still'] = square(sx, sy, 15.0)
-        if not g:                           # four counter lines at most: g counts 远 instead
+        if not g:                           # four counter lines at most: g counts 远 instead, r 远 and not 原地
             counted('CNV_Aq_S', '起点', t, named=ATK, area='Test Start')
-        if not v.startswith('am'):
+        if not v.startswith('am') and not r:
             counted('CNV_Aq_Q', '原地', t, named=ATK, area='Test Still')
         counted('CNV_Aq_N', '近敌', t, named=ATK, area='Test Near')
         if v.startswith('am'):
             counted('CNV_Aq_E', '终点', t, named=ATK, area='Test End')
         counted('CNV_Aq_H', '坦克血', t, health=TANK)
-        t.bench = [('bench_watch', dict(seconds=32.0 if g else RUN, every=1, sheet=False, lines=len(t.counters)))]
+        t.bench = [('bench_watch', dict(seconds=32.0 if g or r else RUN, every=1, sheet=False, lines=len(t.counters)))]
         return t
 
 

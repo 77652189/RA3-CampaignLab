@@ -11,7 +11,8 @@ def engine_acquire():
       T                    the player's tank, named, NO_ATTACK: idle / guard (0, -400 + d) straight north of S;
                            attack-move (300, -400 + d) beside the path, d to the side of the path's middle
       E (600, -400)        the attack-move end
-      N (0, -220), F (0, 300)  gst / gsc / gch: the tank (T 450 north of S) driven to N, then off to F
+      N (0, -220), F (0, 300)  gst / gsc / gch: the tank (T 450 north of S) driven to N, then off to F;
+                           grt / grs: the attacker born at F, T (80, 0) beside its walk back to S
     Published waypoints: s, e, t, n, f.
     """
     from maps import island
@@ -20,16 +21,19 @@ def engine_acquire():
     TANK = 'AlliedAntiVehicleVehicleTech1'
     S, E = (0.0, -400.0), (600.0, -400.0)
     VARIANTS = ('idle180', 'idle260', 'idle400', 'guard260', 'guard400', 'am260', 'am400', 'idle200', 'idle220', 'idle240',
-                'hold180', 'hold220', 'agg220', 'agg240', 'agg260', 'gst450', 'gsc450', 'gch450')
+                'hold180', 'hold220', 'agg220', 'agg240', 'agg260', 'gst450', 'gsc450', 'gch450', 'grt400', 'grs400')
     # gst / gsc / gch: guarding from birth, the tank driven in to N then off to F; gsc / gch with one AIData field
     # spliced into the global stream (missions/aiskirm_bench.AIDataPack)
-    AIDATA = {'gsc': {'GuardEnemyScanRate': '60000'}, 'gch': {'GuardChaseUnitFrames': '30'}}
+    # grt / grs: born at F and told to guard S at once (the walk back is the guard's return state), T 80 beside the
+    # walk 400 north of S; grs with GuardEnemyReturnScanRate an hour
+    AIDATA = {'gsc': {'GuardEnemyScanRate': '60000'}, 'gch': {'GuardChaseUnitFrames': '30'},
+              'grs': {'GuardEnemyReturnScanRate': '3600000'}}
     N, F = (0.0, S[1] + 180.0), (0.0, S[1] + 700.0)
 
 
     def target(variant):
         d = float(variant[-3:])
-        return (300.0, S[1] + d) if variant.startswith('am') else (0.0, S[1] + d)
+        return (300.0 if variant.startswith('am') else 80.0 if variant.startswith('gr') else 0.0, S[1] + d)
 
 
     def mission(name, variant):
