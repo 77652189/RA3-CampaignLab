@@ -1,29 +1,25 @@
-# 地图设计文件 v1
+# 地图设计文件 v2
 
 用 UTF-8 JSON。下面是低街、广场和上层高地的小样。车辆从低街上高地只经东侧坡口。关闭坡口后，西侧剩下的开口只让步兵通过。
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "seed": 37,
   "blocks": {
-    "west": {"height": 3, "use": "老街", "ring": ["west_bottom", "main", "-west_scarp", "west_wall"]},
-    "square": {"height": 3, "use": "广场", "ring": ["east_bottom", "east_wall", "-east_scarp", "-main"]},
-    "ridge": {"height": 4, "use": "高地", "ring": ["west_scarp", "east_scarp", "ridge_edge"]}
+    "west": {"height": 3, "use": "老街", "at": [25,25]},
+    "square": {"height": 3, "use": "广场", "at": [125,25]},
+    "ridge": {"height": 4, "use": "高地", "at": [150,150]}
   },
   "roads": {
-    "main": {"line": [[100,0],[100,100]], "width": "street", "ends": ["start","end"]},
+    "main": {"line": [[100,0],[100,100]], "width": "street"},
     "lane": {"line": [[25,50],[150,50]], "width": "alley", "ends": ["start","end"]}
   },
   "borders": {
-    "west_bottom": {"line": [[0,0],[100,0]], "sides": ["west",null]},
-    "west_wall": {"line": [[0,100],[0,0]], "sides": ["west",null]},
-    "east_bottom": {"line": [[100,0],[200,0]], "sides": ["square",null]},
-    "east_wall": {"line": [[200,0],[200,100]], "sides": ["square",null]},
-    "ridge_edge": {"line": [[200,100],[200,200],[0,200],[0,100]], "sides": ["ridge",null]},
-    "west_scarp": {"line": [[0,100],[100,100]], "sides": ["ridge","west"], "pass": ["foot"],
+    "map_edge": {"line": [[0,0],[200,0],[200,200],[0,200],[0,0]]},
+    "west_scarp": {"line": [[0,100],[100,100]], "pass": ["foot"],
                    "segments": {"sealed": {"span": [20,90], "pass": []}}},
-    "east_scarp": {"line": [[100,100],[200,100]], "sides": ["ridge","square"],
+    "east_scarp": {"line": [[100,100],[200,100]],
                    "segments": {"hairpin": {"span": [20,80], "pass": ["foot","vehicle"]}}}
   },
   "points": {
@@ -43,11 +39,11 @@
 
 ## 几何与编号
 
-- 顶层必填 `version: 1` 和非空 `blocks`。各表用对象 ID 当键。ID 以英文字母开头，其余可用英文字母、数字、下划线和连字符。顶层各表的 ID 全局唯一，`base` 留给基础状态。过口 ID 在各自的界内唯一，引用写成 `界ID.过口ID`。未知字段和重复键会报错。
+- 顶层必填 `version: 2` 和 `blocks`。各表用对象 ID 当键。ID 以英文字母开头，其余可用英文字母、数字、下划线和连字符。顶层各表的 ID 全局唯一，`base` 留给基础状态。过口 ID 在各自的界内唯一，引用写成 `界ID.过口ID`。未知字段和重复键会报错。
 - XY 用整数世界坐标（有符号 32 位），跨度、宽度和关系里的距离用世界单位。块的 `height` 用非负整数档。**一档 = 世界 70 单位 = .map 原始高度 1792**。一侧高度直接取该侧块的高度。
-- 先画城区道路。块的 `ring` 按顺序引用整条路或界，前缀 `-` 表示反向。线首尾必须接上并围出简单多边形。共边只写一次，`sides` 是沿界原方向的左、右块，图外填 `null`。围块线在共同端点相接，遇 T 形分界时在分岔处拆线。两侧都围块的路要求同高且同为陆地或水。
-- 子块以 `parent` 指向直接父块，须完全在父块内部。同父的子块可共边，内部不能重叠。父块保留尚未细分的地，子块的外缘以父块为另一侧。父块余下的地面须连通，余地上的孔洞轮廓不能只在一个点相接。块可选 `kind`（默认 `land`，水用 `water`）和布局的 `protagonist`（用途文字）。点的 `at` 须严格在自己块的有效内部，可选填 `use`。
-- 路宽档用 `alley`、`street`、`avenue`。路的折线实交处接成路口，整个路网必须连成一片，每段须在块内或沿块边。只有 `ends` 明列的 `start`、`end` 可以悬空。
+- 城区先画道路，崖、岸和地图外缘用界。道路和界在交叉及 T 形接点自动拆段，共边只写一次，各段两侧的块由线围成。用块的 `at` 指定面内一点，再写 `height` 和 `use`。点在线上、落在未围合区域或重复命名同一个面时，报出块 ID。未围合的界报出界 ID。两侧都围块的路要求同高且同为陆地或水。
+- 父块内部的独立围合也用 `at` 命名。可写 `parent` 校验直接父块。父块保留子块以外的地。未命名的面自动成为块，有父块时继承其用途、高度和地面类型。无父块时用途为“未指定”，高度和类型取沿道路相邻的命名块（可经其他未命名块），缺省为 0 档陆地。块可选 `kind`（默认 `land`，水用 `water`）和 `protagonist`（用途文字）。点的 `at` 须严格在自己块的有效内部，可选填 `use`。
+- 路宽档用 `alley`、`street`、`avenue`。路的折线实交处接成路口，整个路网必须连成一片，每段须在块内或沿块边。接到路或界的端点自动接合。只有 `ends` 明列的 `start`、`end` 可以悬空。
 
 ## 过口与状态
 

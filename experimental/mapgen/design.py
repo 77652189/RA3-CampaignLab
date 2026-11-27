@@ -144,63 +144,50 @@ def _line(raw, item):
     return line
 
 
-def _ring(refs, lines, item):
-    _list(refs, item, "ring")
-    ring, directed = [], []
-    for ref in refs:
-        _need(isinstance(ref, str), item, "reference", "ring expects line IDs")
-        reverse = ref.startswith("-")
-        name = ref.removeprefix("-")
-        _ref(name, lines, item, "ring")
-        line = lines[name][::-1] if reverse else lines[name]
-        _need(not ring or ring[-1] == line[0], item, "enclosure", f"gap at {ref}")
-        ring.extend(line if not ring else line[1:])
-        directed.append((name, reverse))
-    area = _area(ring)
-    _need(len(ring) >= 4 and ring[0] == ring[-1] and area != 0, item,
-          "enclosure", "ring must close and enclose an area")
-    edges = list(pairwise(ring))
-    for i, j in combinations(range(len(edges)), 2):
-        contacts = _meet(*edges[i], *edges[j])
-        adjacent = j == i + 1 or (i == 0 and j == len(edges) - 1)
-        _need(len(contacts) == int(adjacent), item, "enclosure", "ring crosses or overlaps itself")
-    # Index 0 is the left of the authored line, index 1 its right.
-    return ring, [(name, reverse ^ (area < 0)) for name, reverse in directed]
+def _split_lines(lines):
+    segments = [(name, a, b) for name, line in lines.items() for a, b in pairwise(line)]
+    splits = [{a, b} for _, a, b in segments]
+    for i, j in combinations(range(len(segments)), 2):
+        name, a, b = segments[i]
+        other, c, d = segments[j]
+        points = _meet(a, b, c, d)
+        _need(len(points) < 2, name, "overlap", f"line overlaps {other}")
+        splits[i].update(points)
+        splits[j].update(points)
+    edges = defaultdict(list)
+    for (name, a, b), points in zip(segments, splits):
+        ordered = sorted(points, key=lambda p: _along(p, a, b))
+        edges[name].extend(pairwise(ordered))
+    return edges
 
 
-def _check_nested(rings, parents, holes):
-    for name, parent in parents.items():
-        if parent is None:
-            continue
-        ring, outer = rings[name], rings[parent]
-        _need(all(_inside(p, outer) == 1 for p in ring[:-1])
-              and not any(_meet(*a, *b) for a in pairwise(ring) for b in pairwise(outer)),
-              name, "nesting", f"child must lie strictly inside {parent}")
-    for a, b in combinations(rings, 2):
-        if parents[a] != parents[b]:
-            continue
-        for name, other in ((a, b), (b, a)):
-            _need(not any(_inside(_mid(p, q), rings[other]) == 1 or
-                          _inside(p, rings[other]) == 1 for p, q in pairwise(rings[name])),
-                  name, "overlap", f"overlaps sibling {other}")
-    for parent, boundary in holes.items():
-        # Walk child/parent interfaces with the children on the left. An enclosed
-        # island of parent ground would give a clockwise loop and a false graph shortcut.
-        outgoing = {}
-        for line in boundary:
-            _need(line[0] not in outgoing, parent, "nesting", "child outlines pinch at a vertex")
-            outgoing[line[0]] = line
-        while outgoing:
-            start = next(iter(outgoing))
-            cursor, area = start, 0
-            while cursor in outgoing:
-                line = outgoing.pop(cursor)
-                area += _area(line)
-                cursor = line[-1]
-                if cursor == start:
-                    break
-            _need(cursor == start and area > 0, parent, "nesting",
-                  "children must leave a single connected parent interior")
+def _angle(a, b):
+    x, y = _sub(b, a)
+    # Exact counterclockwise order starting at the downward ray.
+    return (x < 0 or (x == 0 and y > 0), Fraction(y, x) if x else -math.inf)
+
+
+def _face_rings(edges):
+    neighbors = defaultdict(list)
+    for a, b in edges:
+        neighbors[a].append(b)
+        neighbors[b].append(a)
+    pending = {}
+    for vertex, adjacent in neighbors.items():
+        adjacent.sort(key=lambda p: _angle(vertex, p))
+        for i, incoming in enumerate(adjacent):
+            pending[incoming, vertex] = vertex, adjacent[i - 1]
+    rings, other = [], []
+    while pending:
+        start = edge = next(iter(pending))
+        ring = [start[0]]
+        while True:
+            ring.append(edge[1])
+            edge = pending.pop(edge)
+            if edge == start:
+                break
+        (rings if _area(ring) > 0 else other).append(ring)
+    return sorted(rings, key=_area), other
 
 
 def _spans(border, item, length):
@@ -248,8 +235,8 @@ class Design:
 
     def __init__(self, data):
         _fields(data, "$", "version blocks", "seed roads borders points states relations patches")
-        _need(type(data["version"]) is int and data["version"] == 1,
-              "$", "version", "expected format version 1")
+        _need(type(data["version"]) is int and data["version"] == 2,
+              "$", "version", "expected format version 2")
         _int(data.get("seed", 0), "$", "seed")
         self.data = data
         all_ids = {"base"}
@@ -261,9 +248,9 @@ class Design:
                 _need(item not in all_ids, item, "id", "ID already used or reserved")
                 all_ids.add(item)
             setattr(self, section, dict(sorted(entries.items())))
-        _need(self.blocks, "$", "blocks", "at least one block is required")
         self.lines = self._read_lines()
-        self.rings, self.sides, self.depth = self._read_blocks()
+        self.edges = _split_lines(self.lines)
+        self.rings, self.sides = self._read_blocks()
         self._read_borders()
         self._read_points()
         self._read_states()
@@ -284,15 +271,26 @@ class Design:
             _need(len(set(ends)) == len(ends), item, "ends", "repeated end")
             lines[item] = _line(road["line"], item)
         for item, border in self.borders.items():
-            _fields(border, item, "line sides", "width pass segments closed_reason")
+            _fields(border, item, "line", "width pass segments closed_reason")
             lines[item] = _line(border["line"], item)
         return lines
 
     def _read_blocks(self):
-        rings, parents, depth = {}, {}, {}
-        occupied = {line: [None, None] for line in self.lines}
+        edges = [edge for line in self.edges.values() for edge in line]
+        rings, outer_walks = _face_rings(edges)
+
+        def containing(point):
+            return next((i for i, ring in enumerate(rings) if _inside(point, ring) == 1), None)
+
+        names = {}
         for item, block in self.blocks.items():
-            _fields(block, item, "ring height use", "parent kind seed protagonist")
+            _fields(block, item, "at height use", "parent kind seed protagonist")
+            at = _xy(block["at"], item)
+            _need(not any(_on(at, a, b) for a, b in edges), item, "enclosure", "at lies on a line")
+            face = containing(at)
+            _need(face is not None, item, "enclosure", "at is outside all enclosed faces")
+            _need(face not in names, item, "enclosure", f"same face as {names.get(face)}")
+            names[face] = item
             _text(block["use"], item, "use")
             _int(block["height"], item, "height")
             _ref(block.get("kind", "land"), ("land", "water"), item, "kind")
@@ -300,55 +298,72 @@ class Design:
                 _int(block["seed"], item, "seed")
             if "protagonist" in block:
                 _text(block["protagonist"], item, "protagonist")
-            parent = block.get("parent")
             if "parent" in block:
-                _ref(parent, self.blocks, item, "parent")
-            parents[item] = parent
-            rings[item], directed = _ring(block["ring"], self.lines, item)
-            for line, side in directed:
-                other = occupied[line][side]
-                _need(other is None, item, "sides", f"{line} already has {other} on this side")
-                occupied[line][side] = item
-        for item in self.blocks:
-            ancestors = {item}
-            parent = parents[item]
-            while parent is not None:
-                _need(parent not in ancestors, item, "nesting", f"parent cycle through {parent}")
-                ancestors.add(parent)
-                parent = parents[parent]
-            depth[item] = len(ancestors)
+                _ref(block["parent"], self.blocks, item, "parent")
+        _need(rings, "$", "enclosure", "no enclosed faces")
+        face_names = [names.get(i, f"@{i + 1}") for i in range(len(rings))]
+        faces = dict(zip(face_names, rings))
 
-        holes = defaultdict(list)
-        for name, sides in occupied.items():
-            left, right = sides
-            if left and right:
-                _need(parents[left] == parents[right], name, "nesting",
-                      f"{left} and {right} must share a parent")
-            elif left or right:
-                child = left or right
-                parent = parents[child]
-                sides[int(left is not None)] = parent
-                if parent:
-                    holes[parent].append(self.lines[name] if left else self.lines[name][::-1])
-        _check_nested(rings, parents, holes)
-        return rings, occupied, depth
+        def enclosing(ring):
+            # The midpoint is on this walk's rim, but inside a containing face.
+            index = containing(_mid(ring[0], ring[1]))
+            return None if index is None else face_names[index]
+
+        left = {edge: name for name, ring in faces.items() for edge in pairwise(ring)}
+        for ring in outer_walks:
+            left.update(dict.fromkeys(pairwise(ring), enclosing(ring)))
+        sides = {edge: (left[edge], left[edge[::-1]]) for edge in edges}
+
+        # Unnamed root faces take the terrain of a named face on the same
+        # road network of face adjacencies, since roads cannot change height or kind.
+        adjacent = defaultdict(set)
+        for road in self.roads:
+            for edge in self.edges[road]:
+                a, b = sides[edge]
+                if a and b and a != b:
+                    adjacent[a].add(b)
+                    adjacent[b].add(a)
+        named_faces = set(self.blocks)
+        for item, ring in reversed(faces.items()):
+            parent = enclosing(ring)
+            if item in self.blocks:
+                _need(self.blocks[item].get("parent", parent) == parent, item, "nesting",
+                      f"expected containing block {parent}")
+            elif parent is not None:
+                spec = self.blocks[parent]
+                self.blocks[item] = dict(use=spec["use"], height=spec["height"],
+                                         kind=spec.get("kind", "land"))
+            else:
+                named = min(_visit(adjacent, item) & named_faces, default=None)
+                spec = self.blocks.get(named, {})
+                self.blocks[item] = dict(use="未指定", height=spec.get("height", 0),
+                                         kind=spec.get("kind", "land"))
+            if parent is not None:
+                self.blocks[item] = self.blocks[item] | {"parent": parent}
+        return faces, sides
 
     def _read_borders(self):
-        self.spans, self.lengths, self.base_pass = {}, {}, {}
+        self.spans, self.lengths, self.base_pass, self.border_edges = {}, {}, {}, {}
         for item, border in self.borders.items():
-            sides = border["sides"]
-            _list(sides, item, "sides", size=2)
-            for side in sides:
-                if side is not None:
-                    _ref(side, self.blocks, item, "sides")
-            _need(any(sides) and sides == self.sides[item], item, "sides",
-                  f"expected left/right blocks {self.sides[item]}, got {sides}")
             if "width" in border:
                 _width(border["width"], item)
             if "closed_reason" in border:
                 _text(border["closed_reason"], item, "closed_reason")
-            length = self.lengths[item] = sum(math.dist(a, b) for a, b in pairwise(self.lines[item]))
-            self.spans[item] = _spans(border, item, length)
+            edges = iter(self.edges[item])
+            offset, arcs = 0, []
+            for a, b in pairwise(self.lines[item]):
+                # Measure from the original vertices so splitting cannot move a span.
+                while True:
+                    edge = next(edges)
+                    left, right = self.sides[edge]
+                    _need(left != right, item, "enclosure", "border does not separate faces")
+                    start, end = (offset + math.dist(a, p) for p in edge)
+                    arcs.append((edge, start, end))
+                    if edge[1] == b:
+                        break
+                offset = end
+            self.lengths[item], self.border_edges[item] = offset, arcs
+            self.spans[item] = _spans(border, item, offset)
             if "pass" in border:
                 self.base_pass[item] = _pass(border["pass"], item)
             self.base_pass.update({sid: span[2] for sid, span in self.spans[item].items()})
@@ -361,14 +376,15 @@ class Design:
                 _text(point["use"], item, "use")
             _ref(point["block"], self.blocks, item, "block")
             at = _xy(point["at"], item)
-            _need(_inside(at, self.rings[point["block"]]) == 1 and
-                  self._face(at, boundary=True) == point["block"], item, "point",
+            _need(self._face(at) == point["block"], item, "point",
                   f"point must be in the interior of {point['block']}")
 
-    def _face(self, point, *, boundary=False):
-        candidates = (name for name, ring in self.rings.items()
-                      if _inside(point, ring) >= (0 if boundary else 1))
-        return max(candidates, key=self.depth.get, default=None)
+    def _face(self, point):
+        for name, ring in self.rings.items():
+            location = _inside(point, ring)
+            if location >= 0:
+                return name if location else None
+        return None
 
     def _medium(self, block):
         return WATER if self.blocks[block].get("kind") == "water" else LAND
@@ -463,53 +479,28 @@ class Design:
         return int.from_bytes(hashlib.sha256(key).digest()[:8], "big")
 
     def _index_roads(self):
-        segments, splits = [], {}
-        for name, line in self.lines.items():
-            offset = 0
-            for a, b in pairwise(line):
-                if name in self.roads:
-                    splits[len(segments)] = {a, b}
-                segments.append((name, a, b, offset))
-                offset += math.dist(a, b)
-        road_contacts, border_contacts = defaultdict(set), defaultdict(dict)
-        for i, j in combinations(range(len(segments)), 2):
-            name, a, b, offset = segments[i]
-            other, c, d, other_offset = segments[j]
-            contacts = _meet(a, b, c, d)
-            if not contacts:
-                continue
-            _need(len(contacts) == 1, name, "overlap", f"line overlaps {other}")
-            point, = contacts
-            if name != other and all(any(self.sides[n]) for n in (name, other)):
-                _need(all(point in (self.lines[n][0], self.lines[n][-1]) for n in (name, other)),
-                      name, "enclosure", f"split outlines at their junction with {other}")
-            if i in splits:
-                splits[i].add(point)
-            if j in splits:
-                splits[j].add(point)
-            if (i in splits) != (j in splits):
-                road, border, start, distance = ((name, other, c, other_offset) if i in splits
-                                                 else (other, name, a, offset))
-                road_contacts[point].add(road)
-                border_contacts[point][border] = distance + math.dist((0, 0), _sub(point, start))
-
         self.pieces, self.junctions = [], defaultdict(list)
         neighbors = defaultdict(set)
-        for i, points in splits.items():
-            name, a, b, _ = segments[i]
-            owners = frozenset(filter(None, self.sides[name]))
-            ordered = sorted(points, key=lambda p: _along(p, a, b))
-            for start, end in pairwise(ordered):
-                face = None if owners else self._face(_mid(start, end))
-                _need(owners or face is not None, name, "road", "road leaves the mapped blocks")
+        for name in self.roads:
+            for edge in self.edges[name]:
+                owners = frozenset(filter(None, self.sides[edge]))
+                _need(owners, name, "road", "road leaves the mapped blocks")
                 piece = len(self.pieces)
-                self.pieces.append((name, owners or frozenset((face,))))
-                self.junctions[start].append(piece)
-                self.junctions[end].append(piece)
+                self.pieces.append((name, owners))
+                for point in edge:
+                    self.junctions[point].append(piece)
+        self.contacts = defaultdict(list)
+        for border, edges in self.border_edges.items():
+            for edge, start, end in edges:
+                left, right = self.sides[edge]
+                for point, arc in zip(edge, (start, end)):
+                    if point in self.junctions:
+                        self.contacts[point].append((border, self._span_at(border, arc), left, right))
         for item, road in self.roads.items():
             first, last = self.lines[item][0], self.lines[item][-1]
             for end, point in (("start", first), ("end", last)):
-                _need(len(self.junctions[point]) > 1 or end in road.get("ends", []),
+                _need(len(self.junctions[point]) > 1 or point in self.contacts
+                      or end in road.get("ends", []),
                       item, "dangling", f"{end} of road at {point} is unconnected")
         for pieces in self.junctions.values():
             names = {self.pieces[piece][0] for piece in pieces}
@@ -521,12 +512,8 @@ class Design:
             _need(not disconnected, min(disconnected, default=first), "road_network",
                   f"road network is disconnected from {first}")
 
-        self.contacts = {
-            point: [(name, self._span_at(name, arc)) for name, arc in sorted(borders.items())]
-            for point, borders in border_contacts.items()
-        }
         for state, passes in self.state_pass.items():
-            self._check_road_state(state, passes, road_contacts)
+            self._check_road_state(state, passes)
         self._check_cliffs()
 
     def _span_at(self, border, arc):
@@ -535,30 +522,34 @@ class Design:
                 return item
         return border
 
-    def _check_road_state(self, state, passes, road_contacts):
+    def _check_road_state(self, state, passes):
         for point, borders in self.contacts.items():
-            for road in sorted(road_contacts[point]):
+            for road in sorted({self.pieces[i][0] for i in self.junctions[point]}):
                 if not passes[road]:
                     continue
-                for _, opening in borders:
+                for _, opening, _, _ in borders:
                     _need(passes.get(opening, LAND), road, "road_no_pass",
                           f"meets closed {opening} in state {state}")
         heights = self.state_heights[state]
-        for road in self.roads:
-            left, right = self.sides[road]
-            if left and right and passes[road]:
+        for road, owners in self.pieces:
+            if len(owners) == 2 and passes[road]:
+                left, right = sorted(owners)
                 _need(heights[left] == heights[right] and self._medium(left) == self._medium(right),
                       road, "sides", f"road sides must have equal height and kind in state {state}")
 
     def _crossings(self, border):
-        """IDs of positive-length passages, including uncovered parts of the border."""
-        cursor, has_gap = 0, False
-        for item, (start, end, _) in self.spans[border].items():
-            has_gap |= start > cursor
-            cursor = end
-            yield item
-        if has_gap or cursor < self.lengths[border]:
-            yield border
+        """Face pairs and passage IDs for each positive-length border interval."""
+        for edge, start, end in self.border_edges[border]:
+            left, right = self.sides[edge]
+            cursor = start
+            for item, (lo, hi, _) in self.spans[border].items():
+                if max(start, lo) < min(end, hi):
+                    if cursor < lo:
+                        yield left, right, border
+                    yield left, right, item
+                    cursor = hi
+            if cursor < end:
+                yield left, right, border
 
     def _road_links(self):
         for point, pieces in self.junctions.items():
@@ -567,8 +558,7 @@ class Design:
                 _, sides_b = self.pieces[b]
                 for face in sorted(sides_a & sides_b):
                     yield a, b, face, face, None, None
-                for border, opening in self.contacts.get(point, ()):
-                    left, right = self.sides[border]
+                for border, opening, left, right in self.contacts.get(point, ()):
                     if left in sides_a and right in sides_b:
                         yield a, b, left, right, border, opening
                     if right in sides_a and left in sides_b:
@@ -576,18 +566,23 @@ class Design:
 
     def _check_cliffs(self):
         road_passages = {
-            border for a, b, _, _, border, opening in self._road_links()
+            (border, frozenset((left, right)))
+            for a, b, left, right, border, opening in self._road_links()
             if border and self.base_pass.get(opening, LAND)
             & self.base_pass[self.pieces[a][0]] & self.base_pass[self.pieces[b][0]]
         }
         heights = self.state_heights["base"]
         for item, border in self.borders.items():
-            left, right = self.sides[item]
-            if left and right and heights[left] != heights[right]:
+            passages = defaultdict(set)
+            for left, right, opening in self._crossings(item):
+                if left and right and heights[left] != heights[right]:
+                    passages[frozenset((left, right))].add(opening)
+            for pair, openings in passages.items():
+                left, right = sorted(pair)
                 kinds = self._medium(left) & self._medium(right)
-                _need(border.get("closed_reason") or item in road_passages or
-                      any(kinds & self.base_pass.get(name, frozenset()) for name in self._crossings(item)),
-                      item, "closed_cliff", "height change needs an opening or closed_reason")
+                _need(border.get("closed_reason") or (item, pair) in road_passages or
+                      any(kinds & self.base_pass.get(name, frozenset()) for name in openings),
+                      item, "closed_cliff", f"{left}/{right} needs an opening or closed_reason")
 
     def _graph(self, who, state, without):
         faces = self.playable[state] - {without}
@@ -602,10 +597,10 @@ class Design:
             if who in self._medium(face):
                 graph[face] = set()
         for border in self.borders:
-            left, right = self.sides[border]
-            if border != without and left in graph and right in graph:
-                if any(item != without and who in passes.get(item, ()) for item in self._crossings(border)):
-                    link(left, right)
+            if border != without:
+                for left, right, item in self._crossings(border):
+                    if left in graph and right in graph and item != without and who in passes.get(item, ()):
+                        link(left, right)
 
         for i, (road, owners) in enumerate(self.pieces):
             if road != without and who in passes[road] and owners & faces:

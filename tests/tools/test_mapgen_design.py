@@ -31,11 +31,11 @@ def test_load_a1_like_sketch(tmp_path, example):
 
 def test_nested_blocks_leave_parent_ground(sketch):
     sketch["blocks"]["pond"] = {
-        "parent": "ridge", "height": 2, "use": "池塘", "kind": "water", "ring": ["pond_bank"], "seed": 9,
+        "parent": "ridge", "height": 2, "use": "池塘", "kind": "water", "at": [50, 150], "seed": 9,
     }
     sketch["borders"]["pond_bank"] = {
         "line": [[30, 130], [70, 130], [70, 170], [30, 170], [30, 130]],
-        "sides": ["pond", "ridge"], "pass": ["amphibian"],
+        "pass": ["amphibian"],
     }
     design = Design(sketch)
     assert design.reachable("ridge", "pond", "amphibian")
@@ -53,13 +53,26 @@ def test_shared_border_written_once(sketch):
     with pytest.raises(DesignError, match=r"east_scarp.hairpin \[span\]"):
         Design(sketch)
     east["segments"]["hairpin"]["span"] = [20, 80]
-    east["sides"].reverse()
-    with pytest.raises(DesignError, match=r"east_scarp \[sides\]"):
-        Design(sketch)
-    east["sides"] = ["ridge", None]
-    sketch["borders"]["duplicate"] = {"line": east["line"], "sides": [None, "square"]}
-    sketch["blocks"]["square"]["ring"][2] = "-duplicate"
+    sketch["borders"]["duplicate"] = {"line": east["line"]}
     with pytest.raises(DesignError, match=r"duplicate \[overlap\].*east_scarp"):
+        Design(sketch)
+
+
+def test_t_junction_splits_face(sketch):
+    sketch["roads"]["lane"] = {"line": [[100, 50], [200, 50]], "width": "alley"}
+    design = Design(sketch)
+    unnamed, = design.blocks.keys() - sketch["blocks"].keys()
+    assert design._face((125, 75)) == unnamed
+    assert design._face((125, 25)) == "square"
+
+
+@pytest.mark.parametrize(("at", "message"), [
+    ([100, 25], "at lies on a line"),
+    ([75, 25], "same face as west"),
+])
+def test_block_name_identifies_invalid_face(sketch, at, message):
+    sketch["blocks"]["west_copy"] = dict(sketch["blocks"]["west"], at=at)
+    with pytest.raises(DesignError, match=rf"west_copy \[enclosure\] {message}"):
         Design(sketch)
 
 
