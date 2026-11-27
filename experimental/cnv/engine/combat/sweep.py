@@ -13,3 +13,15 @@ class Sweep:
 
     def apply(self, context, life):
         context.host.sweep(context.by, context.target, life)
+
+
+@nugget('Ring', 'hit')
+class Ring:
+    """ActivateCircularDamageNugget: the weapon's Lifetime (s); the shooter's ring starts at the target's place
+    (Context.host.sweep with ring: the host's Sweeps.fire reads the shooter's CircularDamageUpdate)."""
+
+    def payload(self, weapon):
+        return weapon.get('ring') or None
+
+    def apply(self, context, life):
+        context.host.sweep(context.by, context.target, life, ring=True)

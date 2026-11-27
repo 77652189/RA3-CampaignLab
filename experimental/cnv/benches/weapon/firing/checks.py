@@ -295,7 +295,9 @@ def engine_circular():
     Data prediction: Lifetime controls expansion, SweepWeapon supplies damage. Three
     stationary Hammers at 50/100/150 from the carrier count frames to first damage;
     the aimed Hammer at 450 receives only a 200 MAGIC shot marker. Checks a/b/c/d:
-    normal, remove activation, remove module, hold FiringDuration for Lifetime. This does not measure
+    normal, remove activation, remove module, hold FiringDuration for Lifetime. A395 e / f (normal / no activation):
+    the rows 50 / 100 / 150 from the AIMED Hammer on the shooter's side -- the ring centres on the weapon's point,
+    not the shooter (a / b / c / d had the rows outside it). This does not measure
     retail water eligibility, moving centres, death, repeat activation or FX.
     """
     from maps import probe_range
@@ -317,7 +319,7 @@ def engine_circular():
         return Mission(name='CampCircular', map=probe_range, units=[target()], ext=False)
 
 
-    def probe(m, activate=True, module=True, life=1.0, hold=False):
+    def probe(m, activate=True, module=True, life=1.0, hold=False, around=False):
         hit = ('<WeaponTemplate id="CNV_CircleHit"><Nuggets>'
                '<DamageNugget Damage="500" DamageType="MAGIC" DeathType="NORMAL"/>'
                '</Nuggets></WeaponTemplate>')
@@ -341,7 +343,7 @@ def engine_circular():
         shooter = 'UNIT - Circle Source'
         m.put(u.id, 'base gun', side='p1', role='circle source', name=shooter)
         names = [f'UNIT - Circle Target {k}' for k in range(4)]
-        for k, distance in enumerate((50.0, 100.0, 150.0, 450.0)):
+        for k, distance in enumerate((400.0, 350.0, 300.0, 450.0) if around else (50.0, 100.0, 150.0, 450.0)):
             m.put(TARGET_ID, 'base gun', 0.0, distance, side='s1', role=f'circle target {k}', name=names[k])
         t = Test()
         t.scripts.append(Script('Test - Circle setup', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]
@@ -362,7 +364,9 @@ def engine_circular():
 
     MISSION = {'engine_circular': mission}
     CHECKS = {'engine_circular': {'a': probe, 'b': lambda m: probe(m, activate=False),
-                                 'c': lambda m: probe(m, module=False), 'd': lambda m: probe(m, hold=True)}}
+                                 'c': lambda m: probe(m, module=False), 'd': lambda m: probe(m, hold=True),
+                                 'e': lambda m: probe(m, around=True),
+                                 'f': lambda m: probe(m, activate=False, around=True)}}
     return dict(MISSION=MISSION, CHECKS=CHECKS)
 
 

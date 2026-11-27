@@ -1789,7 +1789,7 @@ class Sim:
             for effect in w.get('unmodeled_effects', []):
                 self.gap(GAP_WEAPON, effect, '武器第1轮尚未解释此效果的筛选、几何或时序')
             if not self.shot_clock and (w.get('hit_modifiers') or w.get('line') or w.get('strip_max_health') or w.get('emp_seconds')
-                                       or w.get('sweep') or w.get('contained') or w.get('dot') or w.get('attach') or w.get('lift') or w.get('meta_impacts')):
+                                       or w.get('sweep') or w.get('ring') or w.get('contained') or w.get('dot') or w.get('attach') or w.get('lift') or w.get('meta_impacts')):
                 self.gap(GAP_WEAPON, 'weapon effects', '逐发武器效果仅在离散命中时钟中模拟')
             if w.get('grapple') and not self.shot_clock:    # no hit events: the aim hooks (review 1125 G)
                 simgrapple.hook(a, pick, w['grapple'])

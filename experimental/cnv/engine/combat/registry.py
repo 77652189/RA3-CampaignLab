@@ -16,7 +16,7 @@ import types
 # victims' damage is added and before the frame's damage is dealt, on the aimed target only (step N3a: the lift, the
 # attachment; N3b: the caster's power on itself; N3c: the weapon's modifier on the target)
 ORDER = (('Projectile', 'launch'), ('DOT', 'hit'), ('DamageContained', 'hit'), ('SecondaryDamage', 'hit'),
-         ('Suppression', 'hit'), ('Paralyze', 'hit'), ('Sweep', 'hit'), ('LineDamage', 'aim'), ('Damage', 'victim'),
+         ('Suppression', 'hit'), ('Paralyze', 'hit'), ('Sweep', 'hit'), ('Ring', 'hit'), ('LineDamage', 'aim'), ('Damage', 'victim'),
          ('LeechPercentMaxHealth', 'victim'), ('LeechHealth', 'victim'), ('StripMaxHealthPercent', 'victim'),
          ('Lift', 'effect'), ('Attach', 'effect'), ('Grapple', 'effect'), ('SpecialPower', 'effect'),
          ('AttributeModifier', 'effect'))

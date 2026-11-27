@@ -88,31 +88,95 @@ def linear_damage(template, own=None):
     return _memo[key]
 
 
+def circular_damage(template, own=None):
+    """The template's CircularDamageUpdate (the Stingray's tesla nova): {max (MaxRadius), hits, relation, kinds, rule,
+    water (ONLY_ON_WATER)} as linear_damage reads its line; None without one."""
+    key = ('circle', template, (own or {}).get(template))
+    if key not in _memo:
+        def read(xml):
+            return next(simunits._blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'CircularDamageUpdate'), None)
+        try:
+            block = simunits._chain(template, own, read)
+        except (OSError, ValueError):
+            block = None
+        _memo[key] = None
+        if block is not None:
+            head, inner = block
+            fh, _ = next(simunits._blocks(inner or '', 'ObjectFilter'), ('', ''))
+            _, wbody = _weapon(simunits._attr(head, 'SweepWeapon'), own)
+            _memo[key] = dict(max=simunits._num(simunits._attr(head, 'MaxRadius'), 100.0),
+                              hits=[(simunits._num(simunits._attr(h, 'Damage'), 0.0), simunits._attr(h, 'DamageType') or '')
+                                    for h, _ in simunits._blocks(re.sub(r'<!--.*?-->', '', wbody, flags=re.S), 'DamageNugget')],
+                              relation={r.rstrip('S') for r in (simunits._attr(fh, 'Relationship') or '').split()},
+                              kinds=frozenset((simunits._attr(fh, 'Include') or '').split()),
+                              rule=simunits._attr(fh, 'Rule') or 'ANY',
+                              water='ONLY_ON_WATER' in (simunits._attr(head, 'Flags') or ''))
+    return _memo[key]
+
+
 class Sweeps:
-    """The lines walking: started by Sim.deal on a shot, walked once a frame by due()."""
+    """The lines walking and the rings spreading: started by Sim.deal on a shot, walked once a frame by due()."""
 
     def __init__(self, world, peers):
-        self.world, self.peers, self.lines = world, peers, []
+        self.world, self.peers, self.lines, self.rings = world, peers, [], []
 
-    def fire(self, by, target, life):
-        """A shot of `by` at `target` whose weapon's ActivateLinearDamageNugget has Lifetime `life` s."""
+    def fire(self, by, target, life, ring=False):
+        """A shot of `by` at `target` whose weapon's ActivateLinearDamageNugget (ring: ActivateCircularDamageNugget)
+        has Lifetime `life` s. A line walks from the shooter toward the target. A ring: the shooter's
+        CircularDamageUpdate starts it at the weapon's point (the target's place then, not the shooter's -- the
+        retail nova fires at its own feet), radius 0 the frame after, MaxRadius / (Lifetime x 15) more each frame up to
+        MaxRadius; every object the ring reaches (its edge, FITTED as the line's nodes: the Hammers 50 / 100 / 150 off
+        the centre first hit 6 / 10 / 14 frames after the order, the aimed one 2) that passes the module's ObjectFilter takes the
+        SweepWeapon's DamageNuggets once. A new shot on the same module starts it again (one ring a module, the hit
+        list cleared). work/re/a395_circular.md; bench engine_circular e / f."""
         world = self.world
-        d = linear_damage(by.template, world.own)
-        if d is None or d['speed'] <= 0 or d['radius'] <= 0:
-            world.gap('weapon', 'ActivateLinearDamageNugget', '射手没有可用的 LinearDamageUpdate')
+        d = (circular_damage if ring else linear_damage)(by.template, world.own)
+        lack = (('ActivateCircularDamageNugget', '射手没有 CircularDamageUpdate') if ring and d is None else
+                ('CircularDamageUpdate', 'ONLY_ON_WATER 的水面筛选未建模（台上只测了陆地无旗）') if ring and d['water'] else
+                ('ActivateLinearDamageNugget', '射手没有可用的 LinearDamageUpdate')
+                if not ring and (d is None or d['speed'] <= 0 or d['radius'] <= 0) else None)
+        if lack:
+            world.gap('weapon', *lack)
+        if d is None or lack and not ring:
             return
-        dx, dy = target.x - by.x, target.y - by.y
-        n = math.hypot(dx, dy)
-        if not n:
-            return
-        ux, uy = dx / n, dy / n
-        total = min(round(life * simunits.LIFE_FPS), math.ceil(d['length'] / d['speed']))
-        nodes = math.ceil(d['length'] / (2 * d['radius']))
-        self.lines.append(dict(by=by, x=by.x + ux * d['start'], y=by.y + uy * d['start'], ux=ux, uy=uy,
-                               frame=world.frame_now(), total=max(total, 1), nodes=nodes, done=0, d=d))
-        world.used.add('linear damage')
+        now = world.frame_now()
+        if ring:
+            frames = max(round(life * simunits.LIFE_FPS), 1)
+            self.rings[:] = [r for r in self.rings if r['by'] is not by]
+            self.rings.append(dict(by=by, x=target.x, y=target.y, frame=now, step=d['max'] / frames,
+                                   last=frames, hit=set(), d=d))
+        else:
+            dx, dy = target.x - by.x, target.y - by.y
+            n = math.hypot(dx, dy)
+            if not n:
+                return
+            ux, uy = dx / n, dy / n
+            total = min(round(life * simunits.LIFE_FPS), math.ceil(d['length'] / d['speed']))
+            self.lines.append(dict(by=by, x=by.x + ux * d['start'], y=by.y + uy * d['start'], ux=ux, uy=uy, frame=now,
+                                   total=max(total, 1), nodes=math.ceil(d['length'] / (2 * d['radius'])), done=0, d=d))
+        world.used.add('circular damage' if ring else 'linear damage')
+
+    def spread(self, frame, living):
+        world = self.world
+        for ring in list(self.rings):
+            by, d, k = ring['by'], ring['d'], frame - ring['frame'] - 1
+            if not by.alive or k > ring['last']:
+                self.rings.remove(ring)
+                continue
+            if k < 0:
+                continue
+            for t in living:
+                if (t is by or not t.alive or t.serial in ring['hit'] or math.hypot(t.x - ring['x'], t.y - ring['y']) > k * ring['step'] + t.radius
+                        or d['relation'] and standing(world, by.owner, t).rstrip('S') not in d['relation']
+                        or not (t.kinds & d['kinds'] if d['rule'] == 'ANY' else d['kinds'] <= t.kinds)):
+                    continue
+                ring['hit'].add(t.serial)
+                self.hit(by, t.x, t.y, dict(d, hits=[(dmg, typ, 0.0) for dmg, typ in d['hits']],
+                                            affects=frozenset({standing(world, by.owner, t)})), frame, [t])
 
     def due(self, frame):
+        living = self.world.living() if self.rings or self.lines else ()
+        self.spread(frame, living)
         for line in list(self.lines):
             by, d = line['by'], line['d']
             if not by.alive:                                    # round 17: the killed one's line stops with it
@@ -123,14 +187,14 @@ class Sweeps:
             while line['done'] < want:
                 line['done'] += 1
                 step = 2 * d['radius'] * line['done']
-                self.hit(by, line['x'] + line['ux'] * step, line['y'] + line['uy'] * step, d, frame)
+                self.hit(by, line['x'] + line['ux'] * step, line['y'] + line['uy'] * step, d, frame, living)
             if line['done'] >= line['nodes']:
                 self.lines.remove(line)
 
-    def hit(self, by, x, y, d, frame):
+    def hit(self, by, x, y, d, frame, among):
         world, peers = self.world, self.peers
-        for t in world.living():
-            if t is by or frame < t.immune_until or t.shielded or t.indestructible:
+        for t in among:
+            if t is by or not t.alive or frame < t.immune_until or t.shielded or t.indestructible:
                 continue
             if standing(world, by.owner, t) not in d['affects']:
                 continue

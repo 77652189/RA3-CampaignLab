@@ -493,3 +493,25 @@ expect = [
     "snipe % 1000 == 31 and abs(snipe // 1000 % 1000 - 74) <= 2 and snipe // 1000000 == 8",
     "abs(bark % 1000 - 160) <= 2 and abs(bark // 1000 - 15) <= 2",
 ]
+
+# Bench readings of benches/weapon/firing/checks.py#engine_circular e / f (A395, bench 11-27, HEAD 790743f1 + the
+# e / f variants): the rows 50 / 100 / 150 off the AIMED Hammer (a-d had them by the shooter, outside the ring).
+[[reading]]
+bench_id = "engine_circular"
+id = "the_ring_spreads_from_the_weapons_point_and_reaches_a_hammer_edge_first"
+item = ["武器效果 ActivateCircularDamageNugget", "物体模块 Behaviors/CircularDamageUpdate"]
+scene = {build = "engine_circular", check = "e", until = 15, shot_clock = true}
+bench = """CampCircularE_mcp_1127_000115 (近 中 远 瞄, frames from the order to the first hit): s6 1 1 1 1, s7-s16 6 10 14 2"""
+proves = """ActivateCircularDamageNugget starts the shooter's CircularDamageUpdate at the weapon's point (the aimed Hammer \
+450 off), not the shooter: radius 0 the frame after the hit, MaxRadius / (Lifetime x 15) = 175 / 15 more a frame; \
+a Hammer is hit once its edge is in (radius 24.4: 50 / 100 / 150 off -> frames 6 / 10 / 14, the aimed one 2) by the \
+SweepWeapon (engine/combat/sweeps.py Sweeps.ring)"""
+expect = ["vals(rows)[-1] == [6, 10, 14, 2]"]
+
+[[reading]]
+bench_id = "engine_circular"
+id = "without_the_nugget_no_ring"
+scene = {build = "engine_circular", check = "f", until = 15, shot_clock = true}
+bench = """CampCircularF_mcp_1127_000233 (近 中 远 瞄): s7 16 16 16 2 ... s16 151 151 151 2 (the rows never hit)"""
+proves = """the same layout without ActivateCircularDamageNugget: the module alone never spreads (e's hits are the nugget's)"""
+expect = ["vals(rows)[-1][3] == 2 and len(set(vals(rows)[-1][:3])) == 1 and vals(rows)[-1][0] > 14"]

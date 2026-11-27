@@ -626,6 +626,9 @@ def _weapons(texts, base_table=None):
             sweeps = [_secs(_attr(h, 'Lifetime') or '0s') for h, _ in _blocks(bare, 'ActivateLinearDamageNugget')]
             if sweeps:
                 got['sweep'] = sweeps[0]
+            rings = [_secs(_attr(h, 'Lifetime') or '1s') for h, _ in _blocks(bare, 'ActivateCircularDamageNugget')]
+            if rings:
+                got['ring'] = rings[0]
 
             for h, inner in _blocks(bare, 'LeechPercentMaxHealthDamageNugget'):
                 if ((inner or '').strip() or any(d for d, _ in dmg) or any(war)
@@ -835,7 +838,7 @@ def _resolve(w, weapons):
                 strip_max_health=w.get('strip_max_health', weapons.get(w.get('warhead'), {}).get('strip_max_health', [])),
                 emp_seconds=w.get('emp_seconds', weapons.get(w.get('warhead'), {}).get('emp_seconds', [])),
                 leech_percent=w.get('leech_percent', 0.0), leech_health=w.get('leech_health', 0.0),
-                sweep=w.get('sweep'), contained=w.get('contained', []), dot=w.get('dot', []),
+                sweep=w.get('sweep'), ring=w.get('ring'), contained=w.get('contained', []), dot=w.get('dot', []),
                 special_powers=w.get('special_powers', weapons.get(w.get('warhead'), {}).get('special_powers', [])),
                 attach=w.get('attach', weapons.get(w.get('warhead'), {}).get('attach', [])),
                 lift=w.get('lift', weapons.get(w.get('warhead'), {}).get('lift', [])),
