@@ -3,7 +3,7 @@
 ObjectFilter selects recipients. The bench backs fully healing nearby units of the collector's owner and
 excluding a nearby enemy. INFERRED: centre-to-centre healing range, the exact collision shape/timing and
 healing allied players' units. Other pickup gates and crate effects, AI collection and custom ObjectFilter rules
-remain gaps (see work/re/a397_crate.md).
+remain gaps.
 """
 import math
 
@@ -26,11 +26,11 @@ class HealCrateData(module.ModuleData):
 class HealCrate(module.Module):
     DATA = HealCrateData
 
-    def heal(self, world, collector):
+    def heal(self, allied):
         crate, d = self.thing, self.data
-        for b in world.living():
+        for b in self.world.living():
             if ((d.include and not d.include & b.kinds) or d.exclude & b.kinds
-                    or world.relation(collector.owner, b.owner) != 'ALLIES'
+                    or not allied(b)
                     or math.hypot(crate.x - b.x, crate.y - b.y) > d.radius):
                 continue
             body = b.find(interfaces.Body)

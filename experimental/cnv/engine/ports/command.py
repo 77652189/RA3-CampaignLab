@@ -212,6 +212,16 @@ def queued(cmd, at):
     return (at, ORDER, cmd)
 
 
+def named_order(line):
+    """Read the two named objects in a capture or pickup script line."""
+    verb, _, rest = line.partition(' ')
+    separator = {'占领': ' 进 ', '拾取': ' 去 '}.get(verb)
+    if separator and separator in line:
+        who, _, target = rest.rpartition(separator)
+        return verb, who.strip(), target.strip()
+    return None
+
+
 def command(e, by='script', named=None):
     """The command a script event gives, or None (a god's-hand verb: 造 血量 旗标 摧毁 删除 打, one-name 占领). A
     queued command's event (`queued`) gives the command as posted (its own `by`). `named(s)`: s is a name in the
@@ -407,17 +417,17 @@ class Commands:
         want = set(serials)
         return {b.serial: b for b in self._w.bodies.values() if b.serial in want}
 
-    def _giver(self, cmd):
+    def _giver(self, by):
         """Whose units a pinned command may order: the AI's (`ai:P`) P's, the player's and the proxy's (a click on his
         own: SimUI and simproxy pick only those) the human's; a script's or a test's anyone's (None)."""
-        who, _, player = cmd.by.partition(':')
+        who, _, player = by.partition(':')
         if who == 'ai':
             return player
         return self._w.human if who in ('player', 'proxy') else None
 
     def _held(self, cmd, bodies):
         """The ones of `bodies` a pin still stands for: living, and the giver's (`_giver`)."""
-        owner = self._giver(cmd)
+        owner = self._giver(cmd.by)
         return [b for b in bodies if b.alive and (owner is None or b.owner == owner)]
 
     def issued(self):
@@ -455,6 +465,12 @@ class Commands:
         if s is None:
             return lookup(cmd.target)
         return self._serials((s,)).get(s)     # `_pinned` checked it: living, of that name
+
+    def _pick_one(self, name):
+        return next(iter(self._w.pick(name)), None)
+
+    def _named_body(self, name):
+        return self._w.body(name)
 
     def _attack_move(self, cmd):
         r = self._r
@@ -554,7 +570,7 @@ class Commands:
             t = cmd.target if cmd.arg('target_serial') is None else self._target(cmd, None)
             sent = [r.order.order_capture(w, r.peers, b, t) for b in self._units(cmd)] if t is not None else []
             return (True, '') if sent and all(sent) else (False, f'没有能去占 {cmd.target} 的工兵')
-        t = self._target(cmd, lambda n: next(iter(w.pick(n)), None))  # the one picked, as it is (S3, as _attack)
+        t = self._target(cmd, self._pick_one)  # the one picked, as it is (S3, as _attack)
         if t is None:
             return False, f'找不到 {cmd.target}'
         sent = [r.order.order_capture(w, r.peers, b, t) for b in self._units(cmd)]     # each one's answer (i #3)
@@ -562,16 +578,17 @@ class Commands:
 
     def _collect_crate(self, cmd):
         w, r = self._w, self._r
-        lookup = w.body if cmd.arg('objects') else lambda name: next(iter(w.pick(name)), None)
+        lookup = self._named_body if cmd.arg('objects') else self._pick_one
         crate = self._target(cmd, lookup)
         units = self._held(cmd, [b for b in self._units(cmd) if b is not None])
-        sent = [r.order.order_collect_crate(w, r.peers, b, crate) for b in units]
+        owner = self._giver('player')
+        sent = [r.order.order_collect_crate(w, r.peers, b, crate, owner) for b in units]
         return (True, '') if sent and all(sent) else (False, f'无法拾取 {cmd.target}')
 
     def _build(self, cmd):
         w = self._w
         if cmd.arg('objects'):              # a map script's press of that factory's build button (press: queued while
-            f = self._target(cmd, w.body)   # banned, bench engine_production g); the action names the template
+            f = self._target(cmd, self._named_body)   # banned, bench engine_production g); the action names the template
             if f is None:                   # no factory: refused, not another's queue (review 11-19 f #5; by serial,
                                             # one gone since: same-name sweep 11-19b O07)
                 return False, f'找不到工厂 {cmd.target}'
@@ -681,7 +698,7 @@ class Commands:
         return (True, '') if live else (False, 'set_lifetime: no living dodge beacon without a lifetime')
 
     def _fill_body(self, cmd):               # a factory's unit the template reader knows nothing of: his AI's library
-        get, own = self._libs.get(self._giver(cmd)), self._units(cmd)
+        get, own = self._libs.get(self._giver(cmd.by)), self._units(cmd)
         lib = get() if get is not None else None
         own = [b for b in own if 'all' in (b.guessed or []) and lib.template(b.template) is not None] if lib else []
         if not own:                         # review tt #6: one the library misses is refused, not "filled"

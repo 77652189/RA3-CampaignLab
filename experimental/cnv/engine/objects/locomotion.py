@@ -202,16 +202,17 @@ def crush(world, b, x0, y0, precise, pool, attached, topples, destroy):
         return
     dx, dy = b.x - x0, b.y - y0
     seg = dx * dx + dy * dy
+    own = world.own
     if not pool:
         low = [o for o in world.bodies.values() if o.alive and o.crushable is not None and not o.scenery  # living()
                and not o.topple and o.surface == 'ground' and o.serial not in attached]
-        props = [_crush_box_reach(o, world.own) if 'CRUSHABLE_OBSTACLE' in o.kinds else 0.0 for o in low]
+        props = [_crush_box_reach(o, own) if 'CRUSHABLE_OBSTACLE' in o.kinds else 0.0 for o in low]
         pool += [low, np.array([o.x for o in low]), np.array([o.y for o in low]),
                  np.array([o.radius for o in low]), np.array([o.crushable for o in low]), np.array(props)]
     low, ox, oy, orad, olevel, prop_reach = pool
     if low:
         k = np.clip(((ox - x0) * dx + (oy - y0) * dy) / seg, 0.0, 1.0) if seg else np.zeros(len(low))
-        reach = _crush_box_reach(b, world.own) if prop_reach.any() else 0.0
+        reach = _crush_box_reach(b, own) if prop_reach.any() else 0.0
         use_box = (prop_reach > 0) & (reach > 0)
         near = np.hypot(ox - (x0 + k * dx), oy - (y0 + k * dy)) <= np.where(use_box, prop_reach + reach, orad)
         for j in np.nonzero(near & (olevel < b.crusher))[0]:
@@ -219,12 +220,12 @@ def crush(world, b, x0, y0, precise, pool, attached, topples, destroy):
             # E256 engine_a1toll a: a neutral CRUSHABLE_OBSTACLE (a parked car) too (one's own INFERRED)
             if o is b or not o.alive or not (world.enemy(b.owner, o.owner) or 'CRUSHABLE_OBSTACLE' in o.kinds):
                 continue
-            if use_box[j] and not simtopple.crosses(b, o, (x0, y0), (b.x, b.y), world.own):
+            if use_box[j] and not simtopple.crosses(b, o, (x0, y0), (b.x, b.y), own):
                 continue
             world.used.add('crush')
             o.set_last_damage(b.owner, b)
             destroy(o, f'被 {world.label(b)} 压死', death='CRUSHED')
     for o in topples if precise else ():
         if o.alive and not o.toppled and o.crushable is not None and b.crusher > o.crushable and \
-                simtopple.crosses(b, o, (x0, y0), (b.x, b.y), world.own):
+                simtopple.crosses(b, o, (x0, y0), (b.x, b.y), own):
             o.find(interfaces.Topple).knock(world.frame_now(), b.drive_speed / simunits.LIFE_FPS)

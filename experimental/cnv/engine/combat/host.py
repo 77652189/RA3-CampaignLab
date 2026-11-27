@@ -29,7 +29,7 @@ import engine.objects.modifier as simmodifier
 from engine.modules import weaponset
 from engine.world.handle import GAP_WEAPON
 
-PEERS = frozenset({'attachment_tick', 'attachments', 'can_hit', 'chilling', 'cold_of', 'death_blasts', 'emp_disabled', 'emp_until', 'firing', 'garrison', 'has_model_condition', 'impact_flights', 'infiltrators', 'knock_hold', 'lift_timers', 'player_ups', 'projectile_detonate', 'queue_projectile_hit', 'set_model_condition', 'shots_due', 'stand', 'suppression_fields', 'sweeps', 'volleys'})
+PEERS = frozenset({'attachment_tick', 'attachments', 'can_hit', 'chilling', 'cold_of', 'death_blasts', 'emp_disabled', 'emp_until', 'firing', 'garrison', 'has_model_condition', 'impact_flights', 'infiltrators', 'knock_hold', 'lift_timers', 'player_ups', 'projectile_detonate', 'queue_projectile_hit', 'shots_due', 'suppression_fields', 'sweeps', 'volleys'})
 LAZY = frozenset({'impact_flights', 'knock_hold', 'emp_until'})     # the host makes these dicts on first use
 
 
@@ -444,7 +444,7 @@ class Damage:
         """Each knocked body one trajectory sample on (engine/combat/meta_impact.tick)."""
         meta_impact.tick(EffectHost(self, world, peers))
 
-    def deal(self, world, dt, peers):
+    def deal(self, world, dt, peers, *, stand):
         """R6: `dt` seconds of the aimed fire (`fight`) from shooters and at targets still alive. With the engine model
         once a frame, after that frame's scripts (Generals GameLogic::update runs the script engine before the objects'
         updates): a script's health top-up (UNIT_SET_HEALTH every frame, the a4 checks' trucks) lands before the
@@ -542,7 +542,7 @@ class Damage:
                 continue
             before_hp = t.hp
             t.damage(dmg)
-            self.hit_reaction_damage(world, t, before_hp - t.hp, peers, by, death_hits.get(t.serial, {}))
+            self.hit_reaction_damage(world, t, before_hp - t.hp, by, death_hits.get(t.serial, {}), now, stand=stand)
             self.track(world, t, before_hp - t.hp, instant.get(t.serial, 0.0) / dmg if dmg > 0 else 0.0, now)
             leech.refund(leech_events.get(t.serial), t, before_hp, gap)
             t.set_last_damage(by.owner, by)
@@ -558,7 +558,7 @@ class Damage:
         registry.Context.mark_cold: SecondaryDamage)."""
         self.cold_on[target.serial] = (target, by)
 
-    def hit_reaction_damage(self, world, target, damage, peers, by, death_hits):
+    def hit_reaction_damage(self, world, target, damage, by, death_hits, frame, *, stand):
         """E172 gun-hit condition; RotateToSourceWhenDamaged turns a standing target (no way, no live goal) to
         `by` at its turn rate (engine_hitreaction_r: shielded, a back hit once, then front hits). Animation unmodelled.
 
@@ -576,11 +576,12 @@ class Damage:
                 by = next((source for kind, source in death_hits.items() if kind in rule['death_types']), None)
                 if by is None:
                     return
-            peers.set_model_condition(target, 'HIT_REACTION', rule['seconds'], after_scripts=True)
+            # Damage runs after scripts, so the first script-visible frame is the next one.
+            target.model_conditions['HIT_REACTION'] = frame + 1 + math.ceil(rule['seconds'] * simunits.LIFE_FPS)
             if rule['rotate'] and not target.path and not getattr(target.goal, 'alive', False):
                 target.face = math.atan2(by.y - target.y, by.x - target.x)
             if rule['go_idle']:
-                peers.stand(target)
+                stand(target)
             world.used.add('hit reaction')
             world.guessed.add('HitReactionBehavior: exact timing/refresh INFERRED')
 

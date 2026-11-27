@@ -1956,7 +1956,7 @@ class Sim:
 
     def deal(self, dt):
         """simdamage.Damage.deal (L3, R6): `dt` seconds of aimed fire, projectiles and DOTs dealt; bodies at 0 die."""
-        self._harm().deal(self, dt, simdamage.Peers(self))
+        self._harm().deal(self, dt, simdamage.Peers(self), stand=simorder.stand)
 
     def attachment_tick(self):
         """engine_attach a: teleport the child and keep it with its moving parent.
@@ -2059,16 +2059,14 @@ class Sim:
         self.peeks = [q for q in self.peeks if now < q[3]]
         return [q[:3] for q in self.peeks]
 
-    stand = staticmethod(simorder.stand)
-
-    def set_model_condition(self, b, condition, seconds=None, *, after_scripts=False):
+    def set_model_condition(self, b, condition, seconds=None):
         """Shared minimal script/consumer store; separate from ObjectStatus.
 
         engine_spndisguise measures DISGUISED held for 20s. INFERRED: expiry
         at the first frame at/after duration, zero duration holds until cleared.
-        A producer after the script pass counts its first script-visible frame on the next pass.
+        Other native producers (including suppression) are not merged here.
         """
-        b.model_conditions[condition] = (self.frame_now() + after_scripts + math.ceil(seconds * simunits.LIFE_FPS)
+        b.model_conditions[condition] = (self.frame_now() + math.ceil(seconds * simunits.LIFE_FPS)
                                          if seconds and seconds > 0 else None)
 
     def has_model_condition(self, b, condition):
@@ -2416,12 +2414,8 @@ def parse_script(text):
             who_power, _, where = rest[2:].rpartition(' 在 ')
             who, _, power = who_power.strip().rpartition(' ')
             out.append((when(t), '放', who.strip(), power.strip(), where.strip()))
-        elif rest.startswith('占领 ') and ' 进 ' in rest:
-            who, _, target = rest[3:].rpartition(' 进 ')
-            out.append((when(t), '占领', who.strip(), target.strip()))
-        elif rest.startswith('拾取 ') and ' 去 ' in rest:
-            who, _, target = rest[3:].rpartition(' 去 ')
-            out.append((when(t), '拾取', who.strip(), target.strip()))
+        elif named_order := command_port.named_order(rest):
+            out.append((when(t), *named_order))
         elif rest.startswith('血量 '):
             who, pct = rest[3:].rsplit(None, 1)
             out.append((when(t), '血量', who.strip(), float(pct.rstrip('%'))))

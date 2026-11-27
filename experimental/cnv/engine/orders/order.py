@@ -165,9 +165,9 @@ def order_capture(world, peers, b, target_name):
     return False
 
 
-def order_collect_crate(world, peers, b, crate):
+def order_collect_crate(world, peers, b, crate, owner):
     """Only replay the measured kind of pickup: the human sends a mobile unit to a heal crate."""
-    if (not b or not b.alive or b.owner != world.human or b.speed <= 0 or 'IMMOBILE' in b.status
+    if (not b or not b.alive or b.owner != owner or b.speed <= 0 or 'IMMOBILE' in b.status
             or not crate or not crate.alive or not crate.find(healcrate.HealCrate)):
         return False
     order_move(world, peers, b, (crate.x, crate.y), False, exact=True)
@@ -175,15 +175,15 @@ def order_collect_crate(world, peers, b, crate):
     return True
 
 
-def collect_crate_due(world, b, crate):
+def collect_crate_due(world, kernel, b, crate):
     if not held(world, crate) or not crate.alive:
         stand(b)
         return
     # INFERRED: sample contact after movement, using the two bounding circles.
     if math.hypot(crate.x - b.x, crate.y - b.y) <= crate.radius + b.radius:
         for effect in crate.find(healcrate.HealCrate):
-            effect.heal(world, b)
-        world.world.remove(crate, '拾取医疗箱')
+            effect.heal(lambda recipient: _relation(world, b, recipient) == 'ALLIES')
+        kernel.remove(crate, '拾取医疗箱')
         stand(b)
 
 
@@ -194,11 +194,12 @@ def capture_due(world, peers):
     A deposit building pays its bonus now and its next
     deposit an interval on (Generals' AutoDepositUpdate.awardInitialCaptureBonus). Bench 2026-11-07 a4 derrick:
     the derrick the player's at the first reading after the order (s4), 500, then 15 every 2 s (s7 515 -> s46 800)."""
+    kernel = world.world
     for b in world.living():
         g = b.goal
         if b.mode == 'collect_crate':
             if isinstance(g, type(b)):
-                collect_crate_due(world, b, g)
+                collect_crate_due(world, kernel, b, g)
             continue
         if b.mode != 'capture' or not isinstance(g, type(b)):
             continue
@@ -224,7 +225,7 @@ def capture_due(world, peers):
                 continue
             fix.attempt_healing(math.inf)
             world.note('修理', f'{world.label(b)} 修复 {world.label(g)}')
-            world.world.remove(b, '进楼修理')
+            kernel.remove(b, '进楼修理')
             world.change()
             continue
         g.owner = b.owner
@@ -232,7 +233,7 @@ def capture_due(world, peers):
         m = g.find(interfaces.Deposit) if g.modules else None
         if m is not None:                               # engine/modules/deposit.py (step M4)
             peers.wallet.credit(b.owner, m.capture(world.frame_now()))
-        world.world.remove(b, '进楼占领')
+        kernel.remove(b, '进楼占领')
         world.change()
 
 

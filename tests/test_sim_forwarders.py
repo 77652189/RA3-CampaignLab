@@ -82,7 +82,7 @@ SIM_SURFACE = {
     'engine.combat': 'attachment_tick attachments*4 can_hit change*2 cold_of*3 death_blasts*2 emp_disabled*2 firing '
                      'first_death*4 frame_now*15 gap*5 garrison*2 ground*6 guessed has_model_condition hostile infiltrators '
                      'label*5 lift_timers*2 living*6 mark_first_death note own*7 player_ups projectile_detonate*2 '
-                     'queue_projectile_hit relation*2 set_model_condition shots_due suppression_fields*3 sweeps t*4 used*7 '
+                     'queue_projectile_hit relation*2 shots_due suppression_fields*3 sweeps t*4 used*7 '
                      'world*7 xml_of*2',
     'engine.kernel': 'seq*2',
     'engine.loop': '_life aim_due anchored*2 auto_kill_due blast_due clock combat*3 deal death_blast_due ending*4 events*5 '
@@ -94,7 +94,7 @@ SIM_SURFACE = {
                       'guessed*5 human*11 kills*2 label*23 living*12 looks m*2 note*20 own*42 player_ups players*3 point '
                       'reblock*2 relation*6 relations*4 shot_clock t*7 toggles_of topples used*18 weapon_upgrades world*24 '
                       'xml_of*6',   # objects.bridge (A315): the ManagerBody gap / own / blocks_of moved out of Sim.add
-    'engine.orders': '_field _fire_obstacles act acting*5 aim areas blocks body*3 can_hit*4 change*5 engineer_entry*2 fight_field fire_spot firing*3 frame_now*9 gap garrison*2 ground*2 hostile hunts*5 in_range label*10 living*6 members mid_aims mm*2 note*8 own*12 point*2 powers_off production reach*5 relation seen seq*7 short_of_power shot_blocked*4 side_sees*4 team_targets*3 toggles_of used*14 wallet waypoints*8 who world*4 xml_of*2',
+    'engine.orders': '_field _fire_obstacles act acting*5 aim areas blocks body*3 can_hit*4 change*5 engineer_entry*2 fight_field fire_spot firing*3 frame_now*9 gap garrison*2 ground*2 hostile hunts*5 in_range label*10 living*6 members mid_aims mm*2 note*8 own*12 point*2 powers_off production reach*5 relation seen seq*7 short_of_power shot_blocked*4 side_sees*4 team_targets*3 toggles_of used*14 wallet waypoints*8 who world*3 xml_of*2',
     'engine.players': '_life add*3 banned blocks bodies*4 build_frames emp_book frame_now*3 label note own*4 '
                       'produce_out reblock relations script_disabled t*3 unit_construction_disabled upgrade_done wallet*2 world',
     'engine.ports': 'act*2 add*2 add_team_lookup advance ai ai_paused ai_priorities ai_switches anchored*3 areas '
