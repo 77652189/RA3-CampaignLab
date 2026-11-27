@@ -18,6 +18,7 @@ class MapBuild:
     frame: terrain.DesignFrame | None
     scenery: tuple[terrain.Piece, ...]
     atmosphere: dict | None = None
+    flank_shapes: tuple = ()
 
     @property
     def border_index(self):
@@ -27,7 +28,8 @@ class MapBuild:
     def check_relations(self):
         if self.sketch is None:
             return {}
-        return checks.evaluate(self.sketch, self.ground, self.roadbed, self.layout, CONTAINER[2], self.frame)
+        return checks.evaluate(self.sketch, self.ground, self.roadbed, self.layout, CONTAINER[2], self.frame,
+                               self.flank_shapes)
 
     def placements(self):
         if self.roadbed is not None:
@@ -74,8 +76,16 @@ class MapBuild:
                                              uniqueID=f'{piece.template} {len(objects)}'))
         for suffix, data in zip(('game.map', 'editor.map', 'locked.json'), self.outputs(m), strict=True):
             Path(f'{stem}-{suffix}').write_bytes(data)
-        if self.sketch is not None and self.sketch.relations:
-            checks.draw_failures(self.sketch, self.check_relations(), f'{stem}-relations.svg')
+        if self.sketch is not None:
+            answers = self.check_relations()
+            checks.draw_failures(self.sketch, answers, f'{stem}-relations.svg')
+            rows = ['# 地图关系', '']
+            for name, answer in answers.items():
+                result = '🟢 通过' if answer.status == 'pass' else '🔴 未通过'
+                rows.append(f'- {result} · `{name}` · {answer.sentence}')
+                if answer.decision:
+                    rows.append(f'  - {answer.decision}')
+            Path(f'{stem}-checks.md').write_text('\n'.join(rows) + '\n', encoding='utf-8')
 
 
 def retail_atmosphere(mood, library):
@@ -119,7 +129,7 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
             plan = expanded
     ground = terrain.expand(plan, library, *CONTAINER)
     layout, roadbed = buildings.Layout(()), None
-    frame, scenery = None, ()
+    frame, scenery, flank_shapes = None, (), ()
     if sketch is not None:
         if road_kit is not None:
             roadbed = roads.expand(sketch, ground, border, road_kit)
@@ -132,5 +142,8 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
         # Roads and paint see the real backdrop before the frame closes it to movement.
         frame = terrain.design_frame(sketch, ground, background_count, border)
         dressed = dressing.expand(sketch, frame.close(ground), roadbed, layout, library, kits, sage, border, frame)
-        ground, scenery = dressed.ground, dressed.pieces
-    return MapBuild(plan, ground, roadbed, layout, sketch, frame, scenery, atmosphere)
+        flanks = tuple(dressing.footpath_flanks(sketch, library, sage))
+        ground = dressed.ground
+        scenery = (*dressed.pieces, *(prop for prop, _ in flanks))
+        flank_shapes = tuple(shape for _, shape in flanks)
+    return MapBuild(plan, ground, roadbed, layout, sketch, frame, scenery, atmosphere, flank_shapes)

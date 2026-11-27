@@ -49,7 +49,7 @@ def _shape_mask(shape, x, y):
 
 
 class _Grid:
-    def __init__(self, sketch, ground, roadbed, layout, border, frame):
+    def __init__(self, sketch, ground, roadbed, layout, border, frame, flank_shapes):
         self.sketch, self.border, self.frame = sketch, border, frame
         self.ground, self.roadbed = ground, roadbed
         self.z = ground.raw / rules.RAW_PER_WORLD
@@ -66,6 +66,10 @@ class _Grid:
             foot |= mask
             if building.blocking not in {'foot', 'foot_topple'}:
                 solid |= mask
+        for shape in flank_shapes:
+            mask = _shape_mask(shape, self.x, self.y)
+            solid |= mask
+            foot |= mask
         self.dry = ground.raw > ground.waterline
         land = self.dry & ~ground.blocked
         deep_water = (ground.waterline - ground.raw >= SHIP_DEPTH * rules.RAW_PER_WORLD) & ~ground.blocked
@@ -298,7 +302,7 @@ class _Grid:
                 and all(square.gap(s) >= 0 for group in self.buildings.values() for b in group for s in b.placement))
 
 
-def _answer(grid, rel):
+def _answer(grid, rel, held):
     kind = rel['type']
     who = rel.get('who')
     unit = UNITS.get(who)
@@ -313,6 +317,11 @@ def _answer(grid, rel):
             sentence += f'，且只能经过 {only}'
         if avoid:
             sentence += f'，避开 {avoid}'
+        order = rel.get('order')
+        if order:
+            sentence = f'{order} 航令：{sentence}' if who == 'ship' else f'{order} 行动命令：{sentence}'
+        if held:
+            return not expected, sentence, places, f'在 {rel["state"]} 状态放行 {order}。'
         without = (avoid,) if avoid else ()
         connected = grid.reachable(who, a, b, without)
         if connected != expected:
@@ -320,6 +329,8 @@ def _answer(grid, rel):
                 choice = f'在 {a} 到 {b} 之间留一条绕开 {avoid} 的{unit}路线。'
             elif expected:
                 choice = f'把 {only or "两地之间的入口"} 接到两侧可走地面，移开挡路的主角或把起终点放到适合{unit}的地面。'
+            elif order:
+                choice = f'在 {rel["state"]} 状态扣住 {order} 命令。'
             else:
                 choice = f'在 {a} 和 {b} 之间延长崖壁或岸线，封上这条{unit}能走的路。'
             return False, sentence, places, choice
@@ -354,23 +365,24 @@ def _answer(grid, rel):
             f'在 {point} 留一块同高的空地，移开侵入的主角，或把集结点移离岸线和坡肩。')
 
 
-def evaluate(sketch, ground, roadbed, layout, border, frame):
-    """Return answers keyed by relation ID in design order. Named states need an exported change."""
+def evaluate(sketch, ground, roadbed, layout, border, frame, flank_shapes=()):
+    """Answer named orders and check open routes on the exported geometry."""
     if not sketch.relations:
         return {}
-    grid = _Grid(sketch, ground, roadbed, layout, border, frame)
+    grid = _Grid(sketch, ground, roadbed, layout, border, frame, flank_shapes)
     answers = {}
     for name, relation in sketch.relations.items():
-        ok, sentence, places, decision = _answer(grid, relation)
         state = relation.get('state', 'base')
-        pending = any(table[state] != table['base'] for table in
-                      (sketch.state_pass, sketch.state_heights, sketch.playable))
+        held = sketch.order_held(state, relation.get('order'))
+        ok, sentence, places, decision = _answer(grid, relation, held)
+        pending = not held and any(table[state] != table['base'] for table in
+                                   (sketch.state_pass, sketch.state_heights, sketch.playable))
         if state != 'base':
             sentence = f'{state} 状态下，{sentence}'
         witness = None
         if pending:
             ok, decision = False, f'先把 {state} 的过口、水位或可玩区变动展开成可检查的地图。'
-        elif not ok and relation['type'] == '通不通' and relation.get('reachable', True):
+        elif not held and not ok and relation['type'] == '通不通' and relation.get('reachable', True):
             witness = grid.route_witness(relation)
             if witness is None and relation.get('only_via'):
                 witness = grid.bypass_witness(relation)
@@ -382,7 +394,7 @@ def evaluate(sketch, ground, roadbed, layout, border, frame):
 
 
 def draw_failures(sketch, answers, path):
-    """Draw the named sites and any exact failure cell on a north-up map."""
+    """Draw a named sketch followed by any failed relations and their exact cells."""
     failed = [(name, answer) for name, answer in answers.items() if answer.status == 'fail']
     all_points = [p for line in sketch.lines.values() for p in line]
     xmin, ymin = map(min, zip(*all_points))
@@ -399,14 +411,23 @@ def draw_failures(sketch, answers, path):
     def text(x, y, label, color='#eee'):
         return f'<text x="{x:.2f}" y="{y:.2f}" fill="{color}">{escape(label)}</text>'
 
-    backdrop = [line(run, '#81939b', 1) for run in sketch.lines.values()]
-    height = max(90, len(failed) * 480)
+    backdrop = [line(run, '#86badd' if name in sketch.roads else '#81939b', 1)
+                for name, run in sketch.lines.items()]
+    height = (1 + len(failed)) * 480
     svg = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 {height}" '
            'font-family="sans-serif" font-size="15">',
            f'<rect width="640" height="{height}" fill="#23313a"/>']
-    if not failed:
-        svg.append(text(24, 42, '全部关系通过'))
-    for index, (name, answer) in enumerate(failed):
+    svg.extend([text(24, 26, '地图草图'), *backdrop])
+    for border in sketch.borders:
+        for a, b, _, _, section in sketch.border_sections(border):
+            if sketch.base_pass.get(section):
+                svg.append(line((a, b), '#f1bd69', 3))
+    for name, place in (sketch.blocks | sketch.points).items():
+        if 'at' in place:
+            x, y = xy(place['at'])
+            tooltip = f'<title>{escape(place.get("use", name))}</title>'
+            svg.append(f'<g>{tooltip}{text(x + 5, y - 4, name)}</g>')
+    for index, (name, answer) in enumerate(failed, 1):
         svg += [f'<g transform="translate(0 {index * 480})">',
                 text(24, 26, f'{name} · {answer.sentence}'), *backdrop]
         for place in answer.place:

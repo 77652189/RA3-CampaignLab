@@ -13,9 +13,10 @@ import re
 
 STEP_WORLD = 70
 STEP_RAW = 1792
-# The engine routes on a 20-world-unit grid. A footpath has one routing cell;
-# a street ramp leaves a carriageway on either side of its centre (two 90-unit lanes).
-FOOT_RAMP_WIDTH = 20
+# A footpath cut leaves a routing cell for the tread and room for a solid
+# shoulder on each side. A street ramp has two 90-unit lanes.
+ROUTING_CELL = 20
+FOOTPATH_WIDTH = 3 * ROUTING_CELL
 STREET_RAMP_WIDTH = 180
 LAND = frozenset(("foot", "vehicle", "amphibian"))
 WATER = frozenset(("amphibian", "ship"))
@@ -196,7 +197,7 @@ def face_rings(edges):
     return sorted(rings, key=signed_area_twice), other
 
 
-def _spans(border, item, length, named_ramp):
+def _spans(border, item, length, named_opening):
     spans = {}
     raw = border.get("segments", {})
     _need(isinstance(raw, dict), item, "shape", "segments needs an object keyed by ID")
@@ -204,8 +205,10 @@ def _spans(border, item, length, named_ramp):
         sid = f"{item}.{name}"
         _id(name, sid)
         if isinstance(segment, dict) and ("from" in segment or "to" in segment):
-            _fields(segment, sid, "from to pass")
-            start, end = named_ramp(segment, sid)
+            _fields(segment, sid, "from to", "pass footpath")
+            _need(("pass" in segment) != ("footpath" in segment), sid, "opening",
+                  "choose a street passage or a footpath with solid flanks")
+            start, end = named_opening(segment, sid)
         else:
             _fields(segment, sid, "span pass", "width")
             _list(segment["span"], sid, "span", size=2)
@@ -217,7 +220,8 @@ def _spans(border, item, length, named_ramp):
         _need(start < end <= length, sid, "span", f"span must fit the border length {length:g}")
         if "width" in segment:
             _width(segment["width"], sid)
-        spans[sid] = (start, end, _pass(segment["pass"], sid))
+        allowed = frozenset({"foot"}) if "footpath" in segment else _pass(segment["pass"], sid)
+        spans[sid] = (start, end, allowed)
     spans = dict(sorted(spans.items(), key=lambda pair: pair[1][:2]))
     cursor = 0
     for sid, (start, end, _) in spans.items():
@@ -385,7 +389,7 @@ class Design:
                         break
                 offset = end
             self.lengths[item], self.border_edges[item] = offset, arcs
-            self.spans[item] = _spans(border, item, offset, self._named_ramp)
+            self.spans[item] = _spans(border, item, offset, self._named_opening)
             if "shore" in border:
                 _ref(border["shore"], ("quay",), item, "shore")
                 _need("pass" not in border and not self.spans[item], item, "shore",
@@ -399,19 +403,23 @@ class Design:
             self.base_pass.update({sid: span[2] for sid, span in self.spans[item].items()})
         self.base_pass.update(dict.fromkeys(self.roads, LAND))
 
-    def _named_ramp(self, spec, name):
+    def _named_opening(self, spec, name):
         border = name.split(".", 1)[0]
         for end in ("from", "to"):
             _ref(spec[end], self.points, name, end)
         toe, crest = (self.points[spec[end]] for end in ("from", "to"))
         a, b = tuple(toe["at"]), tuple(crest["at"])
         low, high = toe["block"], crest["block"]
-        _need(self.medium(low) == self.medium(high) == LAND
-              and self.blocks[low]["height"] < self.blocks[high]["height"], name, "ramp",
-              "from must be on lower land and to on higher land")
-        allowed = _pass(spec["pass"], name)
-        _need(allowed in ({"foot"}, LAND), name, "ramp",
-              "choose foot alone or foot, vehicle and amphibian together")
+        footpath = "footpath" in spec
+        if footpath:
+            _text(spec["footpath"], name, "footpath")
+        _need(self.medium(low) == self.medium(high) == LAND and low != high
+              and (self.blocks[low]["height"] < self.blocks[high]["height"]
+                   or footpath and self.blocks[low]["height"] == self.blocks[high]["height"]),
+              name, "opening", "name two landings, from the lower side when they differ in height")
+        if not footpath:
+            _need(_pass(spec["pass"], name) == LAND, name, "ramp",
+                  "a street ramp carries all ground units; use footpath for solid flanks")
         hits = {}
         for edge, start, _ in self.border_edges[border]:
             for p in _meet(a, b, *edge):
@@ -422,9 +430,23 @@ class Design:
         for edge, start, _ in self.border_edges[border]:
             if on_segment(point, *edge):
                 center = start + math.dist(edge[0], point)
+                if footpath:
+                    # Straight cuts use a routing cell centre, including when the
+                    # designer's line lands exactly between two routing cells.
+                    dx, dy = subtract(edge[1], edge[0])
+                    if not (dx and dy):
+                        axis = 0 if dx else 1
+                        at = point[axis]
+                        snapped = math.floor(at / ROUTING_CELL) * ROUTING_CELL + ROUTING_CELL / 2
+                        center += (snapped - at) * (1 if dx + dy > 0 else -1)
                 break
-        width = FOOT_RAMP_WIDTH if allowed == {"foot"} else STREET_RAMP_WIDTH
-        return center - width / 2, center + width / 2
+        width = FOOTPATH_WIDTH if footpath else STREET_RAMP_WIDTH
+        lo, hi = center - width / 2, center + width / 2
+        if footpath:
+            _need(all(set(self.sides[edge]) == {low, high}
+                      for edge, start, end in self.border_edges[border] if start < hi and lo < end),
+                  name, "footpath", "the whole opening must join the named blocks")
+        return lo, hi
 
     def _read_points(self):
         for item, point in self.points.items():
@@ -448,9 +470,16 @@ class Design:
 
     def _read_states(self):
         self.state_pass, self.state_heights, self.playable = {}, {}, {}
+        self.held_orders = {}
         targets = set(self.borders) | self.base_pass.keys()
         for item, state in (("base", {}), *self.states.items()):
-            _fields(state, item, optional="pass heights playable")
+            _fields(state, item, optional="pass heights playable hold")
+            held = state.get("hold", [])
+            _list(held, item, "hold")
+            for order in held:
+                _id(order, item)
+            _need(len(set(held)) == len(held), item, "hold", "repeated order")
+            self.held_orders[item] = frozenset(held)
             passes, heights = state.get("pass", {}), state.get("heights", {})
             for field, mapping in (("pass", passes), ("heights", heights)):
                 _need(isinstance(mapping, dict), item, "shape", f"{field} needs an object")
@@ -476,8 +505,9 @@ class Design:
 
     def _read_relations(self):
         endpoints = self.blocks.keys() | self.points.keys()
+        orders = set().union(*self.held_orders.values())
         schemas = {
-            "通不通": ("from to who", "only_via reachable without"),
+            "通不通": ("from to who", "only_via reachable without order"),
             "谁先到": ("a b to who min_lead", ""),
             "罩住": ("point road by fraction", ""),
             "绕多远": ("from to via who max_extra", ""),
@@ -508,6 +538,18 @@ class Design:
                 _need(rel["side"] > 0, item, "relation", "side must be positive")
             if "only_via" in rel:
                 _need(rel.get("reachable", True), item, "relation", "only_via requires a path")
+            if "order" in rel:
+                _id(rel["order"], item)
+                _need("state" in rel, item, "order", "name the mission state to check")
+                _need(rel["order"] in orders, item, "order",
+                      f'{rel["order"]} is never held in a named state')
+        used = {rel["order"] for rel in self.relations.values() if "order" in rel}
+        for item, held in self.held_orders.items():
+            _need(held <= used, item, "hold", f'no relation checks {", ".join(sorted(held - used))}')
+
+    def order_held(self, state, order):
+        """Whether the mission should withhold this order in the named state."""
+        return order is not None and order in self.held_orders[state]
 
     def _read_patches(self):
         slots = set()
@@ -709,7 +751,9 @@ class Design:
                 continue
             args = rel["from"], rel["to"], rel["who"]
             state = rel.get("state", "base")
-            ok = self.reachable(*args, state=state, without=rel.get("without")) == rel.get("reachable", True)
+            held = self.order_held(state, rel.get("order"))
+            reachable = not held and self.reachable(*args, state=state, without=rel.get("without"))
+            ok = reachable == rel.get("reachable", True)
             if ok and "only_via" in rel:
                 ok = not self._connected(*args, state, {rel.get("without"), rel["only_via"]} - {None})
             results[item] = "pass" if ok else "fail"

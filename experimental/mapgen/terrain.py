@@ -57,7 +57,6 @@ class Ramp:
     uphill: tuple
     steps: int
     width: float
-    narrow: bool = False
 
 
 @dataclass(frozen=True)
@@ -279,15 +278,14 @@ def from_design(sketch, plan, kit):
             spec = sketch.borders[border]
             opening = spec.get('segments', {}).get(name.split('.')[-1], {}) if name != border else {}
             allowed = sketch.base_pass[name]
-            narrow = 'from' in opening and allowed == {'foot'}
-            if allowed != LAND and not narrow:
-                raise DesignError(name, 'ramp', 'name two landings for a foot-only ramp')
+            if allowed != LAND and 'footpath' not in opening:
+                raise DesignError(name, 'ramp', 'name two landings and solid flanks for a footpath')
             width = opening.get('width', min(math.dist(a, b), spec.get('width', math.inf)))
             if width > math.dist(a, b) + 1e-7:
                 raise DesignError(name, 'ramp', 'ramp width exceeds its opening along the cliff')
             uphill = np.array((-tangent[1], tangent[0])) * (1 if diff > 0 else -1)
             low = (np.add(a, b) / 2) - uphill * (RAMP_LENGTH * abs(diff) / 2)
-            ramps.append(Ramp(tuple(low), tuple(uphill), abs(diff), width, narrow))
+            ramps.append(Ramp(tuple(low), tuple(uphill), abs(diff), width))
     return replace(plan, blocks=(*plan.blocks, *blocks), water=water, quays=(*plan.quays, *quays),
                    cliffs=plan.cliffs or tuple(c for group in cliffs.values() for c in _join_cliffs(group)),
                    ramps=plan.ramps or tuple(ramps),
@@ -504,7 +502,6 @@ def expand(plan, library, width, height, border):
     ramps, ramp_mask = [], np.zeros(x.shape, bool)
     ramp_shoulders = np.zeros(x.shape, bool)
     ramp_edges = np.zeros(x.shape, bool)
-    foot_ramp_sides = np.zeros(x.shape, bool)
     for ramp in plan.ramps:
         uphill = unit_direction(ramp.uphill)
         lo = base[at(ramp.low)]
@@ -517,8 +514,6 @@ def expand(plan, library, width, height, border):
         on = (along >= 0) & (along <= run)
         pad = abs(cross) <= ramp.width / 2 + CELL
         shoulder = on & pad
-        if ramp.narrow:
-            foot_ramp_sides |= shoulder & ~core
         low = (along >= -CELL) & (along <= 0) & pad
         high = (along >= run) & (along <= run + CELL) & pad
         if (lo % CLIFF_STEP_RAW or not low.any() or not high.any()
@@ -578,7 +573,7 @@ def expand(plan, library, width, height, border):
     # Include the wet/dry join, not the deep water alongside the wall.
     lip = quay_bank & (slope > RAMP_MAX) & (raw > waterline)
     # A 20-unit routing cell straddles two 10-unit terrain samples.
-    blocked |= (rules.edit_region(lip) & (raw > waterline)) | foot_ramp_sides
+    blocked |= rules.edit_region(lip) & (raw > waterline)
     textures[blocked] = plan.cliff
     for a, b in plan.closed_edges:
         along, across = strip_coordinates(x, y, a, unit_direction(np.subtract(b, a)))

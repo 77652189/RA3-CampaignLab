@@ -7,9 +7,10 @@ from experimental.mapgen.buildings import Layout
 from experimental.mapgen.checks import draw_failures
 from experimental.mapgen.campaign_writer import rules
 from experimental.mapgen.design import Design
+from experimental.mapgen.dressing import footpath_flanks
 
 
-def test_harbor_mouth_does_not_create_a_bank_in_continuous_water():
+def test_harbor_order_checks_each_state_on_the_same_continuous_water():
     sketch = Design({
         'version': 2,
         'blocks': {
@@ -24,16 +25,26 @@ def test_harbor_mouth_does_not_create_a_bank_in_continuous_water():
             'mouth': {'line': [[500, 0], [500, 550]], 'pass': ['ship']},
             'islandCoast': {'line': [[700, 350], [780, 350], [780, 430], [700, 430], [700, 350]]},
         },
-        'relations': {'enter': {'type': '通不通', 'from': 'outer', 'to': 'inner',
-                                'who': 'ship', 'only_via': 'mouth'}},
+        'states': {'radarLive': {'hold': ['fleetEntry']}, 'radarDown': {}},
+        'relations': {
+            'wait': {'type': '通不通', 'from': 'outer', 'to': 'inner', 'who': 'ship',
+                     'state': 'radarLive', 'order': 'fleetEntry', 'reachable': False},
+            'enter': {'type': '通不通', 'from': 'outer', 'to': 'inner', 'who': 'ship',
+                      'state': 'radarDown', 'order': 'fleetEntry', 'only_via': 'mouth'},
+        },
     })
     plan = terrain.from_design(sketch, terrain.TerrainPlan(), 'test')
     ground = terrain.expand(plan, {'kits': {}}, 160, 140, 30)
     frame = terrain.design_frame(sketch, ground, 0, 30)
     result = MapBuild(plan, frame.close(ground), None, Layout(()), sketch, frame, ())
-    assert result.check_relations()['enter'].status == 'pass'
+    assert sketch.check_relations() == {'enter': 'pass', 'wait': 'pass'}
+    assert {name: a.status for name, a in result.check_relations().items()} == {'enter': 'pass', 'wait': 'pass'}
     assert ground.waterline[55, 80] - ground.raw[55, 80] >= terrain.SUB_DEPTH * rules.RAW_PER_WORLD
     assert ground.raw[69, 104] > ground.waterline[69, 104]
+    ground.raw[51, 95] = 180 * rules.RAW_PER_WORLD
+    answers = result.check_relations()
+    assert answers['enter'].status == 'fail' and answers['enter'].witness.place == 'inner'
+    assert answers['wait'].status == 'pass'
 
 
 def test_only_way_up_is_checked_on_the_built_grid():
@@ -72,7 +83,7 @@ def test_only_way_up_is_checked_on_the_built_grid():
     bypass = terrain.Ramp((40, 110), (0, 1), 1, 40)
     assert answers(replace(plan, ramps=(*plan.ramps, bypass)))['climb'].status == 'fail'
 
-def test_named_foot_ramp_locates_the_narrow_cut_and_checks_real_passage():
+def test_named_footpath_lays_real_flanks_at_its_crossing(tmp_path):
     sketch = Design({
         'version': 2,
         'blocks': {
@@ -82,7 +93,7 @@ def test_named_foot_ramp_locates_the_narrow_cut_and_checks_real_passage():
         'borders': {
             'frame': {'line': [[0, 0], [360, 0], [360, 400], [0, 400], [0, 0]]},
             'wall': {'line': [[0, 200], [360, 200]], 'segments': {
-                'path': {'from': 'houses', 'to': 'hillPath', 'pass': ['foot']},
+                'path': {'from': 'houses', 'to': 'hillPath', 'footpath': 'T_Rock'},
             }},
         },
         'points': {'houses': {'block': 'valley', 'at': [160, 80]},
@@ -98,10 +109,18 @@ def test_named_foot_ramp_locates_the_narrow_cut_and_checks_real_passage():
     # Halfway between the named sites in Y gives the cut at X=190.
     assert sketch.check_relations() == {'foot': 'pass', 'tank': 'pass'}
     assert plan.ramps[0].low == (190, 110)
-    assert plan.ramps[0].width == 20 and plan.ramps[0].narrow
-    ground = terrain.expand(plan, {'kits': {}}, 97, 101, 30)
+    shape = {'Type': 'BOX', 'MajorRadius': 18.75, 'MinorRadius': 9.}
+    library = {'kits': {'test': {'props': [{'template': 'T_Rock', 'geometry': {'shapes': [shape]}}],
+                                 'buildings': [], 'destructibles': []}},
+               'blocking': {'t_rock': {'cls': 'rockbig'}}}
+    flanks = tuple(footpath_flanks(sketch, library, tmp_path))
+    # The inner edges bound [180, 200]; both props extend into the shoulders of the cut.
+    assert [(p.template, p.x, p.y) for p, _ in flanks] == [('T_Rock', 161.25, 200.), ('T_Rock', 218.75, 200.)]
+    assert [s.point_gap((190., 200.)) for _, s in flanks] == [10., 10.]
+    ground = terrain.expand(plan, library, 97, 101, 30)
     frame = terrain.design_frame(sketch, ground, 0, 30)
-    built = MapBuild(plan, frame.close(ground), None, Layout(()), sketch, frame, ())
+    built = MapBuild(plan, frame.close(ground), None, Layout(()), sketch, frame, tuple(p for p, _ in flanks),
+                     flank_shapes=tuple(s for _, s in flanks))
     assert {name: a.status for name, a in built.check_relations().items()} == {'foot': 'pass', 'tank': 'fail'}
 
 

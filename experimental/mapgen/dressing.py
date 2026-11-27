@@ -9,7 +9,7 @@ from random import Random
 import numpy as np
 
 from experimental.mapgen.buildings import Shape, TOWN, geometry_shapes
-from experimental.mapgen.design import DesignError, point_in_ring
+from experimental.mapgen.design import DesignError, ROUTING_CELL, point_in_ring
 from experimental.mapgen.library import read_shape, read_xml
 from experimental.mapgen.paint import KIT_ALIASES
 from experimental.mapgen.roads import ROAD_WIDTH
@@ -155,6 +155,33 @@ def _posed(assets, prop):
         raise DesignError(prop.template, 'dressing', 'no verified SDK footprint and blocking class')
     kind, shapes = asset
     return kind, tuple(shape.posed(prop.x, prop.y, prop.angle) for shape in shapes)
+
+
+def footpath_flanks(sketch, library, sage):
+    """Use real solid props to frame the tread, with their SDK collision edges facing it."""
+    assets = _Assets(library, sage)
+    for border, spec in sketch.borders.items():
+        for name, opening in spec.get('segments', {}).items():
+            if 'footpath' not in opening:
+                continue
+            item = f'{border}.{name}'
+            asset = assets.get(opening['footpath'])
+            if asset is None or asset[0] != 'rockbig' or len(asset[1]) != 1:
+                raise DesignError(item, 'footpath', 'choose a solid, uncrushable retail prop with one footprint')
+            shape, = asset[1]
+            sections = [(a, b) for a, b, _, _, section in sketch.border_sections(border) if section == item]
+            a, b = sections[0][0], sections[-1][1]
+            ux, uy, angle, length = _axes(a, b)
+            if any(abs((q[0] - p[0]) * uy - (q[1] - p[1]) * ux) > 1e-6 for p, q in sections):
+                raise DesignError(item, 'footpath', 'choose a straight stretch of the border')
+            center = _offset(a, angle, length / 2, 0)
+            if shape.half_x * 2 < (length - ROUTING_CELL) / 2:
+                raise DesignError(item, 'footpath', 'choose a prop that reaches from the tread to its shoulder')
+            for sign in (-1, 1):
+                x, y = _offset(center, angle, sign * (ROUTING_CELL / 2 + shape.half_x) - shape.center[0],
+                               -shape.center[1])
+                prop = Piece(opening['footpath'], x, y, angle)
+                yield prop, shape.posed(x, y, angle)
 
 
 def _guard(prop, kind, shapes, lanes):

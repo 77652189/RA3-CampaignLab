@@ -169,7 +169,7 @@ def test_quay_connects_the_deck_to_deep_water_with_a_closed_lip():
     tiles = mapterrain.Tiles(m, 41)
     assert tiles.extra[31 * tiles.row_bytes + 20 // 8] & 1 << (20 % 8)
 
-def test_named_atmosphere_reaches_both_mapgen_outputs(tmp_path, monkeypatch):
+def test_named_atmosphere_reaches_both_mapgen_outputs_and_saves_review(tmp_path, monkeypatch):
     size = (61, 61, 0)
     monkeypatch.setattr('experimental.mapgen.build.CONTAINER', size)
     monkeypatch.setattr(paint, 'ART', tmp_path)
@@ -191,7 +191,10 @@ def test_named_atmosphere_reaches_both_mapgen_outputs(tmp_path, monkeypatch):
                'retail_moods': moods}
     sketch = {'version': 2, 'commitments': {'mood': '旧城斜阳'},
               'blocks': {'town': {'at': [200, 200], 'height': 3, 'use': 'park'}},
-              'borders': {'rim': {'line': [[0, 0], [600, 0], [600, 600], [0, 600], [0, 0]]}}}
+              'borders': {'rim': {'line': [[0, 0], [600, 0], [600, 600], [0, 600], [0, 0]]}},
+              'points': {'start': {'at': [90, 90], 'block': 'town'}},
+              'relations': {'space': {'type': '放得下', 'point': 'start', 'side': 50},
+                            'oversize': {'type': '放得下', 'point': 'start', 'side': 300}}}
     design_file, library_file, container = (tmp_path / name for name in ('design.json', 'library.json', 'base.map'))
     design_file.write_text(json.dumps(sketch), encoding='utf-8')
     library_file.write_text(json.dumps(library), encoding='utf-8')
@@ -217,6 +220,10 @@ def test_named_atmosphere_reaches_both_mapgen_outputs(tmp_path, monkeypatch):
 
     first = export('first')
     assert first == export('repeat')
+    picture = (tmp_path / 'first-relations.svg').read_text(encoding='utf-8')
+    results = (tmp_path / 'first-checks.md').read_text(encoding='utf-8')
+    assert '地图草图' in picture and '>start</text>' in picture and 'oversize' in picture
+    assert '🟢 通过 · `space`' in results and '🔴 未通过 · `oversize`' in results
     for raw in first[:2]:
         output = MapFile(raw)
         nodes = {node.name: node for node in output.nodes}
