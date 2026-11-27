@@ -28,3 +28,19 @@ bench = "A406 CampInfVis3: japan stops at 167 from s22 (its near marker seen 167
 proves = "InfiltratorContain VISION: with three yards of one owner entered together, only the last entered (Japan) reveals its near marker"
 expect = "win(22, 40, 'japan') == [167] * 19 and rows[-1]['allied'] >= 440 and rows[-1]['soviet'] >= 440"
 mismatch = "simulator: all three seen 74 passes after entry (allied / soviet / japan 74); bench japan 167, allied / soviet never in 30 s"
+
+[[reading]]
+id = "spy_vision_allied_alone_no_reveal"
+scene = {build = "engine_infvis3", check = "b", until = 41}
+bench = "A407 CampInfVis3B (head a9906d7a): only the Allied spy sent, gone at pass 184; allied still counting at s41 (465)"
+proves = "InfiltratorContain VISION: an Allied yard entered alone (no later entry anywhere) does not reveal its near marker in 30 s"
+expect = "rows[-1]['entries'] == 184 and rows[-1]['allied'] >= 440"
+mismatch = "simulator: Allied spy gone at pass 182, near marker seen 74 passes later; bench 184, not seen in 30 s"
+
+[[reading]]
+id = "spy_vision_unentered_japan_marker_seen_anyway"
+scene = {build = "engine_infvis3", check = "b", until = 41}
+bench = "A407 CampInfVis3B: no spy sent to the Japan yard; its near marker seen at pass 353 (s22), the pass a's Japan was seen at (187 + 167 = 354)"
+proves = "the a run's Japan reveal is not InfiltratorContain VISION: the same marker is discovered at the same pass with no entry"
+expect = "win(22, 40, 'japan') == [353] * 19 and rows[-1]['soviet'] >= 600"
+mismatch = "simulator: the Japan near marker is never discovered without an entry; bench sees it at pass 353"

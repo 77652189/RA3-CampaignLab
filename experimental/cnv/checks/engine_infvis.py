@@ -79,7 +79,7 @@ def check_japan(m):
     return check(m)
 
 
-def trio(m):
+def trio(m, send=('allied', 'soviet', 'japan')):
     """A406: the three yards in one run, counted per script pass (not per captured second).
 
     Rows allied / soviet / japan: passes from the spy's disappearance to the first pass its near marker is
@@ -91,9 +91,10 @@ def trio(m):
     lanes = ('allied', 'soviet', 'japan')
     t.counters = [('Vision3 ' + k, k) for k in lanes] + [('Vision3 entries', 'entries')]
     t.scripts = [Script('Vision3 start', [], [('SET_MILLISECOND_TIMER', 'Vision3 enter', 10.0)] + [
-        ('UNIT_CHANGE_OBJECT_STATUS', obj.name, 'NO_ATTACK', 1) for obj in m.objects]),
+        ('UNIT_CHANGE_OBJECT_STATUS', obj.name, 'NO_ATTACK', 1) for obj in m.objects] + [
+        ('SET_FLAG', 'Vision3 gone ' + k, 1) for k in lanes if k not in send]),
         Script('Vision3 enter', [('TIMER_EXPIRED', 'Vision3 enter')], [
-            ('NAMED_GARRISON_SPECIFIC_BUILDING', m.role(k + ' spy').name, m.role(k).name) for k in lanes])]
+            ('NAMED_GARRISON_SPECIFIC_BUILDING', m.role(k + ' spy').name, m.role(k).name) for k in send])]
     for k, unit in zip(lanes, (1, 1000, 1000000)):
         gone, seen = 'Vision3 gone ' + k, 'Vision3 seen ' + k
         t.scripts += [
@@ -105,9 +106,18 @@ def trio(m):
                    [('SET_FLAG', seen, 1)]),
             Script('Vision3 wait ' + k, [('FLAG', gone, 1), ('FLAG', seen, 0)],
                    [('INCREMENT_COUNTER', 1, 'Vision3 ' + k)], once=False)]
-    t.expect = [(k, 1, 'ever>=', 1, 40) for k in lanes]
+    t.expect = [(k, 1, 'ever>=', 1, 40) for k in send]
     t.bench = [('bench_watch', dict(seconds=40, every=1, sheet=False, lines=4))]
     return t
 
 
-CHECKS = {'engine_infvis': {'a': check, 'b': check_soviet, 'c': check_japan}, 'engine_infvis3': {'a': trio}}
+def trio_allied(m):
+    """b: only the Allied spy is ordered in (H1: one observer per player, a later entry moves it away);
+    the unsent Soviet / Japan yards are the no-entry control (H3: a reveal from elsewhere): their rows count
+    from the first pass until their near marker is discovered.
+    Prediction (H1): Allied stops counting; Soviet / Japan keep counting."""
+    return trio(m, send=('allied',))
+
+
+CHECKS = {'engine_infvis': {'a': check, 'b': check_soviet, 'c': check_japan},
+          'engine_infvis3': {'a': trio, 'b': trio_allied}}
