@@ -10,7 +10,7 @@ Veh movers take their crate as they pass -- it goes; the collector and the colle
 (On man, On near), not the far one, not s2's; Off's crate stays and heals none; Foe's s2 mover leaves its crate.
 """
 from maps import probe_range
-from parts import Mission, Role, Script, Test, square
+from parts import Mission, Script, Test, square
 from checks import engine_scripts8 as s8
 from checks.engine_objectbatch import clone, remove
 
@@ -157,7 +157,7 @@ def secret_files_mission():
     m.teams['secretFiles'] = FILE_TEAM
     for template, lane in SECRET_FILES:
         site = lane + ' gun'
-        m.cast[lane] = Role(template, 'File ' + lane, 'neutral', [site])
+        m.spawns.add(template)
         m.waypoint(lane, 'File point ' + lane, site)
         m.put(MAN, site, -130, -12, side='p1', role=lane + ' mover', name='File mover ' + lane)
     return m
@@ -174,13 +174,13 @@ def secret_files(m):
     t = Test()
     create, move = [], []
     live = []
-    for k, (_, lane) in enumerate(SECRET_FILES):
-        crate = m.role(lane)
+    for k, (template, lane) in enumerate(SECRET_FILES):
+        crate = 'File ' + lane
         mover = m.role(lane + ' mover').name
         bit = 2**k
-        create.append(('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', crate.name, crate.template,
+        create.append(('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', crate, template,
                        FILE_TEAM, m.mark(lane)))
-        live.append((bit, ('NAMED_NOT_DESTROYED', crate.name)))
+        live.append((bit, ('NAMED_NOT_DESTROYED', crate)))
         x, y = m.site(lane + ' gun')
         point = 'File goal ' + lane
         t.waypoints[point] = (x + 130, y - 12)
@@ -190,7 +190,7 @@ def secret_files(m):
         t.scripts.append(Script('Test - file crossed ' + lane, [('NAMED_INSIDE_AREA', mover, area)],
                                 [('INCREMENT_COUNTER', bit, 'FileCross')]))
         if k < 2:
-            t.scripts.append(Script('Test - file lid ' + lane, [('UNIT_HAS_MODELCONDITION', crate.name, 'USER_1')],
+            t.scripts.append(Script('Test - file lid ' + lane, [('UNIT_HAS_MODELCONDITION', crate, 'USER_1')],
                                     [('INCREMENT_COUNTER', bit, 'FileLid')]))
     s8.at(t, 'file create', 1., create)
     s8.at(t, 'file move', 3., move)
