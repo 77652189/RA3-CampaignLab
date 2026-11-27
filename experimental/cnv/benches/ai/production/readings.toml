@@ -1040,7 +1040,7 @@ B 11-26 rpx aiskpnw / aiskpnp (AlliedArmy's PrimaryResourceNodeCollector made th
 plant 30 x 45; its shape is what the placement table reserves at each node's refinery spot) beside aiskirm, same \
 HEAD: all three 26 / 9 then 54 / 20 (pnw 2 s later all along), every structure step the same"""
 proves = "simai refinery placement reads the refinery's own shape, not the ArmyDefinition's collector"
-let = {ks = "{(r['矿场X'], r['矿场Y']) for r in s}", kw = "{(r['矿场X'], r['矿场Y']) for r in w}", kp = "{(r['矿场X'], r['矿场Y']) for r in p}"}
+let = {steps = "lambda rows: (lambda xs: [v for i, v in enumerate(xs) if not i or v != xs[i - 1]])([(r['矿场X'], r['矿场Y']) for r in rows])", ks = "steps(s)", kw = "steps(w)", kp = "steps(p)"}
 expect = ["kw == ks", "kp == ks", "len(ks) >= 3"]
 
 [[reading]]

@@ -65,6 +65,19 @@ def test_only_a_measured_thin_bar_shuts_cells_by_their_centres():
     assert_way(ground, p, q, True)
 
 
+def test_the_ai_reach_of_infantry_is_on_the_foot_grid_its_moves_use():
+    """A fence that holds only infantry (set_blocks' foot) across the way: the AI's reach says no for a conscript and
+    yes for a tank (review 1126d P2: it asked 'ground' while the move went on 'foot')."""
+    from engine.ai.core import Brain
+    ground = terrain([[1, 1, 1]] * 3)
+    assert ground.set_blocks([], foot=[(*ground.world((1, 1)), np.pi / 2, 60, 20)])
+    (x, y), q = ground.world((1, 0)), ground.world((1, 2))
+    me = SimpleNamespace(world=SimpleNamespace(ground=ground))
+    for kinds, expected in ((['INFANTRY'], False), (['VEHICLE'], True)):
+        u = SimpleNamespace(body=SimpleNamespace(surface='ground', kinds=kinds, alive=True, x=x, y=y, weapons=[]))
+        assert Brain.reach(me, None, u, q, 'QuickDoesPathExist') is expected
+
+
 def test_reach_can_step_diagonally_between_two_blocked_cells():
     ground = terrain([[1, 0], [0, 1]])
     assert_way(ground, (0, 0), (1, 1), True)

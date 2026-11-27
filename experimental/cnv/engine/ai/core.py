@@ -72,6 +72,7 @@ import re
 import struct
 import xml.etree.ElementTree as ET
 import sys
+import types
 
 HERE = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign')) if p not in sys.path]
@@ -612,14 +613,15 @@ class Brain:
 
     def reach(self, ai, u, point, check):
         """TacticsBlock's reach hook (PathfindingCheckType, work/re d62_b_fields.md 1): aircraft always; else
-        QuickDoesPathExist = the simulator's grid of the member's surface joins it to the point (its nearest open
-        cell, Ground.snap); QuickDoesAttackPathExist = to some open spot within its longest weapon's range of the
-        point (INFERRED: sixteen bearings at half and nine tenths of the range stand for the engine's search)."""
+        QuickDoesPathExist = the grid its moves route on (Ground.walks: infantry 'foot') joins it to the point (its
+        nearest open cell, Ground.snap); QuickDoesAttackPathExist = to some open spot within its longest weapon's
+        range of the point (INFERRED: sixteen bearings at half and nine tenths of the range stand for the engine's
+        search)."""
         b, g = u.body, self.world.ground
         if b.surface == 'air' or not b.alive:
             return True
-        here = (b.x, b.y)
-        if g.can_route(b.surface, here, point):
+        here, way = (b.x, b.y), g.walks(b)
+        if g.can_route(way, here, point):
             return True
         if check != 'QuickDoesAttackPathExist':
             return False
@@ -628,7 +630,7 @@ class Brain:
             for k in range(16):
                 a = 2 * math.pi * k / 16
                 q = (point[0] + f * r * math.cos(a), point[1] + f * r * math.sin(a))
-                if g.open(b.surface, *q) and g.can_route(b.surface, here, q):
+                if g.open(way, *q) and g.can_route(way, here, q):
                     return True
         return False
 
@@ -704,7 +706,8 @@ class Brain:
                 theirs = self.base_object(them)
                 a = st.spot((mine.x, mine.y), ok, self.path_rng)
                 b = st.spot((theirs.x, theirs.y), ok, self.path_rng)
-                answer = a is not None and b is not None and world.ground.route(stats['surface'], a, b) is not None
+                way = world.ground.walks(types.SimpleNamespace(surface=stats['surface'], kinds=stats.get('kinds', ())))
+                answer = a is not None and b is not None and world.ground.route(way, a, b) is not None
         self.paths[key] = (self.frame, answer)
         return answer
 
@@ -1710,7 +1713,6 @@ class Brain:
         opening tests' blocks=()) a bare one -- its tactics a placeholder, since the block registers itself there."""
         if self.defense is not None:
             return self.defense
-        import types
         return df.DefenseBlock(types.SimpleNamespace(kinds={}), lambda ai, f: None)
 
     def general_spot(self, yard, template):
