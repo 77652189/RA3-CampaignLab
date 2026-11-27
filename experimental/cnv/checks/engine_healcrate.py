@@ -102,6 +102,24 @@ def collect(m):
     return t
 
 
+def recalled(m):
+    """c (G1 of a397_crate.md): b's crate click, then -- On's Peacekeeper halfway, inside 20 of 100 west of the crate --
+    a script move to 200 east of it, through it (the bench's steps are ~10 s apart: a second click comes after the
+    pickup). 满血位 traded for 改令位: 1 the move given, 2 within 12 of the crate's centre after it (latched).
+    Predicted the crate kept (the new order ending the collect state); measured: he ends on the crate and takes it."""
+    t = collect(m)
+    t.counters[1] = ('HCRecall', '改令位')
+    x, y = m.site('switch gun')
+    man = m.role('On man').name
+    t.areas['HC half'], t.areas['HC over'] = square(x - 100, y, 20), square(x, y, 12)
+    t.scripts += [Script('Test - HC recall', [('NAMED_INSIDE_AREA', man, 'HC half')],
+                         [('MOVE_NAMED_UNIT_TO', man, 'HC On goal'), ('INCREMENT_COUNTER', 1, 'HCRecall')]),
+                  Script('Test - HC recalled over', [('NAMED_INSIDE_AREA', man, 'HC over'), ('COUNTER', 'HCRecall', 2, 1)],
+                         [('INCREMENT_COUNTER', 2, 'HCRecall')])]
+    t.expect.append(('改令位', 0, 'ever==', 3))
+    return t
+
+
 HUMAN = 'id="ModuleTag_HealCrateCollide" IsHumanOnlyPickupInSinglePlayerCampaign="false"'
 REL = 'Rule="ANY" Relationship="ALLIES ENEMIES NEUTRAL SAME_PLAYER"'
 # engine_healcrate_h (D191's hypotheses): lane: (gun pad, crate edits, mover starts on the crate's centre, mover sent east)
@@ -212,7 +230,7 @@ def secret_files(m):
 
 MISSION = {'engine_healcrate': mission, 'engine_healcrate_r': lambda: mission(True), 'engine_healcrate_h': hypotheses,
            'engine_healcrate_v': lambda: hypotheses(True), 'engine_secretfile_e': secret_files_mission}
-CHECKS = {'engine_healcrate': {'a': check, 'b': passed, 'c': ordered}, 'engine_healcrate_r': {'a': check, 'b': collect},
+CHECKS = {'engine_healcrate': {'a': check, 'b': passed, 'c': ordered}, 'engine_healcrate_r': {'a': check, 'b': collect, 'c': recalled},
           'engine_healcrate_h': {'a': hyp_check}, 'engine_healcrate_v': {'a': hyp_check},
           'engine_secretfile_e': {'a': secret_files}}
 CONTROL_ARMS = {'engine_healcrate': ('On', 'Off')}

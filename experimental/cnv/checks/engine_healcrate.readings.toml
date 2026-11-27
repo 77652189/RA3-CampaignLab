@@ -92,3 +92,14 @@ bench = "CampSecretFileA_mcp_1126_195411: 存活 = 4 throughout f45–f257 (Heal
 proves = "The same neutral creation action created HealCrate but neither native secret file in this custom map."
 expect = "rows[-1]['存活'] == 4"
 mismatch = "Sim creates both secret files and HealCrate (7); the custom game bench creates only HealCrate (4). See work/re/e270_secretfile.md."
+
+[[reading]]
+id = "a_script_move_halfway_does_not_keep_the_crate"
+scene = {build = "engine_healcrate_r", check = "c", until = 18}
+bench = """CampHCRealC_mcp_1127_031628, counters (箱子位, 改令位, On 兵血, Off 兵血): s1–s25 15 0 50 50; s38 15 3 50 50; \
+s47–s61 14 3 100 50. Frames 8 (s38.2) to 37 (s60.6) show the Peacekeeper on the crate's spot, never 200 east of it."""
+proves = """b's right-click on the crate, then a script move to 200 east given 100 west of the crate (改令位 1): the \
+Peacekeeper still ends on the crate and takes it, later than b (crate standing at s38, gone by s47; b gone by s38) -- the \
+script move neither carries it past the crate nor keeps the crate (a397_crate.md G1 c predicted the crate kept)"""
+expect = "rows[0]['箱子位'] == 15 and rows[-1]['箱子位'] == 14 and rows[-1]['On 兵血'] == 100 and rows[-1]['改令位'] == 3"
+mismatch = "The simulator executes no native click here: nobody moves, 15 0 50 50 throughout. Bench ends at 14 3 100 50."
