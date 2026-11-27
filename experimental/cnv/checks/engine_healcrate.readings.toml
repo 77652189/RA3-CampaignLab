@@ -86,7 +86,6 @@ scene = {build = "engine_secretfile_e", check = "a", until = 14}
 bench = "CampSecretFileA_mcp_1127_060542: 经过 0 through f82, 7 from f90"
 proves = "Each Peacekeeper's script move takes it over its crate's centre, the two BOX-shaped files as the HealCrate"
 expect = "rows[-1]['经过'] == 7"
-mismatch = "Sim ends at 4: only the HealCrate lane's mover reaches the centre; the two file lanes' do not (bench 7)."
 
 [[reading]]
 id = "a_script_move_halfway_does_not_keep_the_crate"

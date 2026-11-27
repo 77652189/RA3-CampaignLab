@@ -168,6 +168,10 @@ def box_cells(shape):
 
 
 def routing_shape(body, shape, place):
+    # engine_secretfile_e:a: infantry crosses both boxed crates despite EditorSorting="STRUCTURE".
+    # Applying the routing exemption to all crate templates and ground movers is INFERRED.
+    if not place and 'CRATE' in body.kinds:
+        return None
     if place or body.template.upper() not in ('CC_WOODFENCE01', 'CC_WOODFENCE02') or shape is None:
         return shape
     # Both Cape Cod templates use the same SDK box, offset in the object's local axes.
