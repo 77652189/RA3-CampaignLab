@@ -1,5 +1,5 @@
 # Bench readings of checks/engine_healcrate.py (format: experimental/cnv/readings.py; runner: tests/conformance).
-# Negative results: no lane's crate was taken, so HealCrateCollide's effect is still unmeasured (no item).
+# Includes the native right-click pickup. The simulator cannot replay that command yet.
 
 [[reading]]
 id = "no_mover_takes_a_crate_it_passes"
@@ -28,7 +28,7 @@ scene = {build = "engine_healcrate", check = "c", until = 18}
 bench = """engine_healcrate:c, run_queue CampHealCrateC_mcp_1123_070441: 箱子位 / 满血位 / On 兵血 / Off 兵血 15 0 50 50 at s1-s61; \
 frames 7-8 the Peacekeeper boxed (its panel up) and right-clicked east, frame 8 on the crate, frame 37 at the click"""
 proves = """HealCrateCollide (negative): the bench's own box select and right-click send On's Peacekeeper across its crate and \
-the crate still stays and heals none -- a player's order is not the missing trigger (the sim moves nobody here: no clicks)"""
+the crate stays and heals nobody. The click targets ground beyond the crate (the sim moves nobody here: no clicks)"""
 expect = "all(r['箱子位'] == 15 and r['满血位'] == 0 and r['On 兵血'] == 50 and r['Off 兵血'] == 50 for r in rows)"
 
 [[reading]]
@@ -38,6 +38,18 @@ bench = "engine_healcrate_r:a, run_queue CampHCRealA_mcp_1123_071522: 箱子位 
 proves = """HealCrateCollide (negative): a with On, Foe and Veh placing the retail HealCrate by its own name (no clone, no new id) -- \
 still none taken, none healed: the clone's id is not why (hypothesis 5)"""
 expect = "all(r['箱子位'] == 15 and r['满血位'] == 0 and r['On 兵血'] == 50 and r['Off 兵血'] == 50 for r in rows)"
+
+[[reading]]
+id = "right_clicking_the_retail_heal_crate_takes_it"
+scene = {build = "engine_healcrate_r", check = "b", until = 18}
+bench = """CampHCRealB_mcp_1127_025831, counters (箱子位, 满血位, On 兵血, Off 兵血): \
+s1–s25 15 0 50 50; s38–s61 14 1 100 50. Frame 7 shows the selected Peacekeeper and the crate at the click pixel; \
+frame 8 shows the Peacekeeper at the crate after pickup."""
+proves = """Direct right-click on the retail HealCrate: that crate disappears and the Peacekeeper and friendly Guardian \
+70 units away reach full health. The friendly Guardian 180 units away, the opposing Guardian 70 units away and the \
+uncommanded Peacekeeper in the Off lane stay below full health. Check a uses the same retail crate with script movement."""
+expect = "[rows[0][k] for k in ('箱子位', '满血位', 'On 兵血', 'Off 兵血')] == [15, 0, 50, 50] and [rows[-1][k] for k in ('箱子位', '满血位', 'On 兵血', 'Off 兵血')] == [14, 1, 100, 50]"
+mismatch = "The simulator executes no native click or crate-collect order here and stays at 15 0 50 50. Bench ends at 14 1 100 50. See work/re/handoff-e.md and E283."
 
 [[reading]]
 id = "neither_the_campaign_human_gate_nor_contact_nor_relationship_is_what_is_missing"

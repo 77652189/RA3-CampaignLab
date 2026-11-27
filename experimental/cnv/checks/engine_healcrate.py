@@ -94,6 +94,14 @@ def ordered(m):
     return t
 
 
+def collect(m):
+    """Right-click the visible retail crate itself. The same camera in c puts its top at screen (640, 346)."""
+    t = ordered(m)
+    t.bench[3] = ('bench_click', dict(x=640, y=346, world=False, right=True, look=True))
+    t.expect = [('箱子位', 0, 'ever==', 14), ('On 兵血', 0, 'ever==', 100)]
+    return t
+
+
 HUMAN = 'id="ModuleTag_HealCrateCollide" IsHumanOnlyPickupInSinglePlayerCampaign="false"'
 REL = 'Rule="ANY" Relationship="ALLIES ENEMIES NEUTRAL SAME_PLAYER"'
 # engine_healcrate_h (D191's hypotheses): lane: (gun pad, crate edits, mover starts on the crate's centre, mover sent east)
@@ -204,7 +212,7 @@ def secret_files(m):
 
 MISSION = {'engine_healcrate': mission, 'engine_healcrate_r': lambda: mission(True), 'engine_healcrate_h': hypotheses,
            'engine_healcrate_v': lambda: hypotheses(True), 'engine_secretfile_e': secret_files_mission}
-CHECKS = {'engine_healcrate': {'a': check, 'b': passed, 'c': ordered}, 'engine_healcrate_r': {'a': check},
+CHECKS = {'engine_healcrate': {'a': check, 'b': passed, 'c': ordered}, 'engine_healcrate_r': {'a': check, 'b': collect},
           'engine_healcrate_h': {'a': hyp_check}, 'engine_healcrate_v': {'a': hyp_check},
           'engine_secretfile_e': {'a': secret_files}}
 CONTROL_ARMS = {'engine_healcrate': ('On', 'Off')}
