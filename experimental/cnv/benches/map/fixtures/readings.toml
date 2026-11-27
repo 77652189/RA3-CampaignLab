@@ -98,7 +98,6 @@ scene = {build = "engine_bridgesegment", check = "e", until = 25}
 bench = "E302 (CampBridgeSegE_mcp_1127_124328): far shore / deck frames 0/0 at s8.73–27.93 after the lethal center hit."
 proves = "The lethal center hit prevents the ground infantry from entering the deck or reaching the island."
 expect = ["[v[2:] for v in vals(rows)[18:23]] == [[0, 0]] * 5"]
-mismatch = "The simulator keeps the deck open after the lethal center hit. See work/re/e302_bridge_crossing.md."
 
 # Bench readings of engine_bridgefix in checks.py (format: experimental/cnv/readings.py; runner: tests/conformance).
 # The bench's watch second sN is the simulator's mission second N + 1 here: the break (timer 8.0) reads 1 from s7 on

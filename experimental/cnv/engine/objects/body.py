@@ -185,7 +185,8 @@ class Life:
     def _gone(self, world, b, why, delete):
         world.note('删除' if delete else '摧毁', f'{world.label(b)}（{why}）')
         world.change()
-        if world.blocks(b):
+        # The measured bridge center has no blocking footprint, but its death changes the deck.
+        if world.blocks(b) or b.template == 'HB_Bridge_02_Center':
             world.reblock()
 
     def air_crash(self, world, b, ocl, death_blasts, ground_z, gone=False):

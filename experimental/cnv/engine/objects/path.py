@@ -578,11 +578,45 @@ class Ground:
         # a bridge's deck: what stands on it blocks nobody (bench 2026-10-27, reroute: the warriors walked through an
         # ice wall on the deck)
         self.deck = np.zeros_like(self.blocked)
+        self.bridge_only = bridge[:hh * d, :ww * d]
+        self.bridge_pairs = {}
         jj, ii = np.mgrid[0:self.blocked.shape[0], 0:self.blocked.shape[1]]
         self.xy, self.shapes, self.foot_shapes = self.world((jj, ii)), [], []
         for o, q in zip(objs, objs[1:]):
             if getattr(o, 'flags', None) == platmap.BRIDGE_START and getattr(q, 'flags', None) == platmap.BRIDGE_END:
-                self.deck |= self.strip((o.x, o.y), (q.x, q.y), platmap.BRIDGE_DECK, 0.0)
+                pair = self._bridge_pair(o, q)
+                p, z = pair[:2]
+                self.bridge_pairs[pair] = None
+                self.deck |= self.strip(p, z, platmap.BRIDGE_DECK, 0.0)
+
+    @staticmethod
+    def _bridge_pair(start, end):
+        return (start.x, start.y), (end.x, end.y), getattr(start, 'name', ''), getattr(end, 'name', '')
+
+    def track_bridge_center(self, start, end, center):
+        pair = self._bridge_pair(start, end)
+        if pair in self.bridge_pairs:
+            self.bridge_pairs[pair] = center
+
+    def _close_broken_decks(self):
+        """E302 e: new moves cannot cross after the single center dies. The exact closed cells are INFERRED:
+        withdraw that pair's deck contribution, preserving dry ground and any overlapping intact deck."""
+        broken = [pair for pair, center in self.bridge_pairs.items() if center is not None and not center.alive]
+        if not broken:
+            return False
+        import platmap
+        for pair in broken:
+            self.bridge_pairs.pop(pair)
+        self.deck.fill(False)
+        walk = self.fine['ground']
+        decks = np.zeros_like(walk)
+        for p, z, _, _ in self.bridge_pairs:
+            self.deck |= self.strip(p, z, platmap.BRIDGE_DECK, 0.0)
+            decks |= platmap._strip(p, z, platmap.BRIDGE_DECK, walk.shape[1], walk.shape[0], self.b)[0]
+        walk &= ~self.bridge_only | decks
+        h, w = self.deck.shape
+        self.grids['foot'] = self.grids['ground'] = walk.reshape(h, self.d, w, self.d).all(axis=(1, 3))
+        return True
 
     def strip(self, p, q, width, over):
         """Cells within width / 2 of segment p-q, the segment `over` longer at both ends."""
@@ -599,6 +633,7 @@ class Ground:
         bridge's deck. Return whether coarse routing or fine sight cells changed. place: the shapes a structure's
         placement sees (open(place=True)), None = the same. foot: what blocks surface 'foot' (infantry) only."""
         shapes, foot = list(shapes), list(foot)
+        deck_changed = self._close_broken_decks()
         foot_shapes = shapes + foot
         m = self._mask(shapes)
         f = m | self._mask(foot) if foot else m
@@ -606,8 +641,9 @@ class Ground:
         coarse_changed = (m != self.blocked).any() or (f != self.foot).any()
         sampled_changed = self.foot_shapes != foot_shapes and (
             {s for s in self.foot_shapes if s[-1] == SAMPLED_BOX} != {s for s in foot_shapes if s[-1] == SAMPLED_BOX})
-        if coarse_changed or sampled_changed or any(old != new and not np.array_equal(self._fine_mask(old), self._fine_mask(new))
-                                 for old, new in ((self.shapes, shapes), (self.foot_shapes, foot_shapes))):
+        if deck_changed or coarse_changed or sampled_changed or any(
+                old != new and not np.array_equal(self._fine_mask(old), self._fine_mask(new))
+                for old, new in ((self.shapes, shapes), (self.foot_shapes, foot_shapes))):
             self.blocked, self.foot, self.version, self.cache = m, f, self.version + 1, {}
             self.shapes, self.foot_shapes = shapes, foot_shapes
             return True

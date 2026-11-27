@@ -8,13 +8,13 @@ bridge start (object flags 16) followed by its end (32) gets its BridgeBuilder's
 script's NAMED_DAMAGE of that name hits). Bench run 2 (CampBridgeFixA_mcp_1122_202537): the gatehouse reads 100, 1
 after the proxy took 20000, 100 again once an engineer went in (order.capture_due); it keeps its owner. E301:
 20000 script damage to the short center kills it and leaves proxy and gatehouse at 1%. Pieces outside the measured
-centers and broken-deck pathing remain gaps."""
+centers and the effect of repair or destruction on moves already underway remain gaps."""
 import engine.data.units as simunits
 from engine.kernel import interfaces
 from engine.ports import templates
 from engine.world.handle import CIV, free_key
 
-GAP = 'HB_Bridge_02整体代理伤害、桥头堡血量与修桥、向东270/700桥的中段落点和270桥中段脚本伤害已量；有效HP/内部下限映射和精确致死边界INFERRED，其他桥段及断桥通行仍gap'
+GAP = 'HB_Bridge_02整体代理伤害、桥头堡血量与修桥、向东270/700桥的中段落点和270桥中段脚本伤害及断后新下令通行已量；精确致死边界和断后关闭的格子INFERRED，修复后复通、在途命令及其他桥段仍gap'
 
 
 def proxy_health(world, template):
@@ -25,7 +25,7 @@ def proxy_health(world, template):
     return simunits.manager_proxy_health(template, world.own)
 
 
-def place_parts(world, objects):
+def place_parts(world, ground, objects):
     """After the map load, place named pairs' gatehouses and the measured bridge centers."""
     add = world.add
     for start, end in zip(objects, objects[1:]):
@@ -48,6 +48,8 @@ def place_parts(world, objects):
         a, b = (templates.attr(head, field) for field in ('CenterPiece', 'CenterPieceB'))
         for i, template in enumerate((a,) if length == 270 else (a, b, a, b), 1):
             name = free_key(world, '#bridge center {}'.format, i)
-            body = add(name, template, owner, start.x + 150 * i, start.y).find(interfaces.Body)
+            center = add(name, template, owner, start.x + 150 * i, start.y)
+            body = center.find(interfaces.Body)
             if length == 270 and body.kind() == 'ManagedActiveBody':
                 body.manager = proxy.find(interfaces.Body)
+                ground.track_bridge_center(start, end, center)
