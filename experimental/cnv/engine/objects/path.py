@@ -663,6 +663,19 @@ class Ground:
         import platmap
         return (int(round((y / platmap.CELL + self.b) / self.d)), int(round((x / platmap.CELL + self.b) / self.d)))
 
+    def shore(self, x, y, water):
+        """GRID x the length from (x, y)'s cell to the nearest cell of the other kind (water for one on land, not water
+        afloat), the AI's CloseToShore distance (the game's disc of cells, work/re b1127_shore.md); inf with none.
+        INFERRED: the 'water' grid stands for the game's water / deep water cell types."""
+        key = ('shore', bool(water))
+        if key not in self.cache:
+            from scipy.ndimage import distance_transform_edt
+            a = self.grids['water'] == bool(water)          # nonzero: of its own kind, measured to the nearest other
+            self.cache[key] = distance_transform_edt(a) * GRID if (~a).any() else np.full(a.shape, np.inf)
+        j, i = self.cell(x, y)
+        a = self.cache[key]
+        return float(a[j, i]) if 0 <= j < a.shape[0] and 0 <= i < a.shape[1] else math.inf
+
     def z(self, x, y):
         """The ground's height at a world point (the nearest CELL)."""
         import platmap

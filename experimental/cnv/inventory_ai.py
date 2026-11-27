@@ -433,11 +433,6 @@ NOTES = {
         '空过滤去基洛夫（读数engine_aitargetpick forbidden_airborne_skips_the_kirov，AI目标快照改用status_now）；'
         '原版四个位已上台三个，SUBMERGED模拟器无潜艇下潜状态（不是过滤的问题），据此晋升；'
         '见work/re/c_forbidnew_report.md（旧证据见c_forbidframe_report.md及该报告指针）'),
-    '目标/AITargetingHeuristic.MaxDistanceToShore': (GUESSED,
-        'C按名台子engine_aishore：同一岸边电厂仅上限2000改1，2000组s14目标区4/s25全离家，'
-        '1组s1-65在家4/目标区0；普通EnemyStructure阳性对照同2000组。'
-        'tests/test_shore_distance.py断言原读数并按名回放；1组strict xfail，世界桥接尚未提供实际岸距。'
-        '复杂海岸/取点算法仍gap，未晋升；见work/re/c_shore_report.md'),
     '目标/AITargetingHeuristic.HeuristicType=Expansion': (BENCHED,
         'C aiexpc:a东矿区4、崖矿区0、普通实体0；D104同帧基地中心3850/3400，'
         '三矿点state2，选44号4173/2987（最近524）；模型先选基地再取最近合格矿点。'

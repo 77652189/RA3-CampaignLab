@@ -672,3 +672,23 @@ proves = "ThreatToAir samples the AI's first unit of KindOf AIRCRAFT: none -> ev
 item = "AI 目标/AITargetingHeuristic.SortType=ThreatToAir"
 let = {sel = "[v for t, v in zip(times, vals(rows)) if 40 <= t <= 41]"}
 expect = ["len(sel) > 0", "all(list(v) == want for v in sel)"]
+
+# Bench readings of benches/ai/targets/checks.py#engine_aishore (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+bench_id = "engine_aishore"
+id = "a_shore_plant_within_the_limit_draws_the_team"
+scene = {build = "aishorehi", check = "a", until = 62.0}
+each = [{build = "aishorehi"}, {build = "aishorectl"}]
+bench = "C 2026-11-12 (one run each, PASS; re-read work/re c_shore_measured.json): aishorehi (MaxDistanceToShore 2000) and aishorectl (plain EnemyStructure) the same: 坦克在家 4 to s12, 坦克出门 4 on both sides of s20, 0 / 0 from s37 (the plant dead)."
+proves = "simai CloseToShore target filter: a plant ~300 from the east shore is within 2000, the team goes as for a plain EnemyStructure"
+expect = "win(20, 20, '坦克出门') == [4] and win(60, 61, '坦克在家') == [0, 0]"
+
+[[reading]]
+bench_id = "engine_aishore"
+id = "a_shore_limit_of_one_keeps_the_team_home"
+scene = {build = "aishorelo", check = "a", until = 62.0}
+bench = "C 2026-11-12 (one run, PASS; c_shore_measured.json): aishorelo, aishorehi with MaxDistanceToShore 1: 坦克在家 4 / 坦克出门 0 every second s1-s65."
+proves = "simai CloseToShore target filter: a limit of 1 rounds to a disc of 0 pathfinding cells, the plant's own (dry) cell, no water in it: no target (read: work/re b1127_shore.md)"
+expect = "set(win(1, 61, '坦克在家')) == {4} and set(win(1, 61, '坦克出门')) == {0}"
+item = ["AI 目标/AITargetingHeuristic.MaxDistanceToShore", "AI 目标/AITargetingHeuristic.HeuristicType=EnemyStructureCloseToShore"]

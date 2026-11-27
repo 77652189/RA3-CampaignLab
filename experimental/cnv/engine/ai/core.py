@@ -820,6 +820,7 @@ class Brain:
             # status_now: AIRBORNE_TARGET while in the air (retail ClosestSurfaceUnitHeuristic forbids it; aitpairf)
             things.append(tg.Thing(i, owner, b.template, frozenset(b.kinds), frozenset(status_now(b)), b.x, b.y,
                                    water=b.surface == 'water', value=float(self.host.cost(b.template)),
+                                   shore=world.ground.shore(b.x, b.y, self.view.water_at(b.x, b.y)),
                                    hits=simrange.hits(b.weapons) if b.weapons else frozenset(),
                                    under_attack=frame - self.hurt_at.get(i, -10 ** 9) <= 2 * FPS,
                                    name=b.name))                    # script name (NamedObject)
