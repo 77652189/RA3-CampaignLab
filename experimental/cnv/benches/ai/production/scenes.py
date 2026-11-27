@@ -1038,7 +1038,7 @@ def aiopen_bench():
                'AlliedAntiInfantryVehicle_Ground', 'AlliedNavalYard', 'AlliedMiner')
 
 
-    def mission(name='CampAIOpen', money=MONEY, armydef=None, observe=False):
+    def mission(name='CampAIOpen', money=MONEY, armydef=None, observe=False, noyard=False):
         m = Mission(name=name, map=resources.measured(niagara), facts={'wake at': WAKE_AT, 'money': money})
         if armydef:                      # aiopenpoortp: an ArmyDefinition rewritten (missions/aiskirm_bench.AIDataPack)
             from missions.aiskirm_bench import AIDataPack
@@ -1052,10 +1052,16 @@ def aiopen_bench():
         s1 = m.player('s1')
         m.put('AlliedConstructionYard', 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
         m.put('AlliedConstructionYard', 'base yard', name='UNIT - CNV AI Player Yard', role='player yard')
+        gone = []
+        if noyard:                       # aiopenmcv*: a war factory, its power plant and no yard (deleted at frame 0)
+            m.put('AlliedWarFactory', 'east base', 0, -250.0, side='s1', name='UNIT - CNV AI Factory', role='ai factory')
+            m.put('AlliedPowerPlant', 'east base', 0, 250.0, side='s1', name='UNIT - CNV AI Plant', role='ai plant')
+            gone = [('NAMED_DELETE', 'UNIT - CNV AI Yard')]
+            m.spawns |= {'AlliedMCV'}
         base = 'CNV AI Base'
         m.waypoint('ai base', base, 'east base')
         m.scripts += [
-            Script('CNV AI - Start', [], [('PLAYER_SET_MONEY', s1, 0), ('SET_MILLISECOND_TIMER', 'CNV AI Wake', WAKE_AT)]),
+            Script('CNV AI - Start', [], [*gone, ('PLAYER_SET_MONEY', s1, 0), ('SET_MILLISECOND_TIMER', 'CNV AI Wake', WAKE_AT)]),
             Script('CNV AI - Wake', [('TIMER_EXPIRED', 'CNV AI Wake')],
                    [('UNIT_AI_TRANSFER_ALL', s1, 1), ('SKIRMISH_AI_MAKE_BASE', s1, base),
                     ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', s1, 20), ('SKIRMISH_AI_USE_REPAIRS', s1, 0),
@@ -1070,7 +1076,12 @@ def aiopen_bench():
     MISSION = {'aiopen': mission, 'aiopenpoor': lambda: mission('CampAIPoor', money=POOR),
                'aiopenpoort':lambda: mission('CampAIPoorT', money=POOR, observe=True),
                'aiopenpoortp': lambda: mission('CampAIPoorTP', money=POOR, observe=True, armydef={
-                   'AlliedArmy': {'PrimaryResourceThingToBuild': 'AlliedPowerPlant'}})}
+                   'AlliedArmy': {'PrimaryResourceThingToBuild': 'AlliedPowerPlant'}}),
+               # aiopenmcv / aiopenmcvm (B 11-26): no yard, a war factory -- the no-conyard emergency orders the
+               # ArmyDefinition's MCVTemplate (stock AlliedMCV; m: the miner)
+               'aiopenmcv': lambda: mission('CampAIMCV', noyard=True),
+               'aiopenmcvm': lambda: mission('CampAIMCVM', noyard=True, armydef={
+                   'AlliedArmy': {'MCVTemplate': 'AlliedMiner'}})}
     return dict(MISSION=MISSION, shared=SimpleNamespace(mission=mission))
 
 
@@ -1834,6 +1845,10 @@ def aiskirm_bench():
         # -20 first s49 x26 y9 (ring 5, k -3), second +28 +12. The simulator (60 x 45 boxes): x26 y10 both.
         'aiskst40': lambda: mission('CampAISkSt40', inert2=(('RefineryPlacementStartDistanceDelta', '-40.0'),)),
         'aiskst20': lambda: mission('CampAISkSt20', inert2=(('RefineryPlacementStartDistanceDelta', '-20.0'),)),
+        # rpx (B 11-26): AlliedArmy's PrimaryResourceNodeCollector, whose shape is reserved at each node's refinery spot
+        # (work/re d141 1, b1126_armydef), made the war factory (60 x 60) / the power plant (30 x 45)
+        'aiskpnw': lambda: mission('CampAISkPnW', armydef={'AlliedArmy': {'PrimaryResourceNodeCollector': 'AlliedWarFactory'}}),
+        'aiskpnp': lambda: mission('CampAISkPnP', armydef={'AlliedArmy': {'PrimaryResourceNodeCollector': 'AlliedPowerPlant'}}),
         'aiskmod': lambda: mission('CampAISkMod', umod=UMOD_ZERO),     # check q: SecondsTillTargetsExpire 12, not 5   # s1 without the container's Lib_Skirmish_Setup
         'aiskacp': lambda: mission('CampAISkAcP', account='PRODUCTION'),    # check v: the rebuilt AI, retail Account
         'aiskacd': lambda: mission('CampAISkAcD', account='DEFENSE'),

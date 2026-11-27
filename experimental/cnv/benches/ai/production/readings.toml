@@ -435,6 +435,21 @@ mismatch = "sim: money 0 from s40 to the end in both, 兵营 1, 电厂 1; bench:
 
 [[reading]]
 bench_id = "engine_aiopen"
+id = "without_a_yard_the_no_conyard_emergency_builds_the_mcv_template"
+item = "AI 阵营/ArmyDefinition.MCVTemplate"
+scenes = {v = {build = "aiopenmcv", check = "v", until = 210}, m = {build = "aiopenmcvm", check = "v", until = 210}}
+bench = """\
+B 11-26 aiopenmcv__v / aiopenmcvm__v (aiopen, 50000, the yard deleted at frame 0, a war factory and a power plant \
+left; m: AlliedArmy's MCVTemplate made the miner). Nothing is built while the opening waits on its barracks; then \
+v: an MCV out at s200, unpacked to a yard at s206, no miner; m: a miner each 20 s (s159, s179, s200), never an MCV \
+-- the no-conyard emergency (1AlliedBalanced inherits it on) orders the ArmyDefinition's MCVTemplate, again while no \
+yard stands. Without the power plant (first try) nothing finished in 200 s: the factory crawls on low power"""
+proves = "simai has no no-conyard emergency: a yardless AI builds no MCV and no miner"
+expect = ["max(r['基地车'] + r['建造厂'] for r in v) >= 1", "max(r['采矿车'] for r in v) == 0", "max(r['基地车'] for r in m) == 0", "max(r['采矿车'] for r in m) >= 2"]
+mismatch = "sim: no emergency, nothing built in either; bench: an MCV s200 (v), three miners from s159 (m)"
+
+[[reading]]
+bench_id = "engine_aiopen"
 id = "short_of_money_the_opening_stalls_on_the_refinery"
 scene = {build = "aiopenpoor", check = "m", until = 120, blocks = []}
 bench = "aiopenpoor (3000 at the wake), bench m: 兵营 s19, 电厂 s29, money 23 at s37 and 0 s38-s125, 精炼厂 0 all run"
@@ -1014,6 +1029,19 @@ B191 (D138 pre-check, read): ring 4 at -3 stands 121 off node A's default spot; 
 115.8, so the simulator takes ring 4 (aiskirm x26 y10, aiskirmr x18 y10); the bench rejects it and takes ring 5 \
 / 6 (x26 y9 / x17 y15). No pair of rigid 60 x 45 boxes rejects 121 yet passes ring 5 (26, 137.6): the shape \
 test, R or the node radius is not as modelled (D138 1; asked in b191_refinery_ring4.md)"""
+
+[[reading]]
+bench_id = "engine_aiskirm"
+id = "the_collector_shape_reserved_at_the_nodes_moves_no_refinery"
+item = "AI 阵营/ArmyDefinition.PrimaryResourceNodeCollector"
+scenes = {s = {build = "aiskirm", check = "rpx", until = 160.0}, w = {build = "aiskpnw", check = "rpx", until = 160.0}, p = {build = "aiskpnp", check = "rpx", until = 160.0}}
+bench = """\
+B 11-26 rpx aiskpnw / aiskpnp (AlliedArmy's PrimaryResourceNodeCollector made the war factory 60 x 60 / the power \
+plant 30 x 45; its shape is what the placement table reserves at each node's refinery spot) beside aiskirm, same \
+HEAD: all three 26 / 9 then 54 / 20 (pnw 2 s later all along), every structure step the same"""
+proves = "simai refinery placement reads the refinery's own shape, not the ArmyDefinition's collector"
+let = {ks = "{(r['矿场X'], r['矿场Y']) for r in s}", kw = "{(r['矿场X'], r['矿场Y']) for r in w}", kp = "{(r['矿场X'], r['矿场Y']) for r in p}"}
+expect = ["kw == ks", "kp == ks", "len(ks) >= 3"]
 
 [[reading]]
 bench_id = "engine_aiskirm"

@@ -902,8 +902,23 @@ def engine_aiopen():
         return t
 
 
+    def mcv(m):
+        """aiopenmcv* (no yard, a war factory, 50000): what the no-conyard emergency orders, once a second."""
+        t, s1 = _base(m)
+        for c, lab, tpl in (('CNV_AO_Yard', '建造厂', 'AlliedConstructionYard'), ('CNV_AO_MCV', '基地车', 'AlliedMCV'),
+                            ('CNV_AO_Miner', '采矿车', 'AlliedMiner')):
+            counted(c, lab, t, template=tpl, player=s1)
+        t.counters.append(('CNV_AO_Money', '资金'))
+        t.scripts.append(Script('Test - money', [], [('SET_PLAYER_MONEY_TO_COUNTER', s1, 'CNV_AO_Money')], once=False))
+        w = m.facts['wake at']
+        t.expect += [('资金', w + LAG, 'ever>', 0, w + 30)]
+        t.bench = [('bench_watch', dict(seconds=w + 190.0 + LAG, every=1, sheet=False, lines=len(t.counters)))]
+        return t
+
+
     CHECKS = {'aiopen': {'a': a, 'b': b, 'c': c, **{k: (lambda m, k=k: frames(m, k)) for k in FRAMES}},
-              'aiopenpoor': {'m': poor}, 'aiopenpoort': {'m': poor}, 'aiopenpoortp': {'m': poor}}
+              'aiopenpoor': {'m': poor}, 'aiopenpoort': {'m': poor}, 'aiopenpoortp': {'m': poor},
+              'aiopenmcv': {'v': mcv}, 'aiopenmcvm': {'v': mcv}}
     return dict(CHECKS=CHECKS)
 
 
@@ -2871,7 +2886,7 @@ def engine_aiskirm():
               'aiskin0r': {'rpx': rpx, 'rpb': rpb},
               'acbr0': {'rpb': rpb, 'rpx': rpx}, 'acbr1': {'rpb': rpb, 'rpx': rpx},   # B213 CanBuildInAlliedBuildRadii
               'aiskirmr': {'rpx': rpx},
-              'aiskst40': {'rpx': rpx}, 'aiskst20': {'rpx': rpx},   # B192: StartDistanceDelta -40 / -20
+              'aiskst40': {'rpx': rpx}, 'aiskst20': {'rpx': rpx}, 'aiskpnw': {'rpx': rpx}, 'aiskpnp': {'rpx': rpx},   # B192: StartDistanceDelta -40 / -20
               'aiskins': {'ib': ib},
               'aiskmtp': {'mt': mt},
               'aiskirmc': {'l': l, 'm': m, 'u': u},  # opt-in carrier diagnostic; stock aiskirm stays unchanged
