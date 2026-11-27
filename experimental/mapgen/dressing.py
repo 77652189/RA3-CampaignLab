@@ -563,7 +563,9 @@ def expand(sketch, ground, roadbed, layout, library, kits, sage, border, frame=N
                 finish.put(block, 'open lot', SET_PIECE_BUDGET,
                            _sprigs(cover, rng, center, angle, [(-27, 12), (18, -20)]))
         if frame is not None:
-            _dress_frame(finish, block, cover, trees, Random(f'{sketch.block_seed(block)}:frame'))
+            # A snow wood carries trees only, past the frame as inside it.
+            _dress_frame(finish, block, () if spec['use'] == 'snow_woodland' else cover, trees,
+                         Random(f'{sketch.block_seed(block)}:frame'))
     result = finish.dressing()
     check_lanes(sketch, roadbed, layout, result.pieces, library, sage)
     _check_routes(finish, layout, result.pieces)

@@ -95,8 +95,14 @@ def paint(plan, library, ground, roadbed=None):
             kind = USE_CLASS[surface.use]
             rng = Random(f'{label}:{surface.seed}')
             winter = WINTER_SURFACES.get(surface.use)
-            base, *accents = ([_asset(label, catalogue[name][2]) for name in winter] if winter else
-                              _palette(kits, kit, kind, label, rng, 3))
+            try:
+                base, *accents = ([_asset(label, catalogue[name][2]) for name in winter] if winter else
+                                  _palette(kits, kit, kind, label, rng, 3))
+            except ValueError:
+                # A named ground (e.g. snow past the frame) covers the face below anyway.
+                if surface.ground_texture is None:
+                    raise
+                base, accents = None, []
             textures[mask] = base
             j, i = np.nonzero(mask)
             if accents and i.size:
