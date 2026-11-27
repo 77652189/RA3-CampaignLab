@@ -15,6 +15,9 @@ an ERROR stops the build (CNV_LINT=warn: print only). Rules:
              one linked by name (experimental/cnv links every unit) counts as placed
   chooser    (WARN) armed, but its target chooser picks no targets (CanPickDynamicTargets false, or an AIUpdate
              written on BaseObject without one): ours never fired on their own (装甲列车, 自由号炮塔)
+  global-id  an AI* / Army* asset of ours under an id the retail global stream already has: ours goes into the map
+             stream, and there a global stream id keeps retail's (aitechnon 11-27 ran retail's ClosestTechBuilding-
+             Heuristic; aiskad 11-12 retail's AIData); give it an id of its own, or a static pack (AIDataPack)
 """
 import glob
 import json
@@ -62,10 +65,27 @@ def num(s):
 
 def retail_index():
     """{'objects': [retail GameObject ids], 'ranges': {WeaponTemplate id: AttackRange}} from the SDK's SageXML,
-    cached in work/ (it reads ~4000 files)."""
+    cached in work/ (it reads ~4000 files); 'global_ai': ['Type:id' of every AI* / Army* asset in the game's global
+    stream, patch layers included]."""
+    data = {}
     if os.path.exists(INDEX):
         with open(INDEX, encoding='utf-8') as f:
-            return json.load(f)
+            data = json.load(f)
+    if 'global_ai' in data:
+        return data
+    if 'objects' not in data:
+        data.update(_sage_index())
+    import mapxml
+    import retailref
+    names = (i.name.decode('latin-1') for i in mapxml.layered(retailref.AI_STREAM).values())
+    data['global_ai'] = sorted(n for n in names if n.startswith(('AI', 'Army')))
+    os.makedirs(os.path.dirname(INDEX), exist_ok=True)
+    with open(INDEX, 'w', encoding='utf-8') as f:
+        json.dump(data, f)
+    return data
+
+
+def _sage_index():
     objects, ranges = set(), {}
     for p in glob.glob(os.path.join(SAGE, '**', '*.xml'), recursive=True):
         text = open(p, encoding='utf-8', errors='replace').read()
@@ -75,17 +95,14 @@ def retail_index():
         for a in re.findall(r'<WeaponTemplate\b([^>]*)>', text, re.S):
             if attr(a, "id") and num(attr(a, "AttackRange")) is not None:
                 ranges[attr(a, "id")] = num(attr(a, "AttackRange"))
-    data = dict(objects=sorted(objects), ranges=ranges)
-    os.makedirs(os.path.dirname(INDEX), exist_ok=True)
-    with open(INDEX, 'w', encoding='utf-8') as f:
-        json.dump(data, f)
-    return data
+    return dict(objects=sorted(objects), ranges=ranges)
 
 
 def check(files, placed=None, overrides=()):
     """[(level, file name, message)] for our XML files; placed = templates on the map (None: skip the spawn rule)."""
     idx = retail_index()
     retail = set(idx['objects']) - set(overrides)
+    global_ai = set(idx['global_ai'])
     texts = {p: open(p, encoding='utf-8', errors='replace').read() for p in files if os.path.exists(p)}
     ranges = dict(idx['ranges'])
     own_objects = set()
@@ -141,6 +158,11 @@ def check(files, placed=None, overrides=()):
         for a, body in blocks(text, 'ToggleState'):
             if 'SkirmishAiInfo' not in body:
                 out.append(('ERROR', name, 'toggle: a ToggleState without SkirmishAiInfo (the build fails)'))
+        for kind, a in re.findall(r'<((?:AI|Army)\w*)\b([^>]*)>', text):
+            if f'{kind}:{attr(a, "id")}' in global_ai:
+                out.append(('ERROR', name, f'global-id: {kind} {attr(a, "id")} is a retail global stream id: the '
+                                           'map stream copy does not take, the game runs retail\'s (give it an id '
+                                           'of its own)'))
     return out
 
 

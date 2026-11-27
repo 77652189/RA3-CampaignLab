@@ -89,3 +89,10 @@ def test_chooser(tmp_path):
     assert run(tmp_path, gun + mounted(base='BaseVehicle', ai=never)) == [('WARN', 'chooser')]   # 装甲列车
     assert run(tmp_path, gun + mounted(base='BaseVehicle', slot='WeaponSlotTurret', ai=never)) == []  # 磁暴坦克
     assert run(tmp_path, gun + mounted(base='BaseInfantry')) == []                       # 原版步兵的复制件
+
+
+def test_ai_asset_under_a_global_stream_id(tmp_path):
+    """aitechnon 11-27: our heuristic under retail's id compiled into the map stream; the game ran retail's."""
+    heuristic = '<AITargetingHeuristic id="{}" SearchRange="1200"/>\n'
+    assert run(tmp_path, heuristic.format('ClosestTechBuildingHeuristic')) == [('ERROR', 'global-id')]
+    assert run(tmp_path, heuristic.format('CNVTechKind')) == []
