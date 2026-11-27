@@ -18,6 +18,7 @@ distance <= 401.6 -- base, removed, high, switch yes; order, low no. A box-edge 
 box <= 350) says base, removed yes; high, switch, order, low no.
 """
 from maps import probe_range
+from model import status
 from parts import Mission, Script, Test, counted, square
 
 COIL, PLANT, ENG = 'SovietBaseDefenseAdvanced', 'SovietPowerPlant', 'AlliedEngineer'
@@ -367,6 +368,50 @@ def gate_check(m):
     return t
 
 
+C4_LANES = (('base', '正常', None), ('high', '击杀', 'NAMED_KILL'), ('order', '删除', 'NAMED_DELETE'))
+
+
+def c4_interrupt_mission():
+    m = Mission(name='CampC4Break', map=probe_range, units=[])
+    for lane, _, _ in C4_LANES:
+        m.put('AlliedCommandoTech1', lane + ' gun', name=f'C4 Tanya {lane}')
+        for charge, distance in (('first', 150), ('second', 205)):
+            m.put(GATES['low'][0], lane + ' gun', 0, distance, side='s1', angle=0.0, name=f'C4 {charge} {lane}')
+    return m
+
+
+def c4_interrupt_check(m):
+    """Kill or delete the first tank as soon as Tanya attaches, with one uninterrupted control.
+
+    Predict that the second attachment has its own fuse, like the uninterrupted control.
+    Pack first attached frames + 100 * second attached frames + 10000 once the second dies.
+    Count only while Tanya is attached and the corresponding live tank is marked.
+    """
+    t = Test()
+    start = []
+    for lane, label, interruption in C4_LANES:
+        tanya, first, second = (f'C4 {role} {lane}' for role in ('Tanya', 'first', 'second'))
+        counter = f'C4 Fuse {lane}'
+        t.counters.append((counter, label))
+        start.extend(('UNIT_CHANGE_OBJECT_STATUS', target, 'NO_ATTACK', 1) for target in (first, second))
+        start.append(('NAMED_ATTACK_NAMED', tanya, first))
+        attached = ('UNIT_HAS_OBJECT_STATUS', tanya, status('ATTACHED'))
+        for target, place in ((first, 1), (second, 100)):
+            t.scripts.append(Script(f'Test - count {target}', [attached, ('NAMED_NOT_DESTROYED', target),
+                                    ('UNIT_HAS_OBJECT_STATUS', target, status('MARCH_OF_DEATH'))],
+                                    [('INCREMENT_COUNTER', place, counter)], once=False))
+        if interruption:
+            t.scripts.append(Script(f'Test - interrupt {lane}', [attached], [(interruption, first)]))
+        t.scripts.extend((Script(f'Test - retarget {lane}', [('NAMED_DESTROYED', first)],
+                                 [('NAMED_ATTACK_NAMED', tanya, second)]),
+                          Script(f'Test - finish {lane}', [('NAMED_DESTROYED', second)],
+                                 [('INCREMENT_COUNTER', 10000, counter)])))
+    t.scripts.insert(0, Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1')), *start]))
+    m.ext = True
+    t.bench = [('bench_watch', dict(seconds=14., every=.5, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 # i landing craft (item 7): a1mc's city is a level-1 plateau over the bay; its one ramp is the Aquatic Park beach
 # (Ramp (2880, 3110) -> (2880, 2860), 300 wide). Read on a1mc's own terrain (work/mappage/a1mc/a1mc.py, the draft;
 # its objects are neutral walls and one empty Soviet house). The player's Bullfrog (SovietAntiAirShip, AMPHIBIOUS)
@@ -421,3 +466,6 @@ MISSION = {'engine_a1land': land_mission, 'engine_a1gate': gate_mission, 'engine
 CHECKS = {'engine_a1land': {'i': land_check}, 'engine_a1gate': {'h': gate_check}, 'engine_a1cd': {'g': countdown_check}, 'engine_a1gar': {'e': garrison_check, 'j': seat_check, 'k': bare_seat_check, 'l': reversed_seat_check, 'm': drawn_seat_check, 'n': near_seat_check}, 'engine_a1jav': {'f': javelin_check},
           'engine_a1coil': {'a': range_check}, 'engine_a1near': {'d': lambda m: range_check(m, FORCED)}, 'engine_a1cap': {'b': captured_check},
           'engine_a1pow': {'c': power_check}}
+
+MISSION['engine_c4break'] = c4_interrupt_mission
+CHECKS['engine_c4break'] = {'a': c4_interrupt_check}

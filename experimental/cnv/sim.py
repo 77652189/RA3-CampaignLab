@@ -1975,6 +1975,12 @@ class Sim:
         for key, (child, parent, rule) in list(self.attachments.items()):
             if not child.alive or not parent.alive:
                 del self.attachments[key]
+                if (child.alive and 'MARCH_OF_DEATH' in rule['parent']
+                        and (parent.deleted or parent.last_by != child.name)):
+                    weapons = child.find(kernel_interfaces.WeaponSet)
+                    if weapons and weapons.clip_clock('AlliedCommandoDetonationWeapon') is not None:
+                        # E274: an interrupted C4 cannot arm the next charge. The death-source check is INFERRED.
+                        weapons.set_clip_clock('AlliedCommandoDetonationWeapon', None)
                 if (rule.get('die_with_parent') and child.alive and not parent.alive and not parent.deleted
                         and parent.last_by != child.name):  # engine_attachterror a: NAMED_KILL (cause INFERRED)
                     self.world.kill(child, '附着的父对象被别人杀死')
