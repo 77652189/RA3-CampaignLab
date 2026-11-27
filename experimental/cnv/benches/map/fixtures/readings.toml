@@ -52,11 +52,11 @@ expect = ["win(4, 6, '短门') == [100] * 3", "win(11, 14, '短门') == [80] * 4
 [[reading]]
 bench_id = "engine_bridgesegment"
 id = "short_bridge_center_and_proxy_share_nonlethal_damage"
+item = "物体模块 Body/ManagedActiveBody"
 scene = {build = "engine_bridgesegment", check = "a", until = 23}
 bench = "Short gate / long gate / short center / center count: 100/100/100/32 at s2.8-s7.8, 80/100/80/32 at s8.87-s15.87, 60/100/60/32 at s16.93-s24.93. ua: gives 800/1000 at f121 and 600/1000 at f241 for the short proxy and center."
 proves = "The live scripted reference to the generated short HB_Bridge_02_Center follows proxy damage; 200 direct damage via that reference also reaches the proxy and gate. Both bridges keep their center counts (1 short, 2 long). Lethal damage and other configurations are open."
 expect = ["win(4, 6, '中血') == [100] * 3", "win(11, 14, '中血') == [80] * 4", "win(19, 22, '中血') == [60] * 4", "win(19, 22, '短门') == [60] * 4", "win(4, 22, '中量') == [32] * 19"]
-mismatch = "The simulator places the long centers but still has no short center. It reads -1 for the guarded reference and encodes 31 (0/2 A centers), so the second hit is never sent and its short gate stays at 80. See work/re/e297_managedactivebody.md."
 
 [[reading]]
 bench_id = "engine_bridgesegment"

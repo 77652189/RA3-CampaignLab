@@ -154,12 +154,25 @@ class PropBody(Body):
 
 @factory.module('ManagerBody')
 class ManagerBody(Body):
-    """HB_Bridge_02's whole proxy only (engine/objects/bridge.py); its gatehouses read its health; its pieces: a gap."""
+    """Bridge proxy (engine/objects/bridge.py); gatehouses and the measured short center read its percent."""
 
 
 @factory.module('ManagedActiveBody')
 class ManagedActiveBody(Body):
-    pass
+    """The E297 short center shares the proxy's percent and forwards nonlethal damage.
+
+    Using the same forwarding for other damage sources is INFERRED. Lethal forwarding remains a gap.
+    """
+    manager = None
+
+    def percent(self):
+        return self.manager.percent() if self.manager else super().percent()
+
+    def attempt_damage(self, amount):
+        if self.manager and 0 < amount < self.manager.health():
+            self.manager.attempt_damage(amount)
+        else:
+            super().attempt_damage(amount)
 
 
 @factory.module('ManagedImmortalBody')
