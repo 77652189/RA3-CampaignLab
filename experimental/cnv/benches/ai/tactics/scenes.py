@@ -2580,6 +2580,8 @@ def aiswitch_bench():
                  and the personality's RepairBuildingsAtDifficulty (MEDIUM HARD BRUTAL); the model says 1 heals, 0 not
       aiswreb1 / aiswreb0  the AI's plant killed 5 s after the wake, 5000 money at the wake, rebuild 1 / 0: is it put
                  back, how soon? (who reads the rebuild list is NOT READ; the model rebuilds nothing)
+      aiswreb1z  aiswreb1 with RebuildDelaySeconds / StructureSeconds 0, Structures*Mod 100 spliced into AIData: their
+                 only readers walk the player's map build list (empty in every retail map and in our container)
     Facts: wake at, own plant (name), kill at (rebuild builds).
     """
     from benches.ai.targets.scenes import ainamed_bench
@@ -2615,8 +2617,11 @@ def aiswitch_bench():
         return m
 
 
-    def rebuild(mod, on):
+    def rebuild(mod, on, aidata=None):
         m = own_plant(switches(at.mission(mod, 'ClosestStructureHeuristic', 'SimpleAttack'), rebuild=on, money=MONEY))
+        if aidata:
+            from missions.aiskirm_bench import AIDataPack
+            m.statics = [AIDataPack(aidata)]
         m.facts['kill at'] = m.facts['wake at'] + KILL_AFTER
         m.scripts.append(Script('CNV AI - Kill own plant', [('TIMER_EXPIRED', 'CNV AI Kill')], [('NAMED_KILL', OWN)]))
         (wake,) = [s for s in m.scripts if s.name == 'CNV AI - Wake']
@@ -2631,6 +2636,8 @@ def aiswitch_bench():
         'aiswrep0': lambda: repair('CampAISwRep0', 0),
         'aiswreb1': lambda: rebuild('CampAISwReb1', 1),
         'aiswreb0': lambda: rebuild('CampAISwReb0', 0),
+        'aiswreb1z': lambda: rebuild('CampAISwReb1Z', 1, {'RebuildDelaySeconds': '0', 'StructureSeconds': '0',
+                                                         'StructuresWealthyMod': '100', 'StructuresPoorMod': '100'}),
     }
     return dict(MISSION=MISSION)
 

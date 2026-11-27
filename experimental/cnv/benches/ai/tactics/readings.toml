@@ -1415,6 +1415,18 @@ expect = "rows[kill - 2]['电厂数'] == 1 and all(r['电厂数'] == 0 for r in 
 
 [[reading]]
 bench_id = "engine_aiswitch"
+id = "the_build_list_rebuild_clocks_change_nothing_without_a_build_list"
+scene = {build = "aiswreb1z", check = "a", until = 100.0}
+bench = """aiswreb1z (aiswreb1 with RebuildDelaySeconds 0, StructureSeconds 0, StructuresWealthyMod / StructuresPoorMod 100 \
+in AIData; bench 2026-11-26, head fe7da067, beside aiswreb1 the same hour): 电厂数 1 to s13, 0 from s14 to s105, the same \
+as aiswreb1. Their only readers walk the player's map build list, empty in every retail map and in our container"""
+proves = "simai AI switches: the build-list rebuild clocks are not read (no map build list), a killed plant stays dead"
+expect = "rows[11]['电厂数'] == 1 and all(r['电厂数'] == 0 for r in rows[15:])"
+item = ["AI 全局常量/AIData.RebuildDelaySeconds", "AI 全局常量/AIData.StructureSeconds",
+        "AI 全局常量/AIData.StructuresWealthyMod", "AI 全局常量/AIData.StructuresPoorMod"]
+
+[[reading]]
+bench_id = "engine_aiswitch"
 id = "priorities_zero_send_no_team_to_the_nearest_structure"
 scene = {build = "aisw0near", check = "a", until = 70.0}
 bench = "aisw0near: 步兵在家 4 from s1 to s75, nobody at either plant (the control aitargetnear went at s13)"

@@ -2484,7 +2484,7 @@ def engine_aiswitch():
     at = engine_aitarget()["shared"]
     from parts import Script, Test, counted, square
 
-    AFTER = {'aiswreb1': 90.0, 'aiswreb0': 90.0}
+    AFTER = {'aiswreb1': 90.0, 'aiswreb0': 90.0, 'aiswreb1z': 90.0}
     PLANT = 'AlliedPowerPlant'
 
 
@@ -2517,7 +2517,7 @@ def engine_aiswitch():
 
 
     CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in
-              ('aisw0near', 'aisw0far', 'aiswrep1', 'aiswrep0', 'aiswreb1', 'aiswreb0')}
+              ('aisw0near', 'aisw0far', 'aiswrep1', 'aiswrep0', 'aiswreb1', 'aiswreb0', 'aiswreb1z')}
     return dict(CHECKS=CHECKS)
 
 
