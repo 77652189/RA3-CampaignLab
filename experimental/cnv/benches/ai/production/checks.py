@@ -903,7 +903,7 @@ def engine_aiopen():
 
 
     CHECKS = {'aiopen': {'a': a, 'b': b, 'c': c, **{k: (lambda m, k=k: frames(m, k)) for k in FRAMES}},
-              'aiopenpoor': {'m': poor}}
+              'aiopenpoor': {'m': poor}, 'aiopentp': {'f1': lambda m: frames(m, 'f1')}}
     return dict(CHECKS=CHECKS)
 
 

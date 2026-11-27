@@ -419,6 +419,20 @@ expect = ["all(0 <= d <= 8 for d in late)", "all(0 <= d <= 15 for d in rip)"]
 
 [[reading]]
 bench_id = "engine_aiopen"
+id = "a_power_plant_as_the_no_income_build_leaves_the_opening_as_stock"
+item = "AI 阵营/ArmyDefinition.PrimaryResourceThingToBuild"
+scene = {build = "aiopentp", check = "f1", until = 160, blocks = []}
+bench = """\
+B 11-26 aiopentp__f1 (AlliedArmy's PrimaryResourceThingToBuild made the power plant; the no-income emergency that \
+orders it is on in 1AlliedBalanced, and the AI sits at 0 money with no miner before the wake) beside aiopen__f1, same \
+HEAD: 兵营 152, 电厂1 305, 精炼厂1 607 in both -- the emergency's order does not jump the opening's list. Whether \
+the emergency was entered here was not read (D42 saw it set at frame 4 on a 0-money AI)"""
+proves = "simai: no PrimaryResourceThingToBuild is read -- the opening comes as stock, barracks first"
+let = {late = "[counter(c) - b for c, b in (('CNV_AO_F_Barracks', 152), ('CNV_AO_F_Power1', 305), ('CNV_AO_F_Ref1', 607))]"}
+expect = "all(0 <= d <= 8 for d in late)"
+
+[[reading]]
+bench_id = "engine_aiopen"
 id = "short_of_money_the_opening_stalls_on_the_refinery"
 scene = {build = "aiopenpoor", check = "m", until = 120, blocks = []}
 bench = "aiopenpoor (3000 at the wake), bench m: 兵营 s19, 电厂 s29, money 23 at s37 and 0 s38-s125, 精炼厂 0 all run"
