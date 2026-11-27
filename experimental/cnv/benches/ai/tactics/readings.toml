@@ -972,6 +972,7 @@ bench = "aipfnone (None): all four in the team at f21; 4 4 0 at s1-5, 4 0 0 from
 proves = "simai teams: PathfindingCheckType None recruits without asking for a way"
 expect = ["win(1, 5, '步兵在家') == [4] * 5", "win(6, 89, '步兵在家') == [0] * 84",
           "all((r['步兵总数'], r['到对岸']) == (4, 0) for r in rows)"]
+mismatch = "since E271 (Cape Cod fence route, pending E269 routing): simulator 3 infantry at home at s5, bench 4 at s1-5"
 
 # Bench readings of benches/ai/tactics/checks.py#engine_aipullback (format: experimental/cnv/readings.py; runner: tests/conformance).
 # PullbackInjured / ReverseMove / UseGatherState (bench 2026-11-09).
@@ -1750,6 +1751,7 @@ proves = "simai micro state: the temporary vision bonus is dropped once MinTimeT
 item = "AI 微操/AIMicroManagerData.MinTimeToKeepTempVisionRangeBonus"
 let = {near = "lambda r: min(((m['pos'][0] - 3150.0) ** 2 + (m['pos'][1] - 3300.0) ** 2) ** 0.5 for m in r['members'] if m['alive'])", live = "[r for r in teams() if r['updated'] and any(m['alive'] for m in r['members'])]", got = "[i for i, r in enumerate(live) if 'UNIT - CNV AM Far Conscript' in r['hostiles'] and near(r) > 600]"}
 expect = ["bool(got)", "any('UNIT - CNV AM Far Conscript' not in r['hostiles'] and near(r) > 600 for r in live[got[0]:])"]
+mismatch = "since E271 (Cape Cod fence route, pending E269 routing): the simulator's team keeps the far conscript in its hostiles while over 600 off; bench drops it ~90 frames after leaving state 5"
 
 [[reading]]
 bench_id = "engine_airetreat"

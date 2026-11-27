@@ -67,20 +67,8 @@ def test_the_runner_gives_a_scene_its_run_options(lib):
     assert (opted.sim.combat, opted.sim.shot_clock, opted.sim.t, opted.blocks) == (False, True, 0.0, ())
 
 
-def _reading_cases():
-    fence_gaps = {
-        'aigathk1': 'On the Cape Cod fence route the AI keeps the acquired distant target while over 600 units away',
-        'aipfnone': 'The Cape Cod fence route has three infantry at home at s5; the bench has four',
-    }
-    for keys, group in GROUPS:
-        label = f'{group[0]["bench_file"]}:' + '+'.join(readings.label(key) for key in keys)
-        reason = fence_gaps.get(keys[0][0]) if len(keys) == 1 else None
-        marks = pytest.mark.xfail(strict=True, raises=AssertionError,
-                                  reason=f'{reason}. See work/re/handoff-e.md (E271).') if reason else ()
-        yield pytest.param(keys, group, id=label, marks=marks)
-
-
-@pytest.mark.parametrize('keys, group', list(_reading_cases()))
+@pytest.mark.parametrize('keys, group', GROUPS,
+                         ids=[f'{g[0]["bench_file"]}:' + '+'.join(readings.label(k) for k in ks) for ks, g in GROUPS])
 def test_the_bench_readings_hold_on_the_simulator(lib, keys, group):
     problems = readings.run_group(keys, group, lambda b, c, **opts: _start(lib, b, c, **opts),
                                   _advance, _rows_of, MODEL)
