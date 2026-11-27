@@ -22,7 +22,7 @@ def engine_acquire():
     S, E = (0.0, -400.0), (600.0, -400.0)
     VARIANTS = ('idle180', 'idle260', 'idle400', 'guard260', 'guard400', 'am260', 'am400', 'idle200', 'idle220', 'idle240',
                 'hold180', 'hold220', 'agg220', 'agg240', 'agg260', 'gst450', 'gsc450', 'gch450', 'grt400', 'grs400',
-                'gri400', 'grj400', 'idi220', 'idm220', 'gsm450', 'gsn450')
+                'gri400', 'grj400', 'idi220', 'idm220', 'gsm450', 'gsn450', 'rfs180', 'rfz180')
     # gst / gsc / gch: guarding from birth, the tank driven in to N then off to F; gsc / gch with one AIData field
     # spliced into the global stream (missions/aiskirm_bench.AIDataPack)
     # grt / grs: born at F and told to guard S at once (the walk back is the guard's return state), T 80 beside the
@@ -30,10 +30,13 @@ def engine_acquire():
     # gri / grj / idi / idm: a conscript (cannot fire on the move) for the attacker -- gri / grj as grt / grs, idi as
     # idle220, idm with MeleeApproachTolerance + MeleeApproachDist 2000 (the attack approach's close-enough distance)
     # gsm / gsn as gst with MaxRetaliateDistance 5000 / 1 (stock 410: the guard's chase leash, l4_aidata_readers)
+    # rfs / rfz as idle180 plus the player's helper tank H 100 north of T (280 from S, out of its own reach), not
+    # NO_ATTACK; rfz with RetaliateFriendsRadius 1 (stock 120: Generals calls a hit human unit's friends within it)
     AIDATA = {'gsc': {'GuardEnemyScanRate': '60000'}, 'gch': {'GuardChaseUnitFrames': '30'},
               'grs': {'GuardEnemyReturnScanRate': '3600000'}, 'grj': {'GuardEnemyReturnScanRate': '3600000'},
               'idm': {'MeleeApproachTolerance': '1000', 'MeleeApproachDist': '1000'},
-              'gsm': {'MaxRetaliateDistance': '5000.0'}, 'gsn': {'MaxRetaliateDistance': '1.0'}}
+              'gsm': {'MaxRetaliateDistance': '5000.0'}, 'gsn': {'MaxRetaliateDistance': '1.0'},
+              'rfz': {'RetaliateFriendsRadius': '1.0'}}
     N, F = (0.0, S[1] + 180.0), (0.0, S[1] + 700.0)
 
 
@@ -46,6 +49,9 @@ def engine_acquire():
         m = Mission(name=name, map=island, facts={'variant': VARIANTS.index(variant)})
         m.crew('Aq', 's1')
         m.put(TANK, 'west field', *target(variant), role='tank', name='UNIT - CNV Aq Tank')
+        if variant.startswith('rf'):
+            m.put(TANK, 'west field', 0.0, S[1] + 280.0, role='help', name='UNIT - CNV Aq Help')
+            m.waypoint('h', 'CNV Aq H', 'west field', 0.0, S[1] + 280.0)
         for part, label, at in (('s', 'S', S), ('e', 'E', E), ('t', 'T', target(variant)), ('n', 'N', N), ('f', 'F', F)):
             m.waypoint(part, f'CNV Aq {label}', 'west field', *at)
         if variant[:3] in AIDATA:

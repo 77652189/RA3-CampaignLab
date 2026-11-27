@@ -114,6 +114,21 @@ expect = ["[list(r.values()) for r in st] == [list(r.values()) for r in sm] == [
 
 [[reading]]
 bench_id = "engine_acquire"
+id = "a_hit_tank_calls_no_friend_in_whatever_retaliate_friends_radius"
+item = "AI 全局常量/AIData.RetaliateFriendsRadius"
+scenes = {fs = {build = "acquire_rfs180", check = "frames", until = 26}, fz = {build = "acquire_rfz180", check = "frames", until = 26}}
+bench = """\
+11-27 (CampAqR26/27Frames_mcp_1127_133029 / 133146), idle180 plus the player's helper tank H 100 north of T (280 \
+from the attacker, out of its own reach), RetaliateFriendsRadius stock 120 / 1: second for second the same -- T 100 \
+-> 86 s2, -14 per 2 s, 3 from s14; H never leaves its spot (援原地 1), the attacker stays 100. Generals' only reader \
+(ActiveBody::attemptDamage: a hit human unit's friends within the radius retaliate) has no RA3 counterpart: no read \
+of the field in the program (work/re l4_aidata_readers.md)"""
+proves = "sim: a unit being hit calls no friend to fire back -- RetaliateFriendsRadius is not read"
+expect = ["[list(r.values()) for r in fs] == [list(r.values()) for r in fz]",
+          "all(r['援原地'] == 1 and r['敌血'] == 100 for r in fs[1:])", "fs[-1]['坦克血'] < 100"]
+
+[[reading]]
+bench_id = "engine_acquire"
 id = "guard_does_not_follow_a_target_driving_off"
 scene = {build = "acquire_gst450", check = "frames", until = 33}
 bench = "远 0 all along (never within 180 of F), the tank's health 50 from s12 to s33: no shot after s12 though the tank stood at N to s14"

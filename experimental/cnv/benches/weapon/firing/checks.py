@@ -45,7 +45,7 @@ def engine_acquire():
 
     VARIANTS = ('idle180', 'idle260', 'idle400', 'guard260', 'guard400', 'am260', 'am400', 'idle200', 'idle220', 'idle240',
                 'hold180', 'hold220', 'agg220', 'agg240', 'agg260', 'gst450', 'gsc450', 'gch450', 'grt400', 'grs400',
-                'gri400', 'grj400', 'idi220', 'idm220', 'gsm450', 'gsn450')
+                'gri400', 'grj400', 'idi220', 'idm220', 'gsm450', 'gsn450', 'rfs180', 'rfz180')
     ATK, TANK = 'UNIT - CNV Aq Atk', 'UNIT - CNV Aq Tank'
     RUN = 25.0
     INF = ('gri', 'grj', 'idi', 'idm')  # a conscript (vision 200, AK 150, walks 50, cannot fire on the move)
@@ -92,9 +92,14 @@ def engine_acquire():
         t.areas['Test Still'] = square(sx, sy, 15.0)
         if not g:                           # four counter lines at most: g counts 远 instead, r 远 and not 原地
             counted('CNV_Aq_S', '起点', t, named=ATK, area='Test Start')
-        if not v.startswith('am') and not r:
+        if v.startswith('rf'):              # rfs / rfz: the helper's spot and the attacker's health instead
+            t.areas['Test Help'] = square(*m.point('h'), 15.0)
+            counted('CNV_Aq_P', '援原地', t, named='UNIT - CNV Aq Help', area='Test Help')
+            counted('CNV_Aq_A', '敌血', t, health=ATK)
+        elif not v.startswith('am') and not r:
             counted('CNV_Aq_Q', '原地', t, named=ATK, area='Test Still')
-        counted('CNV_Aq_N', '近敌', t, named=ATK, area='Test Near')
+        if not v.startswith('rf'):
+            counted('CNV_Aq_N', '近敌', t, named=ATK, area='Test Near')
         if v.startswith('am'):
             counted('CNV_Aq_E', '终点', t, named=ATK, area='Test End')
         counted('CNV_Aq_H', '坦克血', t, health=TANK)
