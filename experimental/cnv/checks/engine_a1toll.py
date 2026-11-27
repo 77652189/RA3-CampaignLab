@@ -121,6 +121,17 @@ RUNS['r'] = ((GUARDIAN,) * 5, ({CIV: (15.13, 0.0)}, {CIVI: (15.13, 0.0)}, {BARE:
 LONE['r'], SIDES['r'] = (1, 2, 3, 4, 5), {k: 's1' for k in range(1, 6)}
 RUNS['s'] = ((ZERO, GUARDIAN, ZERO, ZERO, GUARDIAN), {CIV: (15.13, 0.0)})
 KILL['s'] = {1: (1.0, KIL, False), 2: (1.0, KIL, False), 3: (1.0, DEL, False)}
+# E266 (who a retail prop holds up, work/logs/e266_prop_blocking.md): a's wall of one prop a lane, the half its box's
+# minor side (no Shape: 5) so the row is closed either way the box lies. t / w a conscript, u / x the zero truck.
+# 1 tree (topple), 2 bush (NO_COLLIDE, no Shape), 3 Japanese fence (simulated prop, no STRUCTURE), 4 cargo container
+# and 5 big rock (BaseRockBig: STRUCTURE with NO_COLLIDE); w / x: 1 rock (CRUSHABLE_OBSTACLE), 2 bench (topple
+# STRUCTURE), 3 bench (simulated prop), 4 lamp post (CRUSHABLE_OBSTACLE topple, no Shape), 5 fence (CRUSHABLE_OBSTACLE).
+PROPS = (({'HB_Tree07': (3.4, 0.0)}, {'CC_BUSH02': (5.0, 0.0)}, {'TH_JAPANFENCE01': (5.3, math.pi / 2)},
+          {'TH_CARGOCONTAINER05': (22.4, math.pi / 2)}, {'YU_LARGEROCKS02': (21.6, 0.0)}),
+         ({'MY_ROCKS03': (30.0, math.pi / 2)}, {'GE_BENCH': (3.4, math.pi / 2)}, {'HB_BENCH01': (4.5, math.pi / 2)},
+          {'TH_LAMPPOST04': (5.0, 0.0)}, {'ST_SOVIETFENCE01': (2.8, math.pi / 2)}))
+RUNS |= {r: ((who,) * 5, PROPS[p]) for r, who, p in (('t', CONSCRIPT, 0), ('u', ZERO, 0), ('w', CONSCRIPT, 1),
+                                                     ('x', ZERO, 1))}
 HOLD = {'h': (1,), 'q': (5,), 'r': (1, 2, 3, 4, 5)}
 CLICK = {5: (240.0, False, (726, 103)), 1: (-160.0, True, (759, 505)), 2: (-80.0, True, (756, 365)),
          3: (0.0, False, (743, 311)), 4: (80.0, True, (736, 233))}
