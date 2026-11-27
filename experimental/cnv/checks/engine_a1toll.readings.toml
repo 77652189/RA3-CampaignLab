@@ -32,9 +32,23 @@ expect = "win(19, 19, '车存')[0] % 10000 == 2233"
 id = "a_the_apocalypse_crushes_two_cars"
 scene = {build = "engine_a1tolla", check = "a", until = 20}
 bench = "CampA1TollA: 车存 lane 5 digit 1 (two of the middle three crushed)"
-proves = "engine/objects/locomotion.crush: the crushed's radius alone about the crusher's line (FITTED) is too narrow for the Apocalypse"
-mismatch = "sim lane 5 digit 2 (one crushed), bench 1 (two)"
+proves = "engine/objects/locomotion.crush: the Apocalypse sweeps over a second parked car"
 expect = "win(19, 19, '车存')[0] // 10000 == 1"
+
+[[reading]]
+id = "the_apocalypse_footprint_reaches_one_side_car"
+scenes = {cr = {build = "engine_a1tollcr", check = "cr", until = 16}, ct = {build = "engine_a1tollct", check = "ct", until = 16}}
+bench = "CampA1TollCRCr (E281): 穿心 11111, 车存 11010. The centre and far-side cars are crushed; the near-side car survives against either tank. CampA1TollCTCt: 穿心 11111, 车存 20011. The two negative-offset cars live, the two positive-offset cars are crushed; only the negative-offset SM_Auto04 lives in the three-car mask."
+proves = "engine/objects/locomotion.crush: sweeping both boxes replays the isolated and mirrored parked-car outcomes and the full row"
+expect = ["cr[-1]['穿心'] == 11111 and cr[-1]['车存'] == 11010", "ct[-1]['穿心'] == 11111 and ct[-1]['车存'] == 20011"]
+
+[[reading]]
+id = "the_apocalypse_stays_in_the_centre_band"
+scene = {build = "engine_a1tollct", check = "ct", until = 16}
+bench = "CampA1TollCTCt: 偏移 22222, only the centre band is entered around the car row"
+proves = "the script saw the tanks within the 5-unit centre band at the crossing and saw no entry into either side band"
+mismatch = "sim 偏移 66666 also latches the positive-side band; see work/re/handoff-e.md (E281)"
+expect = "win(15, 15, '偏移')[0] == 22222"
 
 [[reading]]
 id = "c_toll_booths_hold_nobody_up"

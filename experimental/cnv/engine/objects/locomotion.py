@@ -181,15 +181,22 @@ def drive(world, b, dt, precise, targets, entry, at_site):
     return x0, y0, at, stopped
 
 
+def _crush_box_reach(body, own):
+    """Conservative broad-phase radius, including the shape's local offset."""
+    major, minor, x, y = simtopple.shape(body.template, own)
+    return math.hypot(major, minor) + math.hypot(x, y)
+
+
 def crush(world, b, x0, y0, precise, pool, attached, topples, destroy):
     """R9 (docs/engine/crush.md, bench 11-06 engine_crush), the tail of b's drive from (x0, y0) (precise: a frame
     mover's frame): a crusher (interfaces.Crush) kills what its footprint passes over that is a lower level -- strictly
     greater kills, 20 against 20 and 30 against 30 live; the crushed does not step aside and lies its SlowDeath out
     (`destroy`'s death CRUSHED, B5a). The segment passing within the CRUSHED's own radius of its centre (FITTED to two
     readings: Hammer / conscript at frame 43, Apocalypse / guardian at 69 -- touching at the radii's sum would be ~12
-    and ~30 frames earlier still; the simulator has no acceleration). Whose units: the crusher's enemies' only
-    (INFERRED: one's own / neutral units not measured). `pool`: Sim.move's, new each move, filled at its first crusher
-    that drives (the crushable ones, not `attached`, as arrays: a big map's tanks all drive). A prop (`topples`) is
+    and ~30 frames earlier still; the simulator has no acceleration). For parked cars use both swept boxes
+    (E281; the exact contact frame and extending this to other CRUSHABLE_OBSTACLE props are INFERRED).
+    Whose units: enemies and neutral crushable props (one's own INFERRED). `pool`: Sim.move's, filled on the first
+    crusher's move (the crushable ones, not `attached`, as arrays: a big map's tanks all drive). A prop (`topples`) is
     toppled only frame by frame: a way across one is a frame mover's (go_to), with or without the model."""
     if b.crusher <= 0 or b.surface not in ('ground', 'both') or (b.x, b.y) == (x0, y0):    # both: E256 a's Riptide
         return
@@ -198,16 +205,21 @@ def crush(world, b, x0, y0, precise, pool, attached, topples, destroy):
     if not pool:
         low = [o for o in world.bodies.values() if o.alive and o.crushable is not None and not o.scenery  # living()
                and not o.topple and o.surface == 'ground' and o.serial not in attached]
+        props = [_crush_box_reach(o, world.own) if 'CRUSHABLE_OBSTACLE' in o.kinds else 0.0 for o in low]
         pool += [low, np.array([o.x for o in low]), np.array([o.y for o in low]),
-                 np.array([o.radius for o in low]), np.array([o.crushable for o in low])]
-    low, ox, oy, orad, olevel = pool
+                 np.array([o.radius for o in low]), np.array([o.crushable for o in low]), np.array(props)]
+    low, ox, oy, orad, olevel, prop_reach = pool
     if low:
         k = np.clip(((ox - x0) * dx + (oy - y0) * dy) / seg, 0.0, 1.0) if seg else np.zeros(len(low))
-        near = np.hypot(ox - (x0 + k * dx), oy - (y0 + k * dy)) <= orad
+        reach = _crush_box_reach(b, world.own) if prop_reach.any() else 0.0
+        use_box = (prop_reach > 0) & (reach > 0)
+        near = np.hypot(ox - (x0 + k * dx), oy - (y0 + k * dy)) <= np.where(use_box, prop_reach + reach, orad)
         for j in np.nonzero(near & (olevel < b.crusher))[0]:
             o = low[j]
             # E256 engine_a1toll a: a neutral CRUSHABLE_OBSTACLE (a parked car) too (one's own INFERRED)
             if o is b or not o.alive or not (world.enemy(b.owner, o.owner) or 'CRUSHABLE_OBSTACLE' in o.kinds):
+                continue
+            if use_box[j] and not simtopple.crosses(b, o, (x0, y0), (b.x, b.y), world.own):
                 continue
             world.used.add('crush')
             o.set_last_damage(b.owner, b)

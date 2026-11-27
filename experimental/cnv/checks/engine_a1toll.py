@@ -137,6 +137,11 @@ RUNS |= {r: ((who,) * 5, PROPS[p]) for r, who, p in (('t', CONSCRIPT, 0), ('u', 
 # of the central CC_WOODFENCE01 pair west of aigar1's house: (3616, 2668.4), (3632.8, 2638.9).
 WOOD_FENCE = ('CC_WOODFENCE01', 'CC_WOODFENCE02')
 RUNS['y'] = RUNS['z'] = ((CONSCRIPT,) * 5, (None, None, None, None, PROPS[1][4]))
+# E281: isolate the three middle cars from a, one at a time at the original offsets.
+# Lane 4 repeats the near-side car with a Guardian, lane 5 keeps a's whole row as a control.
+RUNS['cr'] = ((APOC, APOC, APOC, GUARDIAN, APOC), CARS)
+# ct replaces the centred and Guardian controls with mirrored targets, leaving the other lanes in place.
+RUNS['ct'] = ((APOC,) * 5, CARS)
 HOLD = {'h': (1,), 'q': (5,), 'r': (1, 2, 3, 4, 5)}
 CLICK = {5: (240.0, False, (726, 103)), 1: (-160.0, True, (759, 505)), 2: (-80.0, True, (756, 365)),
          3: (0.0, False, (743, 311)), 4: (80.0, True, (736, 233))}
@@ -209,6 +214,11 @@ def mission(run):
         m.put(mover, 'order gun', -150.0 if lone else -START, dy, angle=0.0, role=f'mover {k}', name=f'A1T Mover {k}')
         first = next(iter(lane or {}), None)
         wall = [(first, 0.0, lane[first][1])] if lone else _wall(lane) if lane else []
+        if run in ('cr', 'ct') and k < 5:
+            near = _middle(wall)
+            i = ((0, 1, 2, 1) if run == 'cr' else (2, 1, 2, 1))[k - 1]
+            template, y, angle = wall[near[i]]
+            wall = [(template, -y if run == 'ct' and k in (1, 4) else y, angle)]
         if run in 'yz' and k in (2, 3, 4):
             y0 = {2: -17.0, 3: 0.0, 4: -34.0}[k]
             wall = [(template, y0 + 34.0 * i, 0.0) for i, template in enumerate(WOOD_FENCE)]
@@ -258,12 +268,23 @@ def check(m, run, view=False):
         s8.at(t, f'kill {k}', secs, [(act, m.role(f'car {k} {i}').name)
                                      for i in (range(len(wall)) if every else _middle(wall))])
     for label, ks in (('到时甲', (1, 2, 3)), ('到时乙', (4, 5))):
+        if run == 'ct' and ks == (4, 5):
+            continue
         counter = 'A1TTime' + ('A' if 1 in ks else 'B')
         t.counters.append((counter, label))
         for j, k in enumerate(ks):
             if k in lanes:
                 t.scripts.append(Script(f'Test - {counter} {k}', [going, ('FLAG', f'A1T At {k}', 0)],
                                         [('INCREMENT_COUNTER', 1000 ** j, counter)], once=False))
+    if run == 'ct':
+        t.counters.append(('A1TTrack', '偏移'))
+        for k in lanes:
+            py = y + _dy(k, run)
+            for bit, low, high in ((1, -64, -5), (2, -5, 5), (4, 5, 64)):
+                area = f'A1T Track {k} {bit}'
+                t.areas[area] = [(x - 35, py + low), (x + 35, py + low), (x + 35, py + high), (x - 35, py + high)]
+                t.scripts.append(Script(f'Test - {area}', [going, ('NAMED_INSIDE_AREA', m.role(f'mover {k}').name, area)],
+                                        [('INCREMENT_COUNTER', bit * 10 ** (k - 1), 'A1TTrack')]))
     if run in ('h', 'k', 'm', 'o', 'p', 'q', 'r'):   # lone movers' 穿心 says nothing: 伤 takes its line (m keeps both)
         s8.total(t, 'A1THurt', '伤', [(10 ** (k - 1), ('UNIT_HEALTH', m.role(f'car {k} 0').name, 0, pct))
                                      for k in lanes if k in LONE[run] for pct in (100, 75, 50, 25)])
@@ -274,10 +295,12 @@ def check(m, run, view=False):
     if kinds and run not in 'mopqyz':           # four lines fit: m's 到时 says when its lone cars go
         parts = []
         for k in lanes:
-            idx = [0] if k in LONE.get(run, ()) else _middle(_wall(_kinds(kinds, k)))
-            parts += [(10 ** (k - 1), ('NAMED_NOT_DESTROYED', m.role(f'car {k} {i}').name)) for i in idx]
+            single = k in LONE.get(run, ()) or (run in ('cr', 'ct') and k < 5)
+            idx = [0] if single else _middle(_wall(_kinds(kinds, k)))
+            parts += [((2 ** j if run == 'ct' else 1) * 10 ** (k - 1),
+                       ('NAMED_NOT_DESTROYED', m.role(f'car {k} {i}').name)) for j, i in enumerate(idx)]
         s8.total(t, 'A1TCars', '车存', parts)
-    s8.watch(t, RUN, .5)
+    s8.watch(t, 16.0 if run in ('cr', 'ct') else RUN, .5)
     if run == 'q':                              # engine_healcrate c's way: the clicks after the camera is there
         watch, (vx, vy) = t.bench[0][1], t.waypoints['A1T View']
         t.bench = [('bench_watch', dict(watch, seconds=2.0)), ('bench_view', dict(x=vx, y=vy, look=True))]
