@@ -999,7 +999,10 @@ bench = "aipfnone (None): all four in the team at f21; 4 4 0 at s1-5, 4 0 0 from
 proves = "simai teams: PathfindingCheckType None recruits without asking for a way"
 expect = ["win(1, 5, '步兵在家') == [4] * 5", "win(6, 89, '步兵在家') == [0] * 84",
           "all((r['步兵总数'], r['到对岸']) == (4, 0) for r in rows)"]
-mismatch = "E286: simulator 2 infantry at home at s5, bench 4 at s1-5; both have 0 at s6 (work/re/handoff-e-archive.md E286)."
+mismatch = """\
+E288: simulator has 2 at home at s5 (f75); the bench team still has 4 inside at f76 and f80. \
+The bench recruits at f21 and orders the move at f26, versus f1 and f2 in the simulator. \
+The rerun's screenshot labeled s5 was already at f100 and showed 0 at home (work/re/e288_aipfnone.md)."""
 
 # Bench readings of benches/ai/tactics/checks.py#engine_aipullback (format: experimental/cnv/readings.py; runner: tests/conformance).
 # PullbackInjured / ReverseMove / UseGatherState (bench 2026-11-09).
