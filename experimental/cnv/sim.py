@@ -65,7 +65,7 @@ sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign'
 import parts  # noqa: E402
 import engine.script.act as simact  # noqa: E402
 import engine.script.cond as simcond  # noqa: E402
-import engine.combat.host as simdamage, engine.combat.grapple as simgrapple  # noqa: E402
+from engine.combat import attach as simattach, host as simdamage, grapple as simgrapple  # noqa: E402
 import engine.objects.garrison as simgarrison  # noqa: E402
 import engine.objects.heal as simheal  # noqa: E402
 import engine.world.living as simliving  # noqa: E402
@@ -1945,7 +1945,6 @@ class Sim:
             cache[b.template] = [d.rules() for d in world.data_of(b.template, 'ToggleStatusSpecialAbilityUpdate')]
         return cache[b.template]
 
-
     def queue_projectile_hit(self, when, target, damage, attacker, weapon, centre=None):
         """simdamage.Damage.queue_projectile_hit (L3): a projectile's arrival event."""
         self._harm().queue_projectile_hit(when, target, damage, attacker, weapon, centre)
@@ -1975,12 +1974,7 @@ class Sim:
         for key, (child, parent, rule) in list(self.attachments.items()):
             if not child.alive or not parent.alive:
                 del self.attachments[key]
-                if (child.alive and 'MARCH_OF_DEATH' in rule['parent']
-                        and (parent.deleted or parent.last_by != child.name)):
-                    weapons = child.find(kernel_interfaces.WeaponSet)
-                    if weapons and weapons.clip_clock('AlliedCommandoDetonationWeapon') is not None:
-                        # E274: an interrupted C4 cannot arm the next charge. The death-source check is INFERRED.
-                        weapons.set_clip_clock('AlliedCommandoDetonationWeapon', None)
+                simattach.cancel_interrupted_c4(child, parent, rule)
                 if (rule.get('die_with_parent') and child.alive and not parent.alive and not parent.deleted
                         and parent.last_by != child.name):  # engine_attachterror a: NAMED_KILL (cause INFERRED)
                     self.world.kill(child, '附着的父对象被别人杀死')

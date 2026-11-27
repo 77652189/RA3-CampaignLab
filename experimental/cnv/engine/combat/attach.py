@@ -3,6 +3,18 @@ id); the chain is the host's (child serial -> (child, parent, rule)), which plac
 import math
 
 from engine.combat.registry import nugget, standing
+from engine.kernel import interfaces
+
+
+def cancel_interrupted_c4(child, parent, rule):
+    """E274: an interrupted charge cannot arm the next one. The death-source check is INFERRED."""
+    if (not child.alive or 'MARCH_OF_DEATH' not in rule['parent']
+            or (not parent.deleted and parent.last_by == child.name)):
+        return
+    weapons = child.find(interfaces.WeaponSet)
+    detonation = 'AlliedCommandoDetonationWeapon'
+    if weapons and weapons.clip_clock(detonation) is not None:
+        weapons.set_clip_clock(detonation, None)
 
 
 @nugget('Attach', 'effect')
