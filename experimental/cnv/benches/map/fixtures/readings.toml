@@ -55,7 +55,7 @@ id = "short_bridge_center_and_proxy_share_nonlethal_damage"
 item = "物体模块 Body/ManagedActiveBody"
 scene = {build = "engine_bridgesegment", check = "a", until = 23}
 bench = "Short gate / long gate / short center / center count: 100/100/100/32 at s2.8-s7.8, 80/100/80/32 at s8.87-s15.87, 60/100/60/32 at s16.93-s24.93. ua: gives 800/1000 at f121 and 600/1000 at f241 for the short proxy and center."
-proves = "The live scripted reference to the generated short HB_Bridge_02_Center follows proxy damage; 200 direct damage via that reference also reaches the proxy and gate. Both bridges keep their center counts (1 short, 2 long). Lethal damage and other configurations are open."
+proves = "The live scripted reference to the generated short HB_Bridge_02_Center follows proxy damage; 200 direct damage via that reference also reaches the proxy and gate. Both bridges keep their center counts (1 short, 2 long)."
 expect = ["win(4, 6, '中血') == [100] * 3", "win(11, 14, '中血') == [80] * 4", "win(19, 22, '中血') == [60] * 4", "win(19, 22, '短门') == [60] * 4", "win(4, 22, '中量') == [32] * 19"]
 
 [[reading]]
@@ -65,6 +65,15 @@ scene = {build = "engine_bridgesegment", check = "b", until = 14}
 bench = "E298 (CampBridgeSegB_mcp_1127_103304): the four type bands read 1/2/1/2 at s2.87-s16.87. At f121 one 200-damage hit to the long proxy produces ua: rows at x=2400/2550/2700/2850, y=4200, z=212.5, one row in each center band, all 800/1000 HP."
 proves = "The eastbound 700-unit HB_Bridge_02 pair has centers A/B/A/B at offsets 150/300/450/600 from the start. The replay checks generation by type and position band."
 expect = "vals(rows)[3:12] == [[1, 2, 1, 2]] * 9"
+
+[[reading]]
+bench_id = "engine_bridgesegment"
+id = "lethal_short_bridge_center_hit_breaks_proxy_and_kills_center"
+item = "物体模块 Body/ManagedActiveBody"
+scene = {build = "engine_bridgesegment", check = "c", until = 15}
+bench = "E301 (CampBridgeSegC_mcp_1127_120419): short gate / long gate / short proxy / center count read 100/100/100/32 at s2.73-s7.73, then 1/100/1/31 at s8.67-s17.73. At f121 ua: records the short proxy at 1/1000 and its center at 0/1000."
+proves = "A single 20000-point scripted hit to the short center kills it and damages the short proxy and its gatehouse in the same hit. The long gate stays full and both long A centers survive."
+expect = ["vals(rows)[4:7] == [[100, 100, 100, 32]] * 3", "vals(rows)[10:15] == [[1, 100, 1, 31]] * 5"]
 
 # Bench readings of engine_bridgefix in checks.py (format: experimental/cnv/readings.py; runner: tests/conformance).
 # The bench's watch second sN is the simulator's mission second N + 1 here: the break (timer 8.0) reads 1 from s7 on

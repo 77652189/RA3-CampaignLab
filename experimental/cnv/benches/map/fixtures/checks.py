@@ -307,25 +307,29 @@ def engine_bridgesegment():
               props={'originalOwner': m.crew('SegRef', 's4')})
         return m
 
-    def check(m):
+    def check(m, *, lethal=False):
         t = Test()
         short_center = [('NAMED_NOT_DESTROYED', ref), ('NAMED_INSIDE_AREA', ref, 'Bridge short')]
-        t.counters = [('Short gate', '短门'), ('Long gate', '长门'), ('Center read', '中血'), ('Centers', '中量')]
+        hp, label = ('Short proxy', '短桥') if lethal else ('Center read', '中血')
+        t.counters = [('Short gate', '短门'), ('Long gate', '长门'), (hp, label), ('Centers', '中量')]
         t.scripts = [
             Script('Segment start', [], [('SET_MILLISECOND_TIMER', 'Find center', 2.0),
-                                         ('SET_MILLISECOND_TIMER', 'Hit proxy', 8.0),
-                                         ('SET_MILLISECOND_TIMER', 'Hit center', 16.0)]),
+                                         ('SET_MILLISECOND_TIMER', 'Hit center', 8.0 if lethal else 16.0)]
+                   + ([] if lethal else [('SET_MILLISECOND_TIMER', 'Hit proxy', 8.0)])),
             Script('Find center', [('TIMER_EXPIRED', 'Find center')], [
                 ('SET_REF_TO_NEREST_TEAM_OF_TYPE_OWNED_BY_PLAYER', center, m.player('neutral'), m.teams['SegRef'], ref)]),
             Script('Hit proxy', [('TIMER_EXPIRED', 'Hit proxy')], [('NAMED_DAMAGE', proxy, 200)]),
-            Script('Hit center', short_center + [('TIMER_EXPIRED', 'Hit center')], [('NAMED_DAMAGE', ref, 200)]),
+            Script('Hit center', short_center + [('TIMER_EXPIRED', 'Hit center')],
+                   [('NAMED_DAMAGE', ref, 20000 if lethal else 200)]),
             Script('Read gates and reset', [], [
                 ('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', proxy + '_GateHouse1', 'Short gate'),
                 ('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', 'Bridge long 0_GateHouse1', 'Long gate'),
-                ('SET_COUNTER', 'Center read', -1), ('SET_COUNTER', 'Centers', 0)], once=False),
-            Script('Read short center', short_center,
-                   [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', ref, 'Center read')], once=False),
+                ('SET_COUNTER', hp, -1), ('SET_COUNTER', 'Centers', 0)], once=False),
+            Script('Read short health', [] if lethal else short_center,
+                   [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', proxy if lethal else ref, hp)], once=False),
         ]
+        if lethal:
+            del t.scripts[2]  # the center is the sole damage input in this check
         for role, weight in (('short', 1), ('long', 10)):
             for count in range(4):
                 t.scripts.append(Script(f'Count {role} center {count}', [
@@ -335,8 +339,16 @@ def engine_bridgesegment():
         t.expect = [(label, start, '==', health, end) for label in ('短门', '中血')
                     for start, end, health in ((3, 5, 100), (11, 13, 80), (19, 21, 60))]
         t.expect += [('长门', 3, '==', 100, 21), ('中量', 3, '==', 32, 21)]
-        t.bench = [('bench_watch', dict(seconds=22, every=1, sheet=False, lines=4))]
+        if lethal:
+            t.expect = [('长门', 4, '==', 100, 14), ('短门', 4, '==', 100, 6),
+                        ('中量', 4, '==', 32, 6), ('短桥', 4, '==', 100, 6)]
+        t.bench = [('bench_watch', dict(seconds=15 if lethal else 22, every=1,
+                                       sheet=False, lines=len(t.counters)))]
         return t
+
+    def lethal_center(m):
+        """E301: one lethal hit to the named short center, with the long bridge untouched."""
+        return check(m, lethal=True)
 
     def long_centers(m):
         """E298: one long-proxy hit identifies the positions; the bands identify the types."""
@@ -364,7 +376,7 @@ def engine_bridgesegment():
         return t
 
     return dict(MISSION={'engine_bridgesegment': mission},
-                CHECKS={'engine_bridgesegment': {'a': check, 'b': long_centers}})
+                CHECKS={'engine_bridgesegment': {'a': check, 'b': long_centers, 'c': lethal_center}})
 
 
 def engine_bridgefix():

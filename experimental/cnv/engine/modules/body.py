@@ -159,9 +159,9 @@ class ManagerBody(Body):
 
 @factory.module('ManagedActiveBody')
 class ManagedActiveBody(Body):
-    """The E297 short center shares the proxy's percent and forwards nonlethal damage.
+    """The measured short center shares the proxy's percent and forwards damage (E297/E301).
 
-    Using the same forwarding for other damage sources is INFERRED. Lethal forwarding remains a gap.
+    A lethal script hit also kills the center. The exact threshold and use for other damage sources are INFERRED.
     """
     manager = None
 
@@ -169,10 +169,12 @@ class ManagedActiveBody(Body):
         return self.manager.percent() if self.manager else super().percent()
 
     def attempt_damage(self, amount):
-        if self.manager and 0 < amount < self.manager.health():
+        if self.manager and amount > 0:
+            lethal = amount >= self.manager.health()
             self.manager.attempt_damage(amount)
-        else:
-            super().attempt_damage(amount)
+            if not lethal:
+                return
+        super().attempt_damage(amount)
 
 
 @factory.module('ManagedImmortalBody')

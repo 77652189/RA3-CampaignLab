@@ -6,14 +6,15 @@ bridge start (object flags 16) followed by its end (32) gets its BridgeBuilder's
 (else GateHouse) at the end, named '<start name>_GateHouse1' / '2', owned as the start; their health is the proxy's
 (ManagedImmortalBody.manager: the start's name's proxy -- the end's when the end has the same name, as j07, the one a
 script's NAMED_DAMAGE of that name hits). Bench run 2 (CampBridgeFixA_mcp_1122_202537): the gatehouse reads 100, 1
-after the proxy took 20000, 100 again once an engineer went in (order.capture_due); it keeps its owner. Not modelled:
-lethal center damage, pieces outside the measured centers, and broken-deck pathing."""
+after the proxy took 20000, 100 again once an engineer went in (order.capture_due); it keeps its owner. E301:
+20000 script damage to the short center kills it and leaves proxy and gatehouse at 1%. Pieces outside the measured
+centers and broken-deck pathing remain gaps."""
 import engine.data.units as simunits
 from engine.kernel import interfaces
 from engine.ports import templates
 from engine.world.handle import CIV, free_key
 
-GAP = 'HB_Bridge_02整体代理伤害、桥头堡血量与修桥、向东270/700桥的中段落点和270桥非致死脚本伤害已量；有效HP/内部下限映射INFERRED，其他桥段、致死和断桥通行仍gap'
+GAP = 'HB_Bridge_02整体代理伤害、桥头堡血量与修桥、向东270/700桥的中段落点和270桥中段脚本伤害已量；有效HP/内部下限映射和精确致死边界INFERRED，其他桥段及断桥通行仍gap'
 
 
 def proxy_health(world, template):
