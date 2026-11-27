@@ -519,9 +519,9 @@ bench = "aigar1: 步兵数 4 to s17, 3 from s18 to s75 -- one dies about the doo
 proves = "simai garrisons with the sim's fire: one of the four is shot on the way in"
 expect = "rows[-1]['步兵数'] == 3"
 mismatch = """\
-sim 步兵数 2 at s75 (house the AI's from s19), bench 3: niagara's road fence (CC_WOODFENCE01/02, 75-170 west of the \
-house, there on 11-09 too, holding infantry as engine_a1toll w) sends the two west of it round its south end into the \
-plant guards' fire -- the sim's path and fire, not the garrison rule"""
+sim 步兵数 2 at s75 (house the AI's from s19), bench 3. The sim sends the two west of Niagara's road fence round the south \
+end into the plant guards' fire. On engine_a1toll z the bench crosses a staggered seam from this row and the sim goes \
+round; engine_a1toll y reverses that difference for a straight pair. The routing gap remains open (work/re/handoff-e-archive.md E269)."""
 
 # Bench readings of benches/ai/tactics/checks.py#engine_aihome (format: experimental/cnv/readings.py; runner: tests/conformance).
 # DefaultTacticHomeBaseCriteria (bench 2026-11-14).

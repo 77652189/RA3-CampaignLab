@@ -22,8 +22,8 @@ def test_garrison_distance_replays_recorded_near_far_and_disabled(lib, monkeypat
         if build == 'aigar1':
             assert max(owned) == 1, (build, owned)
             assert owned[-1] == 1
-            # bench three in; the sim two: niagara's road fence (CC_WOODFENCE, there on 11-09 too, holds infantry
-            # as engine_a1toll w) sends the two west of it round its south end into the plant guards' fire
+            # The sim sends two members around the fence into the guards' fire; its staggered seam differs from
+            # the bench (engine_a1toll z). Keep the observed three-survivor target in the conformance mismatch.
             assert len(entries) >= 2, entries
         else:
             assert max(owned) == 0, (build, owned)

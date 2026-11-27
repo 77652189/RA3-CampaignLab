@@ -132,6 +132,11 @@ PROPS = (({'HB_Tree07': (3.4, 0.0)}, {'CC_BUSH02': (5.0, 0.0)}, {'TH_JAPANFENCE0
           {'TH_LAMPPOST04': (5.0, 0.0)}, {'ST_SOVIETFENCE01': (2.8, math.pi / 2)}))
 RUNS |= {r: ((who,) * 5, PROPS[p]) for r, who, p in (('t', CONSCRIPT, 0), ('u', ZERO, 0), ('w', CONSCRIPT, 1),
                                                      ('x', ZERO, 1))}
+# E269: open ground, the seam of two Niagara fence pieces (34 apart), each piece head-on,
+# and w's Soviet fence wall as a blocking control. z repeats with the actual stagger and grid alignment
+# of the central CC_WOODFENCE01 pair west of aigar1's house: (3616, 2668.4), (3632.8, 2638.9).
+WOOD_FENCE = ('CC_WOODFENCE01', 'CC_WOODFENCE02')
+RUNS['y'] = RUNS['z'] = ((CONSCRIPT,) * 5, (None, None, None, None, PROPS[1][4]))
 HOLD = {'h': (1,), 'q': (5,), 'r': (1, 2, 3, 4, 5)}
 CLICK = {5: (240.0, False, (726, 103)), 1: (-160.0, True, (759, 505)), 2: (-80.0, True, (756, 365)),
          3: (0.0, False, (743, 311)), 4: (80.0, True, (736, 233))}
@@ -142,7 +147,7 @@ def _kinds(kinds, k):
 
 
 def _dy(k, run=''):
-    return 1600.0 + CLICK[k][0] if run == 'q' else 600.0 + 500.0 * (k - 1)
+    return 1600.0 + CLICK[k][0] if run == 'q' else 600.0 + 500.0 * (k - 1) - 6.35 * (run == 'z' and k == 2)
 
 
 def _wall(kinds):
@@ -203,10 +208,16 @@ def mission(run):
         lone, lane, dy = k in LONE.get(run, ()), _kinds(kinds, k), _dy(k, run)
         m.put(mover, 'order gun', -150.0 if lone else -START, dy, angle=0.0, role=f'mover {k}', name=f'A1T Mover {k}')
         first = next(iter(lane or {}), None)
-        wall = [(first, 0.0, lane[first][1])] if lone else _wall(lane) if kinds else []
+        wall = [(first, 0.0, lane[first][1])] if lone else _wall(lane) if lane else []
+        if run in 'yz' and k in (2, 3, 4):
+            y0 = {2: -17.0, 3: 0.0, 4: -34.0}[k]
+            wall = [(template, y0 + 34.0 * i, 0.0) for i, template in enumerate(WOOD_FENCE)]
         side = SIDES.get(run, {}).get(k, 'neutral')
         for i, (t, y, ang) in enumerate(wall):
-            m.put(t, 'order gun', 0.0, dy + (0.0 if lone else y), angle=ang, side=side, role=f'car {k} {i}',
+            dx = 0.0
+            if run == 'z' and k == 2:
+                t, dx, y = WOOD_FENCE[0], (-4.0, 12.8)[i], (14.75, -14.75)[i]
+            m.put(t, 'order gun', dx, dy + (0.0 if lone else y), angle=ang, side=side, role=f'car {k} {i}',
                   name=f'A1T Car {k} {i}')
     return m
 
@@ -224,15 +235,16 @@ def check(m, run, view=False):
     go, going = [('SET_FLAG', 'A1T Going', 1)], ('FLAG', 'A1T Going', 1)
     for k in lanes:
         name = m.role(f'mover {k}').name
-        t.areas[f'A1T Mid {k}'] = square(x, y + _dy(k, run), 50.0)
+        mid_x = x + 4.4 if run == 'z' and k == 2 else x
+        t.areas[f'A1T Mid {k}'] = square(mid_x, y + _dy(k, run), 8.0 if run in 'yz' else 50.0)
         if k in LONE.get(run, ()):
             if (run, k) not in IDLE:
                 go.append(('NAMED_ATTACK_NAMED', name, m.role(f'car {k} 0').name))
             t.scripts.append(Script(f'Test - A1T at {k}', [('NAMED_DESTROYED', m.role(f'car {k} 0').name)],
                                     [('SET_FLAG', f'A1T At {k}', 1)]))
             continue
-        t.waypoints[f'A1T Goal {k}'] = (x + START, y + _dy(k))
-        t.areas[f'A1T Goal {k}'] = square(x + START, y + _dy(k), 40.0)
+        t.waypoints[f'A1T Goal {k}'] = (x + START, y + _dy(k, run))
+        t.areas[f'A1T Goal {k}'] = square(x + START, y + _dy(k, run), 40.0)
         go.append(('MOVE_NAMED_UNIT_TO', name, f'A1T Goal {k}'))
         t.scripts.append(Script(f'Test - A1T at {k}', [('NAMED_INSIDE_AREA', name, f'A1T Goal {k}')],
                                 [('SET_FLAG', f'A1T At {k}', 1)]))
@@ -259,7 +271,7 @@ def check(m, run, view=False):
         t.counters.append(('A1TMid', '穿心'))
     t.scripts += [Script(f'Test - A1T mid {k}', [going, ('NAMED_INSIDE_AREA', m.role(f'mover {k}').name, f'A1T Mid {k}')],
                          [('INCREMENT_COUNTER', 10 ** (k - 1), 'A1TMid')]) for k in lanes]
-    if kinds and run not in 'mopq':             # four lines fit: m's 到时 says when its lone cars go
+    if kinds and run not in 'mopqyz':           # four lines fit: m's 到时 says when its lone cars go
         parts = []
         for k in lanes:
             idx = [0] if k in LONE.get(run, ()) else _middle(_wall(_kinds(kinds, k)))
