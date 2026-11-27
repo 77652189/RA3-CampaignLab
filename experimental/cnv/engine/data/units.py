@@ -631,15 +631,15 @@ def _weapons(texts, base_table=None):
                 got['ring'] = rings[0]
 
             for h, inner in _blocks(bare, 'LeechPercentMaxHealthDamageNugget'):
-                if ((inner or '').strip() or any(d for d, _ in dmg) or any(war)
+                if ((inner or '').strip() or any(d for d, *_ in dmg) or any(war)
                         or _num(_attr(h, 'Radius', '0'), float('nan')) != 0
                         or _secs(_attr(h, 'DelayTimeSeconds', '0s'))):
                     unsupported.append('LeechPercentMaxHealthDamageNugget')
                 else:
-                    dmg.append((_num(_attr(h, 'Damage')), _attr(h, 'DamageType', 'UNDEFINED')))
+                    dmg.append((_num(_attr(h, 'Damage')), _attr(h, 'DamageType', 'UNDEFINED'), _attr(h, 'DeathType')))
                     got['leech_percent'] = _num(_attr(h, 'PercentMaxHealthToTake', '100%').rstrip('%')) / 100
             for h, inner in _blocks(bare, 'LeechHealthDamageNugget'):
-                if ((inner or '').strip() or any(d for d, _ in dmg) or any(war)
+                if ((inner or '').strip() or any(d for d, *_ in dmg) or any(war)
                         or _num(_attr(h, 'Radius', '0'), float('nan')) != 0
                         or _secs(_attr(h, 'DelayTimeSeconds', '0s'))):
                     unsupported.append('LeechHealthDamageNugget')
@@ -647,7 +647,7 @@ def _weapons(texts, base_table=None):
                     # armour for its DamageType, filter or not (engine line B round 226, read): the Hammer's beam
                     got.setdefault('ai_damage', []).append((_num(_attr(h, 'Damage')), _attr(h, 'DamageType', 'UNDEFINED')))
                 else:
-                    dmg.append((_num(_attr(h, 'Damage')), _attr(h, 'DamageType', 'UNDEFINED')))
+                    dmg.append((_num(_attr(h, 'Damage')), _attr(h, 'DamageType', 'UNDEFINED'), _attr(h, 'DeathType')))
                     got['leech_health'] = _num(_attr(h, 'PercentDamageToHeal', '100%').rstrip('%')) / 100
             special_powers = []
             for h, inner in _blocks(bare, 'SpecialPowerNugget'):

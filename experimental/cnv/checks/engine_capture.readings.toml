@@ -1,0 +1,11 @@
+# Bench readings of checks/engine_capture.py#engine_capoff (format: experimental/cnv/readings.py).
+
+[[reading]]
+id = "a_building_capture_is_the_same_without_the_capture_update"
+scene = {build = "engine_capoff", check = "a", until = 34}
+bench = "CampCapOffA_mcp_1127_082109 (CNVCapPlant): s1-s11 10050 x4, s12-s37 1050 x4 (both engineers, pressed or entered); CampCapOffA_mcp_1127_081833 on the retail plant: CNVE151Off refused by its CanEnterFilter (names the three engineers), 10050 throughout"
+proves = """CaptureSpecialAbilityUpdate is no part of a building capture: the retail AlliedEngineer and one without \
+the update (CNVE151Off) take a half-health neutral plant alike, pressed (Command_CaptureBuilding) or entered \
+(NAMED_GARRISON_SPECIFIC_BUILDING); its power's filter takes CAPTURABLE alone (CaptureFlag / ControlPoint), which \
+no retail mission and none of our nine places"""
+expect = ["all(v == [10050] * 4 for v in vals(rows[:9]))", "all(v == [1050] * 4 for v in vals(rows[29:34]))"]

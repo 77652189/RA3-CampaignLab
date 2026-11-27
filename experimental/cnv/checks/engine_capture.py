@@ -14,7 +14,7 @@ unchanged. This is an input/qualification gap, not capture-effect coverage;
 no accepted cast or per-stage observation was available. Paused pending that
 evidence; see work/re/e151_capture.md. Do not repeat the same input blindly.
 """
-from parts import NOT, Script, Test
+from parts import NOT, Script, Test, counted
 
 
 def check(m):
@@ -51,4 +51,33 @@ def check(m):
     return t
 
 
-CHECKS = {'engine_capture': {'a': check}}
+# A403: is the update in a building capture? Each lane's input; its engineer: missions/capture_special.OFF.
+HOW = {'base': 'press', 'high': 'press', 'order': 'enter', 'removed': 'enter'}
+
+
+def check_off(m):
+    """A403: CAPTURABLE (the update's only target, its power's filter) is CaptureFlag / ControlPoint alone, which no
+    retail mission and none of our nine places; a building capture is EngineerContain's. Each lane's counter: the
+    plant's health + 1000 owned by p1 + 10000 engineer alive; pressed (Command_CaptureBuilding) or entered
+    (NAMED_GARRISON_SPECIFIC_BUILDING) at s10. Bench CampCapOffA_mcp_1127_082109 PASS: 10050 to s11, 1050 from s12."""
+    t = Test()
+    press = {'press': lambda man, plant: ('NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED', man, 'Command_CaptureBuilding', plant),
+             'enter': lambda man, plant: ('NAMED_GARRISON_SPECIFIC_BUILDING', man, plant)}
+    t.scripts = [Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1')),
+                                             ('SET_MILLISECOND_TIMER', 'Engineer enter', 10.0),
+                                             *[('UNIT_SET_HEALTH', 'Plant ' + lane, 50.0) for lane in HOW]]),
+                 Script('Test - enter', [('TIMER_EXPIRED', 'Engineer enter')],
+                        [press[how]('Man ' + lane, 'Plant ' + lane) for lane, how in HOW.items()])]
+    for lane in HOW:
+        c = 'Cap ' + lane
+        counted(c, lane, t, health='Plant ' + lane)
+        t.scripts += [Script('Test - owner ' + lane, [('NAMED_OWNED_BY_PLAYER', m.player('p1'), 'Plant ' + lane)],
+                             [('INCREMENT_COUNTER', 1000, c)], once=False),
+                      Script('Test - alive ' + lane, [('NAMED_NOT_DESTROYED', 'Man ' + lane)],
+                             [('INCREMENT_COUNTER', 10000, c)], once=False)]
+    t.expect = [(lane, 30, '==', 1050, 34) for lane in HOW]
+    t.bench = [('bench_watch', dict(seconds=36, every=1, sheet=False, lines=4))]
+    return t
+
+
+CHECKS = {'engine_capture': {'a': check}, 'engine_capoff': {'a': check_off}}
