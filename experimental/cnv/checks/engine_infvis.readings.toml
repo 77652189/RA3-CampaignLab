@@ -12,3 +12,19 @@ expect = [
     "matches(sample(19, 19), [1100, 11100, 1])",
 ]
 mismatch = "E196 Japan s18 visibility: bench 0, simulator 1; the simulator reveals the marker early."
+
+[[reading]]
+id = "spy_vision_three_yards_entry_passes"
+scene = {build = "engine_infvis3", check = "a", until = 41}
+bench = "A406 CampInfVis3 (head 64219fd4): entries 187184184 from s11 -- Allied and Soviet spies gone at pass 184, Japan at 187"
+proves = "InfiltratorContain VISION: the entry clock of three spies ordered into Allied / Soviet / Japan yards together"
+expect = "rows[-1]['entries'] == 187184184"
+mismatch = "simulator 182182182 (every spy at pass 182), bench 187184184"
+
+[[reading]]
+id = "spy_vision_three_yards_only_the_last_entered_reveals"
+scene = {build = "engine_infvis3", check = "a", until = 41}
+bench = "A406 CampInfVis3: japan stops at 167 from s22 (its near marker seen 167 passes after its spy is gone); allied / soviet still counting at s41 (465): not seen in 30 s"
+proves = "InfiltratorContain VISION: with three yards of one owner entered together, only the last entered (Japan) reveals its near marker"
+expect = "win(22, 40, 'japan') == [167] * 19 and rows[-1]['allied'] >= 440 and rows[-1]['soviet'] >= 440"
+mismatch = "simulator: all three seen 74 passes after entry (allied / soviet / japan 74); bench japan 167, allied / soviet never in 30 s"

@@ -11,7 +11,7 @@ Bench 2026-11-11: s1-s10 11100/11100/0; s11-s15 1100/11100/0;
 s16-s37 1100/11100/1. Only local near marker is discovered. Five-second
 activation delay is a sampled fit (INFERRED), not a measured engine mechanism.
 """
-from parts import Script, Test, counted
+from parts import NOT, Script, Test, counted
 
 
 def check(m):
@@ -79,4 +79,35 @@ def check_japan(m):
     return check(m)
 
 
-CHECKS = {'engine_infvis': {'a': check, 'b': check_soviet, 'c': check_japan}}
+def trio(m):
+    """A406: the three yards in one run, counted per script pass (not per captured second).
+
+    Rows allied / soviet / japan: passes from the spy's disappearance to the first pass its near marker is
+    discovered; entries: the passes before each disappearance, allied + 1000 soviet + 1000000 japan.
+    Prediction (the simulator: five seconds after entry for every yard): one delay for all three. a/b/c's 5 / 7 / 8 s
+    after s11 came from three runs, so they do not tell a host difference from a run-to-run phase.
+    """
+    t = Test()
+    lanes = ('allied', 'soviet', 'japan')
+    t.counters = [('Vision3 ' + k, k) for k in lanes] + [('Vision3 entries', 'entries')]
+    t.scripts = [Script('Vision3 start', [], [('SET_MILLISECOND_TIMER', 'Vision3 enter', 10.0)] + [
+        ('UNIT_CHANGE_OBJECT_STATUS', obj.name, 'NO_ATTACK', 1) for obj in m.objects]),
+        Script('Vision3 enter', [('TIMER_EXPIRED', 'Vision3 enter')], [
+            ('NAMED_GARRISON_SPECIFIC_BUILDING', m.role(k + ' spy').name, m.role(k).name) for k in lanes])]
+    for k, unit in zip(lanes, (1, 1000, 1000000)):
+        gone, seen = 'Vision3 gone ' + k, 'Vision3 seen ' + k
+        t.scripts += [
+            Script('Vision3 count ' + k, [('FLAG', gone, 0)],
+                   [('INCREMENT_COUNTER', unit, 'Vision3 entries')], once=False),
+            Script('Vision3 latch ' + k, [('NAMED_NOT_DESTROYED', m.role(k + ' spy').name, NOT)],
+                   [('SET_FLAG', gone, 1)]),
+            Script('Vision3 see ' + k, [('NAMED_DISCOVERED', m.player('p1'), m.role(k + ' near').name)],
+                   [('SET_FLAG', seen, 1)]),
+            Script('Vision3 wait ' + k, [('FLAG', gone, 1), ('FLAG', seen, 0)],
+                   [('INCREMENT_COUNTER', 1, 'Vision3 ' + k)], once=False)]
+    t.expect = [(k, 1, 'ever>=', 1, 40) for k in lanes]
+    t.bench = [('bench_watch', dict(seconds=40, every=1, sheet=False, lines=4))]
+    return t
+
+
+CHECKS = {'engine_infvis': {'a': check, 'b': check_soviet, 'c': check_japan}, 'engine_infvis3': {'a': trio}}

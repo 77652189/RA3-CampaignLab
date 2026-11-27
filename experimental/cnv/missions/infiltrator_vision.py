@@ -1,5 +1,5 @@
 """Minimal retail VISION scene; all placement belongs to the mission layer."""
-from maps import probe_range
+from maps import infiltrator_batch, probe_range
 from parts import Mission
 
 
@@ -18,4 +18,16 @@ def mission():
     return m
 
 
-MISSION = {'engine_infvis': mission}
+def trio():
+    """Allied / Soviet / Japan enemy yards 2000 apart on one map, a spy 180 south and a same-owner marker 700 north
+    of each (2000+ from the other yards: outside their 1000 shroud clearing)."""
+    m = Mission(name='CampInfVis3', map=infiltrator_batch, units=[])
+    for k, side in enumerate(('Allied', 'Soviet', 'Japan')):
+        lane = side.lower()
+        m.put(side + 'ConstructionYard', 'air', 2000 * k, 0, side='s1', role=lane, name='Vision3 yard ' + lane)
+        m.put('AlliedInfiltrationInfantry', 'air', 2000 * k, -180, role=lane + ' spy', name='Vision3 spy ' + lane)
+        m.put('AlliedEngineer', 'air', 2000 * k, 700, side='s1', role=lane + ' near', name='Vision3 near ' + lane)
+    return m
+
+
+MISSION = {'engine_infvis': mission, 'engine_infvis3': trio}
