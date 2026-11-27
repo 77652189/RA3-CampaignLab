@@ -75,6 +75,23 @@ bench = "E301 (CampBridgeSegC_mcp_1127_120419): short gate / long gate / short p
 proves = "A single 20000-point scripted hit to the short center kills it and damages the short proxy and its gatehouse in the same hit. The long gate stays full and both long A centers survive."
 expect = ["vals(rows)[4:7] == [[100, 100, 100, 32]] * 3", "vals(rows)[10:15] == [[1, 100, 1, 31]] * 5"]
 
+[[reading]]
+bench_id = "engine_bridgesegment"
+id = "short_bridge_crossing_controls_gate_health_and_runner_survival"
+scenes = {whole = {build = "engine_bridgesegment", check = "d", until = 25}, broken = {build = "engine_bridgesegment", check = "e", until = 25}}
+bench = "E302: short gate and runner alive in the stable window are 100/1 with the intact bridge and 1/1 after the center hit."
+proves = "The center hit breaks the gate with the same living ground unit available for the move in both checks."
+expect = ["[v[:2] for v in vals(whole)[18:23]] == [[100, 1]] * 5", "[v[:2] for v in vals(broken)[18:23]] == [[1, 1]] * 5"]
+
+[[reading]]
+bench_id = "engine_bridgesegment"
+id = "short_bridge_crossing_stops_after_lethal_center_hit"
+scenes = {whole = {build = "engine_bridgesegment", check = "d", until = 25}, broken = {build = "engine_bridgesegment", check = "e", until = 25}}
+bench = "E302 (CampBridgeSegD_mcp_1127_124116 / CampBridgeSegE_mcp_1127_124328): far shore / deck frames 1/21 at s17.0–28.07 intact, 0/0 at s8.73–27.93 after the lethal center hit."
+proves = "On the 270-unit west-to-island HB_Bridge_02, only the intact bridge lets the ground infantry traverse the deck and reach the island."
+expect = ["[v[2] == 1 and v[3] > 0 for v in vals(whole)[18:23]] == [True] * 5", "[v[2:] for v in vals(broken)[18:23]] == [[0, 0]] * 5"]
+mismatch = "Sim far shore/deck frames 0/0 in both scenes; bench 1/21 intact and 0/0 broken. See work/re/e302_bridge_crossing.md."
+
 # Bench readings of engine_bridgefix in checks.py (format: experimental/cnv/readings.py; runner: tests/conformance).
 # The bench's watch second sN is the simulator's mission second N + 1 here: the break (timer 8.0) reads 1 from s7 on
 # the bench, from 8 in the run; the press is timer 14.0.
