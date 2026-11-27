@@ -608,7 +608,7 @@ expect = "list(zip(win(40, 44, '陆路'), win(40, 44, '两栖'))) == [(1, 1)] * 
 [[reading]]
 bench_id = "engine_aiplacement"
 id = "the_egg_unpacks_at_compactness_times_distance"
-item = ["AI 其他/BuildingPlacementDistance.Distance", "AI 战术/Tactic.Tactic=ExactExpansion"]
+item = ["AI 其他/BuildingPlacementDistance.Distance", "AI 战术/Tactic.Tactic=ExactExpansion", "AI 目标/AITargetingHeuristic.HeuristicType=UnpackBuildingPlacement"]
 scene = {build = "aiplb600", check = "b", until = 60.0}
 each = [{build = "aiplb600", near = 1}, {build = "aiplb1500", near = 0}]
 bench = """\
