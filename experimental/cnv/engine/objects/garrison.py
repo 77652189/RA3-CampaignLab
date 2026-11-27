@@ -125,9 +125,10 @@ def _at(g, seat):
 
 
 class Garrisons:
-    def __init__(self, world, move, templates, kill, credit):
+    def __init__(self, world, move, templates, kill, credit, relation):
         self.world, self.move = world, move     # WORLD_API only; L5's order_move
         self.templates, self.kill, self.credit = templates, kill, credit
+        self.relation = relation
         self.boxes = {}             # host serial (Thing.serial) -> its contain module (interfaces.Contain: the
                                     # passengers, the owner before, the listener's upgrades), in the order first put
                                     # into (the cell's order); by the thing, not its name: a thing made under a taken
@@ -232,9 +233,14 @@ class Garrisons:
         return False                        # one of them dead: not sent (the port answers so: review 11-19 k #4)
 
     def recycle_refund(self, u, g):
-        """E308: the named enter order for a retail Hammer and its owner's Soviet Crane."""
+        """E308/E309: the named enter order for a retail Hammer and a friendly Soviet Crane."""
         if (u.template != 'SovietAntiVehicleVehicleTech1' or g.template != 'SovietCrane'
-                or u.owner != g.owner or 'AIRBORNE_TARGET' in (set(u.status) | u.script_status)):
+                or 'AIRBORNE_TARGET' in (set(u.status) | u.script_status)):
+            return None
+        # Only the mutual alliance was measured. One-way relations are still a gap.
+        if u.owner != g.owner and not all(
+                self.relation(pair) == 'Friend'
+                for pair in ((g.owner, u.owner), (u.owner, g.owner))):
             return None
 
         def read(xml):
@@ -535,8 +541,9 @@ class Garrisons:
                 refund = self.recycle_refund(u, g)
                 if refund is not None:
                     # INFERRED: use the garrison reach and ordinary death dispatch.
+                    owner = u.owner
                     self.kill(u, '起重机回收')
-                    self.credit(g.owner, refund)
+                    self.credit(owner, refund)
             else:
                 self.put(u, g)
         for box in list(self.boxes.values()):

@@ -8,3 +8,14 @@ expect = """
 and any(75 <= r['Frame'] <= 90 and (r['Alive'], r['Approach'], r['Wallet']) == (3, 1, 0) for r in rows)
 and (rows[-1]['Frame'], rows[-1]['Alive'], rows[-1]['Approach'], rows[-1]['Wallet']) == (225, 2, 1, 750))
 """
+
+[[reading]]
+id = "a_named_enter_order_at_an_allied_crane_credits_the_hammer_owner"
+scene = {build = "engine_cranerecycleally", check = "a", until = 15.5}
+bench = "E309 CampRecycleAlA_mcp_1127_154021: Frame / State / Wallet / Ally Wallet f45–68 70/0/0, f76–90 75/0/0, f98–225 25/1500/0"
+proves = "Both the same-owner Hammer and the Hammer sent to a mutual ally's crane move into approach range, are lost, and credit 750 each to the tank owner. The module-off control never approaches and survives. State is ten times the survival bits plus the latched approach bits (same owner 1, module off 2, ally 4)."
+expect = """
+(any(45 <= r['Frame'] <= 68 and (r['State'], r['Wallet'], r['Ally Wallet']) == (70, 0, 0) for r in rows)
+and any(76 <= r['Frame'] <= 90 and (r['State'], r['Wallet'], r['Ally Wallet']) == (75, 0, 0) for r in rows)
+and (rows[-1]['Frame'], rows[-1]['State'], rows[-1]['Wallet'], rows[-1]['Ally Wallet']) == (225, 25, 1500, 0))
+"""
