@@ -14,8 +14,8 @@ Counters, every one counted from 'Test Go' (frame 0 = the cast); Near = the squa
   帧数   frames since Go
   a: 第二行 G1 in Near + 1000 x G2 in Near; 第三行 the Peacekeeper in Near + 1000 x the foe in Near;
      第四行 the far one in Near + 1000 x the trooper in the square 30 round his start
-  b: 第二行 G1 in E (the square 50 round him + (90, 0)) + 1000 x in N (+ (0, 90)); 第三行 in W + 1000 x in S;
-     第四行 G1 in the square 35 round him + 1000 x in Near
+  b: G1 in the BOXES round him (half sides; quadrants NE NW SW SE, E40 = 40 east, R45 R60 R100 = squares round him),
+     each row three of them at steps 1, 100, 10000 (B_ROWS)
 """
 from maps import island
 from parts import Mission, Script, Test, square
@@ -26,6 +26,9 @@ TANK, INF = 'AlliedAntiVehicleVehicleTech1', 'AlliedAntiInfantryInfantry'
 SITE, P = 'west field', (450.0, 0.0)
 CREW = {'g1': (TANK, 0.0, 0.0, 'p1'), 'g2': (TANK, 0.0, 100.0, 'p1'), 'inf': (INF, -100.0, 0.0, 'p1'),
         'foe': (TANK, 100.0, 0.0, 's1'), 'far': (TANK, 0.0, -200.0, 'p1')}     # from P
+BOXES = {'NE': (75, 75, 75), 'NW': (-75, 75, 75), 'SW': (-75, -75, 75), 'SE': (75, -75, 75),    # (dx, dy, half side)
+         'E40': (40, 0, 12), 'R45': (0, 0, 45), 'R60': (0, 0, 60), 'R100': (0, 0, 100)}
+B_ROWS = {2: ('NE', 'NW', 'SW'), 3: ('SE', 'E40', 'R45'), 4: ('R60', 'R100', 'Near')}   # steps 1, 100, 10000
 
 
 def _n(part):
@@ -45,10 +48,9 @@ def pull_test(m, which='a'):
     t = Test()
     here = m.site(SITE)[:2]
     t.waypoints['Test Pull At'] = m.site(SITE, *P)[:2]
-    t.areas['Test Near'], t.areas['Test Start'], t.areas['Test In'] = \
-        square(*here, 150.0), square(*here, 30.0), square(*here, 35.0)
-    for k, (dx, dy) in {'E': (90, 0), 'N': (0, 90), 'W': (-90, 0), 'S': (0, -90)}.items():
-        t.areas[f'Test {k}'] = square(here[0] + dx, here[1] + dy, 50.0)
+    t.areas['Test Near'], t.areas['Test Start'] = square(*here, 150.0), square(*here, 30.0)
+    for k, (dx, dy, r) in BOXES.items():
+        t.areas[f'Test {k}'] = square(here[0] + dx, here[1] + dy, r)
     names = {k: _n(k) for k in CREW}
     me = _n('beacon')
     start = [('MAP_REVEAL_ALL_PERM', m.player('p1')), ('SET_MILLISECOND_TIMER', 'Test Go', 1.0)]
@@ -68,9 +70,7 @@ def pull_test(m, which='a'):
     rows = ({2: [(inside('g1', 'Near'), 1), (inside('g2', 'Near'), 1000)],
              3: [(inside('inf', 'Near'), 1), (inside('foe', 'Near'), 1000)],
              4: [(inside('far', 'Near'), 1), (inside('beacon', 'Start'), 1000)]} if which == 'a' else
-            {2: [(inside('g1', 'E'), 1), (inside('g1', 'N'), 1000)],
-             3: [(inside('g1', 'W'), 1), (inside('g1', 'S'), 1000)],
-             4: [(inside('g1', 'In'), 1), (inside('g1', 'Near'), 1000)]})
+            {k: [(inside('g1', a), 100 ** j) for j, a in enumerate(row)] for k, row in B_ROWS.items()})
     for k, label in ((2, '第二行'), (3, '第三行'), (4, '第四行')):
         t.counters.append((f'CNV_BcnPull_Row{k}', label))
         for j, (cond, step) in enumerate(rows[k]):
