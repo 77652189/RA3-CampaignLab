@@ -347,10 +347,14 @@ class _Finish:
 
         endpoints(treatment.get('before'))
         sites = tuple(stations()) if treatment.get('sample_first') else stations()
+        cycle = treatment['cycle'] if 'cycle' in treatment else (treatment['node'],)
+        phase = rng.randrange(len(cycle)) if len(cycle) > 1 else 0
         for index, (start, along) in enumerate(sites):
             # Sample all depths before emitting any of the clusters at this station.
             depths = [_sample(depth, rng) * CELL for depth in treatment.get('depths', (0,))]
-            node = treatment.get('first', treatment['node']) if index == 0 else treatment['node']
+            node = cycle[(index + phase) % len(cycle)]
+            if index == 0:
+                node = treatment.get('first') or node
             for layer, depth in enumerate(depths):
                 at = _offset(a, angle, along, depth + kerb)
                 key = treatment['slot'].format(a=a, start=start, layer=layer) if 'slot' in treatment else name
@@ -372,6 +376,7 @@ class _Finish:
                     for group in self.groups[self.kits[block]]:
                         anchor = group['anchor'].casefold()
                         if (building and anchor != building.template.casefold() or
+                                'id' in selection and selection['id'] != group.get('id') or
                                 'use' in selection and group['use'] != selection['use'] or
                                 'anchor_words' in selection and not any(w in anchor for w in selection['anchor_words'])):
                             continue
@@ -388,16 +393,20 @@ class _Finish:
                     for names, offsets in action['sprigs']:
                         palette = next((self.palettes[key] for key in names if self.palettes.get(key)), ())
                         unit = action.get('unit', 1)
-                        offsets = [(x * unit, _sample(y, rng) * unit) for x, y in offsets]
+                        offsets = [(x * unit, _sample(y, rng) * unit, heading) for x, y, *heading in offsets]
                         batches.append(tuple(Piece(rng.choice(palette),
                                                    *_offset(point, angle, x, y),
+                                                   angle + math.radians(heading[0]) if heading else
                                                    rng.uniform(-math.pi, math.pi))
-                                             for x, y in offsets if palette))
+                                             for x, y, heading in offsets if palette))
                     props = tuple(p for batch in batches for p in batch)
                     if action.get('single'):
                         for prop in props:
                             self.put(block, name, budget, (prop,))
-                    elif not self.put(block, name, budget, props, shoulder=action.get('shoulder', False)) and action.get('trim'):
+                    elif self.put(block, name, budget, props, shoulder=action.get('shoulder', False)):
+                        if fitting.get('first_fit'):
+                            return
+                    elif action.get('trim'):
                         self.put(block, name, budget, batches[0])
 
 

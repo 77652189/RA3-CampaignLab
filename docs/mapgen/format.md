@@ -98,6 +98,8 @@
 - `places` 以标准用途为键，`*` 提供缺省值。配方可指定材质类 `material`、显式贴图组 `textures`、块内节点 `interior`、沿轮廓的处理 `outline`、框外处理 `frame`、硬岸处理 `hard_shore` 和沿街装扮开关 `street`。`prop_palettes` 用 `include` 选模板、用 `prefixes` 匹配民用素材，`exclude` 去掉命中词的模板。`texture_donors` 按材质类指定借用的贴图目录，`texture_palette` 控制候选过滤、斑纹和小片铺面偏好。
 - `edges` 以处理名为键。`node` 指向该带重复使用的节点。`step` 是起步、末端留量、间距，`unit` 缺省是一个地形格，也可写世界单位。`ends` 指两端退量，`middle` 取正中，`jitter` 给沿线偏移范围，`depths` 给向内的层距（地形格）。`before`、`after` 指端头节点，分别在铺带前后放置。`sample_first` 先抽齐沿线位置，`tail` 和 `clamp` 控制末端留量与截短。
 - `nodes` 以节点名为键。`offsets` 给局部的沿轴、横轴偏移（地形格）。`actions` 依次选 `patch`（椭圆半轴与材质）、`group`（用途或锚点筛选）或 `sprigs`（候选调色板与簇内偏移，缺省为世界单位）。距离可以是定值或抽样范围。`cliff_fittings` 是从本机 `cliff_joints.json` 合入的原生崖件节点，由地形阶段消费。
+- 节点的 `group.id` 可选库里同 ID 的成套件，`sprigs` 的第三个偏移量可写物件相对节点的朝向角度。`first_fit` 可沿备选偏移尝试成组动作，放成功即停。
+- 边带可用 `cycle` 给出各站循环使用的节点，起相位由块种子决定，`first` 仍可指定首站。`road_surface.ramp_infill` 用指定贴图处理坡面上无模型遮盖的道路补片。
 
 ## 过口与状态
 
@@ -120,7 +122,9 @@
 | 罩住 | `point road by fraction`，`by` 取 `range` 或 `vision`，比例为 0 到 1 |
 | 绕多远 | `from to via who max_extra`，经过指定处比最短路最多多走多少 |
 | 看得见 | `from to visible`，真假布尔值 |
-| 放得下 | `point side`，正数边长的方形平地 |
+| 放得下 | `point side`，正数边长的方形平地。用 `purpose` 说明为什么留空，取 `staging`（集结）、`base_deploy`（展开基地）、`sight_line`（留视线）或 `field_of_fire`（留射界） |
+
+“放得下”检查地形和实际占地，装扮时也保留这片空地。视线的两端和沿线实际遮挡由“看得见”另行检查。
 
 种子是非负整数。块可显式写 `seed`，否则用 UTF-8 字符串 `全图种子:块ID` 的 SHA-256 前 8 字节转成大端无符号整数。全图种子默认 0。展开按 ID 排序，修补目标用 `块ID.类别.语义槽位`。先用无补丁的全量构建在 `built.scenery_slots` 查看槽位和原始摆放。带补丁的全量构建中，`built.scenery_slots` 反映补丁执行后的摆放。删除后的槽位从字典移除。槽位以摆放位置与用途确定，插入其他位置的物件时保持原名。每槽一条修补，支持 `move` 加 `at`、`delete`、`replace` 加 `with`。展开时须核对实际槽位是否存在。
 

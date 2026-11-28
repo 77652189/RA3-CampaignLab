@@ -1,4 +1,5 @@
 import json
+import math
 from dataclasses import asdict
 from pathlib import Path
 
@@ -105,6 +106,31 @@ def test_busy_frontage_stops_at_its_budget(slice_inputs):
     assert counts['north', 'lane'] == (12, 12)
     assert counts['south', 'lane'] == (6, 6)
     assert sum(used for _, used in counts.values()) == len(result.pieces)
+
+
+def test_measured_street_cycle_and_named_place(slice_inputs):
+    sketch, _, _, _, library, *_ = slice_inputs
+    style = library['styles']['*']
+    style['edges']['street'] = {'cycle': ['bench', 'streetTree'], 'unit': 1, 'step': [90, 3050, 80]}
+    style['places']['park'] = {'interior': 'plaza'}
+    for node, palette, heading in [('bench', 'cover', 0), ('streetTree', 'trees', 90)]:
+        style['nodes'][node] = {
+            'first_fit': True, 'offsets': [[0, 0], [0, 2], [0, 4]],
+            'actions': [{'sprigs': [([palette], [(0, 0, heading)])]}],
+        }
+    style['nodes']['plaza'] = {'actions': [{'group': {'id': 'picked'}}]}
+    library['setpieces'] = {'groups': [
+        {'id': key, 'style_kit': 'Town_T', 'anchor': template,
+         'relative_transforms': [{'template': template, 'dx': 15, 'dy': 0, 'angle_deg': 0}]}
+        for key, template in [('other', 'T_Tree'), ('picked', 'T_Bush')]
+    ]}
+    result = dressing.expand(*slice_inputs)
+    street = sorted((p for p in result.pieces if p.y > 250), key=lambda p: p.x)
+    assert [p.x for p in street] == [90, 170]
+    assert {p.template: p.angle for p in street} == {'t_bush': 0, 't_tree': np.pi / 2}
+    assert [p.y for p in street] == pytest.approx([312.74, 312.74])
+    plaza, = (p for p in result.pieces if p.y < 250)
+    assert plaza.template == 'T_Bush' and math.dist((plaza.x, plaza.y), (400, 100)) == pytest.approx(15)
 
 
 def test_quay_dressing_respects_continuous_authored_paving(slice_inputs, monkeypatch):

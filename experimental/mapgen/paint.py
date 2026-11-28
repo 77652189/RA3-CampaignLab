@@ -159,6 +159,10 @@ def paint(plan, library, ground, roadbed=None):
         if (infill := paving.get('infill')) and roadbed.infill.any():
             asphalt = _named(catalogue, 'road infill', infill)
             textures[roadbed.infill] = asphalt
+        if (cue := paving.get('ramp_infill')) and (ramp := ground.ramp & roadbed.infill & ~roadbed.hidden).any():
+            cue = _named(catalogue, 'ramp infill', cue)
+            textures[ramp] = cue
+            fixed.add(cue)
         ground = replace(ground, hidden=ground.hidden | roadbed.hidden)
 
     fixed.update(name for name in (road_material, asphalt) if name is not None)

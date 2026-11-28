@@ -13,7 +13,7 @@ from experimental.mapgen.build import MapBuild
 from experimental.mapgen.buildings import Footprint, Layout, Shape
 from experimental.mapgen.checks import draw_failures
 from experimental.mapgen.campaign_writer import rules
-from experimental.mapgen.design import Design
+from experimental.mapgen.design import Design, DesignError
 from experimental.mapgen.export import export
 from experimental.mappage import viewer
 from test_mapgen_terrain import _container
@@ -387,10 +387,16 @@ def test_missing_native_footprint_stops_layout(tmp_path, monkeypatch):
 def test_net_room_counts_a_solid_flank():
     data = _split_design(height=3)
     data['points'] = {'pad': {'block': 'north', 'at': [500, 600]}}
-    data['relations'] = {'space': {'type': '放得下', 'point': 'pad', 'side': 80}}
+    relation = {'type': '放得下', 'point': 'pad', 'side': 80, 'purpose': 'staging'}
+    data['relations'] = {'space': relation}
+    clear = _expanded(Design(data)).check_relations()['space']
+    assert clear.status == 'pass' and '部队集结' in clear.sentence
     stone = Shape('BOX', (500, 600, 0), 15, 15, 0)
     built = _expanded(Design(data), footprints=(Footprint('rockbig', (stone,), (stone,)),))
     assert built.check_relations()['space'].status == 'fail'
+    relation['purpose'] = 'unused'
+    with pytest.raises(DesignError, match='purpose'):
+        Design(data)
 
 
 def test_route_cannot_fit_a_single_fine_row():

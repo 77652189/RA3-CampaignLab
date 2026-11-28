@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from experimental.mapgen import paint, terrain
+from experimental.mapgen.roads import Roadbed
 
 import mapterrain
 from test_mapgen_terrain import _container
@@ -135,7 +136,6 @@ def test_named_ramp_shoulder_skips_its_unused_palette(sample):
 
 def test_writer_blends_final_dressed_material(sample, monkeypatch):
     plan, library = sample
-    from experimental.mapgen.roads import Roadbed
     size = 61, 61, 0
     ground = terrain.expand(plan, library, *size)
     paved = np.zeros_like(ground.blocked)
@@ -152,3 +152,23 @@ def test_writer_blends_final_dressed_material(sample, monkeypatch):
 
     monkeypatch.setattr(terrain.newmap, 'paint_grid', capture)
     terrain.apply(_container(*size), plan, replace(ground, textures=updated))
+
+
+def test_ramp_infill_recolors_only_the_visible_road_gap(sample):
+    plan, library = sample
+    kit = library['styles']['Heidelberg']
+    kit['edges'] = {'road_surface': {'base': 'Stone', 'infill': 'Cobble', 'ramp_infill': 'Paver'}}
+    library['texture_kits']['Heidelberg']['Dirt'] = [
+        dict(id='Dirt_Test', Texture='surface.tga', BumpTexture='surface.tga')]
+    ground = terrain.expand(plan, library, 61, 61, 0)
+    ground.ramp[15, 11:14] = True
+    paved = np.zeros_like(ground.ramp)
+    paved[15, 10:14] = True
+    infill = paved.copy()
+    infill[15, 13] = False
+    hidden = np.zeros_like(paved)
+    hidden[15, 12] = True
+    roadbed = Roadbed('Heidelberg_HB', (), (), paved, hidden, infill)
+    result = paint.paint(plan, library, ground, roadbed)
+    assert list(result.textures[15, 10:14]) == ['Cobble', 'Paver', 'Cobble', 'Stone']
+    assert np.array_equal(result.hidden, hidden)

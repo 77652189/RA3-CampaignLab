@@ -23,6 +23,8 @@ USE_ALIASES = {"老街": "oldtown", "老城": "oldtown", "town": "oldtown", "住
 LAND = frozenset(("foot", "vehicle", "amphibian"))
 WATER = frozenset(("amphibian", "ship"))
 KINDS = LAND | WATER
+OPEN_PURPOSES = {"staging": "部队集结", "base_deploy": "基地展开", "sight_line": "保留视线",
+                 "field_of_fire": "保留射界"}
 ID = r"[A-Za-z][A-Za-z0-9_-]*"
 
 
@@ -580,12 +582,13 @@ class Design:
             "罩住": ("point road by fraction", ""),
             "绕多远": ("from to via who max_extra", ""),
             "看得见": ("from to visible", ""),
-            "放得下": ("point side", ""),
+            "放得下": ("point side", "purpose"),
         }
         references = {"from": endpoints, "to": endpoints, "a": endpoints, "b": endpoints,
                       "only_via": self.via_ids, "via": self.via_ids, "without": self.via_ids,
                       "point": self.points, "road": self.roads,
-                      "who": KINDS, "state": self.state_pass, "by": ("range", "vision")}
+                      "who": KINDS, "state": self.state_pass, "by": ("range", "vision"),
+                      "purpose": OPEN_PURPOSES}
         for item, rel in self.relations.items():
             _need(isinstance(rel, dict), item, "shape", "expected a relation object")
             _ref(rel.get("type"), schemas, item, "type")

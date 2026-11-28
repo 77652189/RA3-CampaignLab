@@ -12,7 +12,7 @@ from scipy.ndimage import label
 from experimental.mapgen.buildings import FOOT_ONLY_BLOCK, NO_PATH_BLOCK, Shape
 from experimental.mapgen.library import place_recipe
 from experimental.mapgen.campaign_writer import rules
-from experimental.mapgen.design import ROAD_WIDTH, ROUTING_CELL, DesignError
+from experimental.mapgen.design import OPEN_PURPOSES, ROAD_WIDTH, ROUTING_CELL, DesignError
 from experimental.mapgen.roads import crosses_water, unpainted_roads
 from experimental.mapgen.terrain import CELL, polygon_mask, strip_mask
 
@@ -400,8 +400,12 @@ def _answer(grid, rel, held):
                 f'从 {a} {"看得见" if visible else "看不见"} {b}', (a, b),
                 f'调整 {a} 到 {b} 之间的高度档，或{"移开" if visible else "加入"}遮挡物。')
     side = rel['side']
-    return (grid and grid.room(point, side), f'{point} 有边长 {side:g} 的净平地', (point,),
-            f'在 {point} 留一块同高的空地，移开侵入的主角，或把集结点移离岸线和坡肩。')
+    purpose = OPEN_PURPOSES.get(rel.get('purpose'))
+    sentence = f'{point} 有边长 {side:g} 的净平地'
+    if purpose:
+        sentence += f'，用于{purpose}'
+    return (grid and grid.room(point, side), sentence, (point,),
+            f'在 {point} 留一块同高的空地，移开侵入的物件，或把位置移离岸线和坡肩。')
 
 
 def _layout_dependencies(sketch, has_road_kit, row_blocks):
