@@ -138,7 +138,7 @@ class Life:
         nugget's Required / ForbiddenUpgrade read against `ups` (World.upgrades: b's and its player's; review 1125 G:
         the harpoon's crush leeches with the Crush Puppies power, else kills plain)."""
         (x, y), now = at or (b.x, b.y), world.frame_now()
-        blasts, pulses = self._weapon(world, weapon)
+        blasts, pulses, powers, texts = self._weapon(world, weapon)
         for dmg, typ, reach, after, affects, ally, (need, ban, leech) in blasts:
             if need <= ups and not ban & ups:
                 world.used.add('death weapon')
@@ -146,6 +146,15 @@ class Life:
                                      affects, b.owner, b, ally, False, None, 1.0, None, leech))
         for p in pulses:
             death_blasts.append((now, x, y, 0.0, 'EMP', p['radius'], frozenset(), b.owner, b, 1.0, False, None, 1.0, p))
+        for p in powers:
+            # a SpecialPowerNugget casts b's own power at (x, y): the Liberty's deck store / send (A427, the jump's
+            # Source / DestinationWeapon, engine/modules/teleport.py TeleportAbility)
+            for m in b.find(interfaces.Store):
+                if m.power() == p:
+                    m.store((x, y), texts)
+            for m in b.find(interfaces.Teleport):
+                if m.power() == p:
+                    m.begin((x, y), lag=0)
 
     def delete(self, world, b, why):
         """The one deletion entry (World.remove, step B4b): b taken out, no death -- no lethal damage, no death weapon,
@@ -238,11 +247,14 @@ class Life:
         return self._weapon(world, weapon)[0]
 
     def _weapon(self, world, weapon):
-        """(its DamageNuggets, its EMP ParalyzeNuggets: simunits.special_weapon), read once a world."""
+        """(its DamageNuggets, its EMP ParalyzeNuggets: simunits.special_weapon, its SpecialPowerNuggets' powers, the
+        mission's own XML texts), read once a world."""
         if weapon not in self.blasts_of:
             own = world.own
             self.blasts_of[weapon] = (simunits.weapon_blasts(weapon, own),
-                                      [p for p in simunits.special_weapon(weapon, own)['paralyze'] if p['kind'] == 'EMP'])
+                                      [p for p in simunits.special_weapon(weapon, own)['paralyze'] if p['kind'] == 'EMP'],
+                                      [p['power'] for p in simunits.weapon_table(own).get(weapon, {}).get('special_powers', ())],
+                                      tuple((own or {}).values()))
         return self.blasts_of[weapon]
 
     def wreck_blasts(self, world, template):

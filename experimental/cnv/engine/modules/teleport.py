@@ -67,13 +67,17 @@ class Teleport(module.Module, interfaces.Update, interfaces.Teleport):
     def power(self):
         return self.data.power
 
-    def begin(self, point):
+    def begin(self, point, lag=LAG):
+        """lag 0: a weapon's cast inside a frame's update (the Liberty's deck send: the crew a frame after it lands)."""
         b, d = self.thing, self.data
         link = next((m.data.link for m in b.find(interfaces.SpecialPower) if m.power() == d.power and m.data.link),
                     None)
         self.store = next((m for m in b.find(interfaces.Store) if m.link() == link), None)
-        self.end, self.step, self.due = point, 0, self.world.frame + d.first + LAG
-        self.world.wake(self, self.due)
+        self.end, self.step, self.due = point, 0, self.world.frame + d.first + lag
+        now = self.world.frame
+        # due now (lag 0, no InitialDelay): the take at once, the move next frame (engine_libjump: the crew lands a
+        # frame after the Liberty -- a wake from this cell would run only next frame)
+        self.world.wake(self, now + self.update(now) if self.due <= now else self.due)
 
     def update(self, frame):
         d, s = self.data, self.store
@@ -98,7 +102,8 @@ class Teleport(module.Module, interfaces.Update, interfaces.Teleport):
         d, (ex, ey) = self.data, self.end
         sx, sy = s.stored_at if s.stored_at is not None else self.end
         r = s.data.radius
-        near = [t for t in self.world.living() if math.hypot(t.x - ex, t.y - ey) <= r and _takes(d.collide, t)]
+        near = [t for t in self.world.living() if math.hypot(t.x - ex, t.y - ey) <= r and _takes(d.collide, t)
+                and t.surface != 'air']     # the Liberty overhead kills no one (engine_libjump a, INFERRED: in the air)
         if d.telefrag == 'SWAP':
             self.world.gap('TeleportStoredObjectsUpdate', 'SWAP', '时空互换没模拟：没传')
             near = None
@@ -119,3 +124,49 @@ class Teleport(module.Module, interfaces.Update, interfaces.Teleport):
                 elif d.telefrag == 'INSTANT_DEATH_TELEPORTER_ONLY' and m.alive:
                     self.world.kill(m, 'telefrag')
         s.clear()
+
+
+class AbilityData(module.ModuleData):
+    def __init__(self, power=None, unpack=0, source=None, dest=None):
+        self.power, self.unpack, self.source, self.dest = power, unpack, source, dest
+
+    @classmethod
+    def parse(cls, head, inner):
+        return cls(templates.attr(head, 'SpecialPowerTemplate'),     # UnpackTime rounded (bench: 0.5 s is 8)
+                   int(FPS * templates.secs(templates.attr(head, 'UnpackTime') or '0s') + 0.5),
+                   templates.attr(head, 'SourceWeapon'), templates.attr(head, 'DestinationWeapon'))
+
+
+@factory.module('TeleportSpecialAbilityUpdate')
+class TeleportAbility(module.Module, interfaces.Update, interfaces.Teleport):
+    """TeleportSpecialAbilityUpdate (A427, checks/engine_libjump.readings.toml): the Liberty's deck jump. The cast fires SourceWeapon at its own place (the deck store),
+    UnpackTime frames on (rounded) it stands at the point and fires DestinationWeapon there (the deck send) -- each a
+    SpecialPowerNugget casting its own power (World.fire, engine/objects/body.py). Not modelled: MaxDistance (the
+    bench: a point 2390 off is reached), the height, BusyDuration, the AI's goal set to the landing."""
+    DATA = AbilityData
+    PHASE = 'seq'
+    STATE = ('end', 'due')
+    RECORDED = ()
+    end = None          # the point; None: idle
+    due = 0             # the frame it lands
+
+    def power(self):
+        return self.data.power
+
+    def begin(self, point, lag=LAG):
+        b, d = self.thing, self.data
+        if d.source:
+            self.world.fire(b, d.source, at=(b.x, b.y))
+        self.end, self.due = point, self.world.frame + d.unpack + lag
+        self.world.wake(self, self.due)
+
+    def update(self, frame):
+        if self.end is None:
+            return interfaces.SLEEP
+        if frame < self.due:
+            return self.due - frame
+        b, (x, y) = self.thing, self.end
+        b.x, b.y, self.end = x, y, None
+        if self.data.dest:
+            self.world.fire(b, self.data.dest, at=(x, y))
+        return interfaces.SLEEP

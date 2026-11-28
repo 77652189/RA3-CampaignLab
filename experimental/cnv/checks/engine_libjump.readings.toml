@@ -1,0 +1,40 @@
+# Bench readings of checks/engine_libjump.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A427 (bench 11-27): the Liberty's deck jump cast by script ('Test Go', the power SpecialPower_CNV_ChronoDeck_J:
+# units/liberty.py with tag J). Rows count frames from Go: 帧数; 第二行 = Liberty in S + 1000 x in T;
+# 第三行 = G1 in S + 1000 x in T (b: x destroyed); 第四行 = G2 in T + 1000 x the runner in T (c: Liberty at the 2000 cap
+# + 1000 x G2 in T).
+
+[[reading]]
+id = "b_the_deck_jumps_after_the_unpack_and_the_crew_a_frame_later_telefragged_on_a_parked_tank"
+scene = {build = "engine_libjump", check = "b", until = 5}
+item = ["物体模块 Behaviors/TeleportSpecialAbilityUpdate",
+        "脚本动作 NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT:SpecialPower_CNV_ChronoDeck"]
+bench = "CampLibJump b (run_queue 11-27): s1: 29 20009 19010 19 | s2: 42 33009 32010 32"
+proves = """TeleportSpecialAbilityUpdate: the cast's SourceWeapon stores the deck at once (the runner ordered west the \
+same frame is gone from the 150 by the send and stays behind: GetObjectsCurrentlyAtStorePosition); UnpackTime 0.5 s \
+on the Liberty stands at T -- in S 9 frames, in T from the 10th -- and its DestinationWeapon sends the deck: G2 in T \
+from the 11th, G1 landing on a parked Guardian dies (INSTANT_DEATH_TELEPORTER_ONLY) from the 11th"""
+let = {at = "lambda f: next(r for r in rows if r.get('帧数', 0) >= f)"}
+expect = ["at(25)['第二行'] == 9 + 1000 * (at(25)['帧数'] - 9)", "at(25)['第三行'] == 10 + 1000 * (at(25)['帧数'] - 10)",
+          "at(25)['第四行'] == at(25)['帧数'] - 10"]
+
+[[reading]]
+id = "a_the_crew_lands_a_frame_after_the_liberty_and_the_runner_stays"
+scene = {build = "engine_libjump", check = "a", until = 5}
+item = ["物体模块 Behaviors/TeleportSpecialAbilityUpdate"]
+bench = "CampLibJump a (run_queue 11-27): s1: 29 20009 19010 19 | s2: 43 34009 33010 33"
+proves = """TeleportSpecialAbilityUpdate with nothing at T: the Liberty in T from the 10th frame, G1 and G2 (its deck) \
+alive in T from the 11th at their offsets, the runner never (the Liberty overhead kills no one landing under it)"""
+let = {at = "lambda f: next(r for r in rows if r.get('帧数', 0) >= f)"}
+expect = ["at(25)['第二行'] == 9 + 1000 * (at(25)['帧数'] - 9)", "at(25)['第三行'] == 10 + 1000 * (at(25)['帧数'] - 10)",
+          "at(25)['第四行'] == at(25)['帧数'] - 10"]
+
+[[reading]]
+id = "c_a_point_2390_off_is_reached_maxdistance_2000_does_not_cut_a_script_cast"
+scene = {build = "engine_libjump", check = "c", until = 5}
+item = ["物体模块 Behaviors/TeleportSpecialAbilityUpdate"]
+bench = "CampLibJump c (run_queue 11-27): s1: 29 20009 19010 19000 | s2: 42 33009 32010 32000"
+proves = """TeleportSpecialAbilityUpdate's MaxDistance 2000 is not read on a script cast: the Liberty stands at east 2 \
+(~2390 off) from the 10th frame, never at the 2000 cap, and G2 lands there from the 11th"""
+let = {at = "lambda f: next(r for r in rows if r.get('帧数', 0) >= f)"}
+expect = ["at(25)['第二行'] == 9 + 1000 * (at(25)['帧数'] - 9)", "at(25)['第四行'] == 1000 * (at(25)['帧数'] - 10)"]

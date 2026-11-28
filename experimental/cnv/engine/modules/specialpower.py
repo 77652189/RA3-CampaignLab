@@ -194,6 +194,24 @@ CHRONO = ('AlliedChronosphereSpecialPowerObjectFilter', frozenset({'INFANTRY', '
           frozenset({'SUBMERGED', 'AIRBORNE_TARGET', 'NOT_IN_WORLD'}))
 
 
+def asset_filter(name, texts):
+    """The ObjectFilterAsset `name` of the mission's own XML texts as store() takes it: (Include, Exclude kinds,
+    StatusBitFlagsExclude, (IncludeThing, ExcludeThing templates lower case), Relationship); None: not there or not
+    Rule ANY. Relationship read as its owner's own only (INFERRED: SAME_PLAYER ALLIES, another allied player not taken)."""
+    for text in texts:
+        for head, inner in templates.blocks(text, 'ObjectFilterAsset'):
+            if templates.attr(head, 'id') != name:
+                continue
+            fh, fi = next(iter(templates.blocks(inner, 'Filter')), ('', ''))
+            if (templates.attr(fh, 'Rule') or 'ANY') != 'ANY':
+                return None
+            return (frozenset(templates.words(fh, 'Include')), frozenset(templates.words(fh, 'Exclude')),
+                    frozenset(templates.words(fh, 'StatusBitFlagsExclude')),
+                    tuple(frozenset(x.strip().lower() for x in re.findall(rf'<{k}>([^<]+)</{k}>', fi))
+                          for k in ('IncludeThing', 'ExcludeThing')), templates.attr(fh, 'Relationship'))
+    return None
+
+
 @factory.module(STORE)
 class StoreObjects(SpecialPower, interfaces.Store):
     """StoreObjectsSpecialPower (E227, checks/engine_teleport.readings.toml): the Chronosphere's first step takes the
@@ -201,22 +219,29 @@ class StoreObjects(SpecialPower, interfaces.Store):
     engine/modules/teleport.py). A filter other than CHRONO takes no one (a gap; INFERRED as the private model's
     unfiltered store). Not modelled: the OCL's markers."""
     DATA = StoreData
-    STATE = ('ready', 'first', 'made', 'stored_at', 'carried')
+    STATE = ('ready', 'first', 'made', 'stored_at', 'carried', 'spec')
     stored_at = None    # the stored point; None: never stored, or cleared
     carried = ()        # the stored things
+    spec = None         # the last cast's own filter (a send's second take keeps it)
 
     def link(self):
         return self.data.link
 
-    def store(self, point):
+    def store(self, point, texts=()):
+        """texts: the mission's own XML, its CanAffectObjectFilter read there (asset_filter: the Liberty's deck, A427);
+        none: the last cast's (a send's second take), else CHRONO."""
         me, d = self.thing, self.data
+        spec = self.spec = asset_filter(d.filter, texts) if texts else self.spec
         self.stored_at, self.carried = point, ()
-        if d.filter != CHRONO[0]:
+        if spec is None and d.filter != CHRONO[0]:
             self.world.gap('StoreObjectsSpecialPower', d.filter or '', '只认原版时空传送的对象过滤器：没带走谁')
             return
-        self.carried = tuple(t for t in self.world.living() if t is not me and t.alive and t.kinds & CHRONO[1]
-                          and not t.kinds & CHRONO[2] and not module.status_now(t) & CHRONO[3]
-                          and math.hypot(t.x - point[0], t.y - point[1]) <= d.radius)
+        inc, exc, bits, things, rel = spec or (CHRONO[1], CHRONO[2], CHRONO[3], (frozenset(), frozenset()), None)
+        self.carried = tuple(t for t in self.world.living() if t is not me and t.alive
+                             and (t.kinds & inc or t.template.lower() in things[0]) and not t.kinds & exc
+                             and t.template.lower() not in things[1] and not module.status_now(t) & bits
+                             and (rel is None or t.owner == me.owner)
+                             and math.hypot(t.x - point[0], t.y - point[1]) <= d.radius)
 
     def stored(self):
         return [t for t in self.carried if t.alive]

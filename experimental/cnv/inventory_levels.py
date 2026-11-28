@@ -45,9 +45,8 @@ INERT = {
 # our own features (retail never uses them, so the inventory has no item): (part, name) -> (state, why). Each one a level
 # reaches is a 0-use row of the page (one not listed: 未做); a held reading's `item` makes it 已对拍 (apply_declared).
 OWN = {
-    (MODULE, 'Behaviors/TeleportSpecialAbilityUpdate'): (TODO, '自由号跳跃（units/liberty.py）：模拟器没有这个模块，A 接'
-                                                         '（总控 11-27）'),
-    (ACTION, 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT:SpecialPower_CNV_ChronoDeck'): (TODO, '脚本让自由号跳：模拟器只记进时间线'),
+    (MODULE, 'Behaviors/TeleportSpecialAbilityUpdate'): (TODO, '自由号跳跃（engine/modules/teleport.py，engine_libjump）'),
+    (ACTION, 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT:SpecialPower_CNV_ChronoDeck'): (TODO, '脚本让自由号跳（engine_libjump）'),
     (MODULE, 'Behaviors/TeleportToCasterSpecialPower'): (TODO, '信标拉回（units/beacon.py）：模拟器只走技能冷却，不拉人'),
     (ACTION, 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT:SpecialPower_CNV_IceEngineer_Freeze'): (GUESSED, '冰冻工程师走去造墙'
                                                                                           '（act_ability.script_cast）'),

@@ -46,3 +46,26 @@ def test_a_second_cast_starts_the_delays_over(early):
     while tank.x == 1420.0 and s.frame_now() - cast < 80:
         s.advance(1)
     assert (s.frame_now() - cast, tank.x) == (60, 2220.0)
+
+
+def test_the_liberty_jumps_after_its_unpack_and_its_deck_follows_a_frame_later():
+    """TeleportSpecialAbilityUpdate (A427, checks/engine_libjump.readings.toml): UnpackTime 0.5 s rounds to 8 frames;
+    the deck store (its own filter, Radius 150) takes the Guardian under it, not the one 200 off."""
+    import parts
+    import sim
+    from maps import island
+    from units import liberty
+    s = sim.Sim(parts.Mission(name='T', map=island, scripts=[], units=[liberty.liberty('CNV_LibT', tag='T', model=None)]),
+                model=False)
+    for name in list(s.bodies):
+        s.world.drop(s.bodies.pop(name))
+    for name, template, x in (('lib', 'CNV_LibT', 1400.0), ('g', 'AlliedAntiVehicleVehicleTech1', 1460.0),
+                              ('far', 'AlliedAntiVehicleVehicleTech1', 1200.0)):
+        s.add(name, template, 'Player_1', x, 1400.0)
+    b = s.bodies
+    jump = next(m for m in b['lib'].find(interfaces.Teleport) if isinstance(m, teleport.TeleportAbility))
+    cast = s.world.frame
+    assert act._teleport(s, b['lib'], 'SpecialPower_CNV_ChronoDeck_T', (1400.0, 1800.0))
+    assert jump.due - cast == 8 + teleport.LAG and b['lib'].y == 1400.0
+    s.advance(20)
+    assert (b['lib'].y, b['g'].x, b['g'].y, b['far'].y) == (1800.0, 1460.0, 1800.0, 1400.0)
