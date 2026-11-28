@@ -737,3 +737,25 @@ bench = "B 11-27 CampHuskNamedA_mcp_1127_163658 (C 11-15 the same): CNVHuskNamed
 proves = "simai targets: the bench's derrick is a pickable target (the Husk readings' control)"
 item = "AI 目标/AITargetingHeuristic.HeuristicType=Husk"
 expect = "{r['target'] for r in teams() if r['state_key'] == 'CNVStateTP' and r['target']} == {'UNIT - Husk Oil Control'}"
+
+# Bench readings of benches/ai/targets/checks.py#engine_aiunderattackby; the bench side is C 11-15's ext log
+# (tests/fixtures/aiuabl_fight.txt, aiuabw_fight.txt: tgt: and ua: lines).
+
+[[reading]]
+bench_id = "engine_aiunderattackby"
+id = "the_land_slot_takes_the_tank_that_hit_the_plant"
+scene = {build = "aiuabl", check = "a", until = 6, teams = true}
+bench = "C 11-15 CampUAByLA_mcp_1115_180022: CNVClosest0 (UnderAttackByLandEnemyHeuristic) f16 found=0; f18 tank 3185 hits the plant (ua src); f19 found=1 target=3185 at (4000,2830), the wake at 4 s (f60) still to come"
+proves = "simai targets: UnderAttackBy takes the last source of a hit on my object, from before the AI's start (no enemy-player search)"
+item = "AI 目标/AITargetingHeuristic.HeuristicType=UnderAttackBy"
+let = {got = "[r for r in teams() if r['state_key'] == 'CNVClosest0' and r['target']]"}
+expect = ["{r['target'] for r in got} == {'UNIT - UA Tank'}", "got[0]['frame'] < 60"]
+
+[[reading]]
+bench_id = "engine_aiunderattackby"
+id = "the_water_slot_never_takes_the_land_tank"
+scene = {build = "aiuabw", check = "a", until = 9, teams = true}
+bench = "C 11-15 CampUAByWA_mcp_1115_180416: CNVClosest0 (UnderAttackByWaterEnemyHeuristic) f16 found=0, the same f18 hit by the land tank, no pick to f137"
+proves = "simai targets: UnderAttackBy's Location rules a land source out of the Water slot"
+item = "AI 目标/AITargetingHeuristic.HeuristicType=UnderAttackBy"
+expect = "not [r for r in teams() if r['state_key'] == 'CNVClosest0' and r['target']]"

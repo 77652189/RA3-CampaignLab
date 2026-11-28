@@ -87,6 +87,7 @@ from engine.ports import ai as ai_port, templates  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
 import engine.combat.range as simrange  # noqa: E402
 from engine.kernel.module import status_now  # noqa: E402
+from engine.kernel import interfaces as kernel_interfaces  # noqa: E402
 
 # The skirmish AI borrows nothing on its host (the Sim) beyond the world (simworld.WORLD_API) and the ports: its
 # orders, its micro's charge too (`power` via 'micro', B3), through the command port (`commands`, R3 13f-1); the
@@ -364,6 +365,7 @@ class Brain:
         self.last_expansion = 0         # the frame its newest outpost came (facts' 'last expansion')
         self.woke = None                # the frame 'make base' was told (the mission's wake): wake()
         self.ids, self.hp, self.hurt_at = {}, {}, {}     # body name -> Thing id; last hp; id -> frame last hurt
+        self.hurt_by = {}               # id of mine -> serial of what hurt it last then (UnderAttackBy)
         self.seen_t = None              # the sim time the view was last built at
         self.fired = []                 # (frame, team key, unit, command): unit powers the micro wanted
         self.rec = {'frames': [], 'orders': [], 'deaths': {}}   # HOOKS 9: filled only with SimAI(record=True)
@@ -827,18 +829,24 @@ class Brain:
         # the enemies follow the relations as they change, no action needed: bench A274 aiallflip, the build picks
         # count s5 from the first pass after PLAYER_RELATES_PLAYER turns it enemy (engine_aiflip)
         self.view.enemies = self.foes()
-        things = []
-        for b in self.living():
-            # NeutralGarrison's native candidate scan includes retail map houses
-            # (aigarron/off); scenery is a placement category, not ineligibility.
-            # Other scenery stays outside the target view. Full occupancy and
-            # containment eligibility remain gaps; see work/re/c_garrison_report.md.
-            if b.scenery and 'GARRISON' not in b.kinds:
-                continue
-            i = self.tid(b)
+        # NeutralGarrison's native candidate scan includes retail map houses
+        # (aigarron/off); scenery is a placement category, not ineligibility.
+        # Other scenery stays outside the target view. Full occupancy and
+        # containment eligibility remain gaps; see work/re/c_garrison_report.md.
+        seen = [(b, self.tid(b)) for b in self.living() if not b.scenery or 'GARRISON' in b.kinds]
+        for b, i in seen:
             if b.hp < self.hp.get(i, b.hp):
                 self.hurt_at[i] = frame
+                if b.owner == self.player:      # the hit's source, as the object's under-attack record keeps it
+                    m = b.find(kernel_interfaces.Body)
+                    self.hurt_by[i] = m.attacker_serial if m is not None else None
             self.hp[i] = b.hp
+        # UnderAttackBy's candidates: the last sources of my objects still under attack (D161's window, last hit + 5 s);
+        # bench aiuabl: the tank hits the plant f18, the slot picks it f19. Allies' objects and the source's record
+        # once the window shuts INFERRED (work/re/c_underattackby_resume_report.md)
+        by = {s for i, s in self.hurt_by.items() if frame - self.hurt_at[i] <= 5 * FPS}
+        things = []
+        for b, i in seen:
             owner = b.owner if b.owner != simworld.CIV else ''
             # status_now: AIRBORNE_TARGET while in the air (retail ClosestSurfaceUnitHeuristic forbids it; aitpairf)
             things.append(tg.Thing(i, owner, b.template, frozenset(b.kinds), frozenset(status_now(b)), b.x, b.y,
@@ -846,7 +854,7 @@ class Brain:
                                    shore=world.ground.shore(b.x, b.y, self.view.water_at(b.x, b.y)),
                                    hits=simrange.hits(b.weapons) if b.weapons else frozenset(),
                                    under_attack=frame - self.hurt_at.get(i, -10 ** 9) <= 2 * FPS,
-                                   name=b.name))                    # script name (NamedObject)
+                                   attacking_us=b.serial in by, name=b.name))                    # script name (NamedObject)
         self.view.things = things
         if 'targets' in self.host.blocks:
             # the read target types measure from the AI base centre, which the engine re-averages every few frames over

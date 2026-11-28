@@ -63,26 +63,3 @@ def test_underattackby_public_records_match_original_run(build):
     assert json.loads(json.dumps(rows)) == original['picks']
     import teamlog
     assert teamlog.under_attack(str(path)) == original['under_attack']
-
-
-@pytest.mark.parametrize('build', [
-    pytest.param('aiuabl', marks=pytest.mark.xfail(strict=True,
-        reason='Native selects the real hit source; SimAI.look does not supply attacking_us. '
-               'Source registration/lifetime world facts remain a gap; '
-               'see work/re/handoff-c.md and work/re/c_underattackby_resume_report.md.')),
-    'aiuabw',
-])
-def test_underattackby_named_selection_matches_native(build):
-    if not simai.available():
-        pytest.skip('no private AI model')
-    _, rows = readings(build)
-    assert rows, 'native fixture must contain the observed selection rows'
-    w = simai_run.run(build, 'a', until=6)
-    picks = [text for _, kind, text in w.brains['Soviet_1'].ai.log
-             if kind == 'target' and text.startswith('CNVClosest0: ')]
-    assert bool(picks) == any(r['found'] for r in rows)
-    if picks:
-        chosen = {int(re.search(r'-> \[(\d+)\]', text)[1]) for text in picks}
-        assert len(chosen) == 1
-        target = next(t for t in w.brains['Soviet_1'].view.things if t.id in chosen)
-        assert target.name == w.sim.m.role('ua tank').name

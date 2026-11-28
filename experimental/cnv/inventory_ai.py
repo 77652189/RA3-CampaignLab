@@ -155,11 +155,6 @@ NOTES = {
         '按真实队伍全名选择，不能以单对象或NamedObject替代。'
         '当前目标View没有队伍候选提供者，target_picks公开接口未提供队伍目标身份/同帧成员资格；'
         '缺B/D事实入口，0局，暂停且不晋升；见work/re/c_team_gate_report.md'),
-    '目标/AITargetingHeuristic.HeuristicType=UnderAttackBy': (GUESSED,
-        'SDK陆/水两原名与编译EmergencyDefense六引用已核验；C两具名交战局：f18真实来源3185，Land f19选中同源。'
-        'Water仅f16命中前空目标，日志至f137无命中后直接选择行；来源候选列表未发布，不能据此证明Location拒绝。'
-        'simai未供attacking_us，Land具名回放与Water直接拒绝证据各一strict xfail；来源资格/置清保持gap，不晋升；'
-        '见work/re/c_underattackby_resume_report.md'),
     '目标/AITargetingHeuristic.HeuristicType=Bridge': (TODO,
         'C engine_aibridge aibridgeon/off:a原生700长桥/普通中立电厂两局PASS；'
         '桥部件编码322/33与111/11，起终点存活1/0与1/1。'
