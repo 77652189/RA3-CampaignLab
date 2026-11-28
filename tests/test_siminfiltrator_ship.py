@@ -59,7 +59,6 @@ def test_ship_entry_as_on_the_bench():
     for role, side in (('enemy', 's3'), ('ally', 's5')):
         host = s.body(m.role(role).name)
         assert host.owner == m.player(side) and host.hp == host.max_hp
-    assert ('InfiltratorContain', 'AlliedNavalYard') in s.unmodeled
     assert not s.infiltrators.observers
 
 
@@ -93,40 +92,6 @@ def test_ship_discovery_wall_clock_as_on_the_bench():
         assert rows == [expected], (second, rows)
 
 
-@pytest.mark.parametrize('variant', ['duration', 'filter', 'extra', 'host', 'spy', 'player', 'repeat', 'entry_recheck'])
-def test_ship_unmeasured_entry_stays_gap(variant):
-    """A measured host must not silently enable other complete configurations."""
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_infship', 'a')
-    s = sim.Sim(m, t)
-    target, spy = (s.body(m.role(role).name) for role in ('enemy', 'enemy spy'))
-    rule = s.infiltrators.spec(target)
-    if variant == 'duration':
-        rule['UnitDuration'] = '29s'
-    elif variant == 'filter':
-        rule['UnitFilter'] = 'InfiltrationVehicleObjectFilter'
-    elif variant == 'extra':
-        rule['BlockedDuration'] = '1s'
-    elif variant == 'host':
-        target.template = 'SovietNavalYard'
-    elif variant == 'spy':
-        spy.template = 'JapanInfiltrationInfantry'
-    elif variant == 'player':
-        spy.owner = m.player('s6')
-        s.relations[target.owner, spy.owner] = 'Enemy'
-    elif variant == 'repeat':
-        s.infiltrators.mark(target, 'ship')
-    s.infiltrators.send(spy, target)
-    if variant == 'entry_recheck':
-        assert spy.mode == 'infiltrate'
-        s.infiltrators.mark(target, 'ship')
-        spy.x, spy.y, spy.path = target.x, target.y, []
-        s.infiltrators.tick()
-    assert spy.alive and not s.infiltrators.going
-    assert ('InfiltratorContain', target.template) in s.unmodeled
-
-
 def test_ship_clock_sequence_as_on_the_bench():
     """engine_infship:c: entry 182, twenty pages each 31710, all 300 samples."""
     import build
@@ -137,20 +102,3 @@ def test_ship_clock_sequence_as_on_the_bench():
     assert [s.counters.get(f'Clock page {page}', 0) for page in range(20)] == [31710] * 20
     assert not s.body(m.role('enemy spy').name).alive
     assert s.body(m.role('ally spy').name).alive
-
-
-def test_ship_unmeasured_motion_and_lifetime_stay_gaps():
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_infship', 'a')
-    s = sim.Sim(m, t).run(15)
-    owner, marker, start, position = s.infiltrators.unit_observers[0]
-    now = s.frame_now()
-    s.infiltrators.unit_observers[0] = (owner, marker, now - 1, position)
-    assert s.infiltrators.unit_discovered(owner, marker)
-    marker.x += 1
-    assert not s.infiltrators.unit_discovered(owner, marker)
-    marker.x, marker.y = position
-    s.infiltrators.unit_observers[0] = (owner, marker, now - 300, position)
-    assert not s.infiltrators.unit_discovered(owner, marker)
-    assert ('InfiltratorContain', marker.template) in s.unmodeled

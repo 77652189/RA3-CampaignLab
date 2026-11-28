@@ -10,10 +10,9 @@ parent-death cleanup are INFERRED (no bench shows the observer seeing anything).
 Observer lifetime, other templates/players/spies and repeated entry remain gaps.
 E138/E205 KILL removes the hostile Allied spy and credits the crane owner;
 fling distance, exact entry clock and death-module dispatch remain gaps.
-E199/E200 VISION_UNITS: existing measured vehicle/aircraft/infantry/ship markers have
-a five-pass discovery cycle, 0/1/1/1/1 from first observed spy disappearance.
-Only the first 300 passes and stationary measured templates are implemented;
-expiry, new units, movement and observer internals remain explicit gaps.
+VISION_UNITS (E199/E200, A411/A412 engine_infunit): any host whose UnitFilter is a KindOf include watches its owner's
+units of those kinds at entry: each shows 0/1/1/1/1 for UnitDuration, then every pass for 10 s, nothing while walking;
+units around it are seen every pass. Units made after entry and repeated entry are unmeasured.
 E201 port VISION measures local same/third-owner sight and a blocked second spy.
 Exact activation and the XML blocking expiry remain INFERRED.
 E195 RESET only consumes the hostile spy at a Soviet Iron Curtain; readiness
@@ -32,6 +31,9 @@ from engine.kernel import factory, interfaces
 
 
 TAG = 'InfiltratorContain'
+# VISION_UNITS: how far around a watched unit others are seen. INFERRED between A412 engine_infunit b's bounds: a
+# neighbour 300 off seen every pass, a walker about 450 off at entry never (UnitVisionObserver's own ranges are 0).
+UNIT_NEAR = 400.0
 
 
 def _rule(rule, modules):
@@ -65,6 +67,16 @@ def filter_spec(name):
         if re.sub(r'<IncludeThing>[^<]+</IncludeThing>', '', fi).strip():
             return None
         return things, frozenset(simunits._attr(fh, 'Relationship', '').split())
+    return None
+
+
+def kind_filter(name):
+    """A retail filter that is a plain KindOf include (Rule NONE, Include only, nothing inside): its kinds, else None."""
+    for head, body in simunits._blocks(simunits.retail_xml('InfiltratorContainFilters'), 'ObjectFilterAsset'):
+        if simunits._attr(head, 'id') == name:
+            fh, fi = next(simunits._blocks(body, 'Filter'), ('', ''))
+            plain = simunits._attr(fh, 'Rule') == 'NONE' and set(re.findall(r'(\w+)\s*=', fh)) == {'Rule', 'Include'}
+            return frozenset(simunits._attr(fh, 'Include').split()) if plain and not fi.strip() else None
     return None
 
 
@@ -109,47 +121,12 @@ class Infiltrators:
     def mark(self, target, slice_):
         self.module(target).mark(slice_)
 
-    def aircraft_rule(self, target, rule):
-        """E197 complete retail airfield configuration; no reveal assumption."""
-        config = {key: value for key, value in rule.items() if key not in ('xmlns', 'id')}
-        return (target.template == 'AlliedAirfield'
-                and config == {'Effect': 'VISION_UNITS', 'Duration': '30s',
-                               'UnitDuration': '30s', 'ObjectRef': 'UnitVisionObserver',
-                               'UnitFilter': 'InfiltrationAircraftObjectFilter',
-                               'StructureFilter': 'InfiltrationAircraftStructuresFilter'})
-
-    def aircraft_entry_measured(self, spy, target):
-        world = self.world
-        return (spy.owner == world.human and spy.template == 'AlliedInfiltrationInfantry'
-                and not self.entered(target, 'aircraft'))
-
-    def infantry_rule(self, target, rule):
-        """E198 complete retail barracks configuration; no reveal assumption."""
-        config = {key: value for key, value in rule.items() if key not in ('xmlns', 'id')}
-        return (target.template == 'AlliedBarracks'
-                and config == {'Effect': 'VISION_UNITS', 'Duration': '30s',
-                               'UnitDuration': '30s', 'ObjectRef': 'UnitVisionObserver',
-                               'UnitFilter': 'InfiltrationInfantryObjectFilter',
-                               'StructureFilter': 'InfiltrationInfantryStructuresFilter'})
-
-    def infantry_entry_measured(self, spy, target):
-        world = self.world
-        return (spy.owner == world.human and spy.template == 'AlliedInfiltrationInfantry'
-                and not self.entered(target, 'infantry'))
-
-    def ship_rule(self, target, rule):
-        """E200 complete retail naval yard configuration; no reveal assumption."""
-        config = {key: value for key, value in rule.items() if key not in ('xmlns', 'id')}
-        return (target.template == 'AlliedNavalYard'
-                and config == {'Effect': 'VISION_UNITS', 'Duration': '30s',
-                               'UnitDuration': '30s', 'ObjectRef': 'UnitVisionObserver',
-                               'UnitFilter': 'InfiltrationShipObjectFilter',
-                               'StructureFilter': 'InfiltrationShipStructuresFilter'})
-
-    def ship_entry_measured(self, spy, target):
-        world = self.world
-        return (spy.owner == world.human and spy.template == 'AlliedInfiltrationInfantry'
-                and not self.entered(target, 'ship'))
+    def units_rule(self, target, rule):
+        """VISION_UNITS: the KindOfs its UnitFilter includes (any host carrying it: A411 a Japan war factory, a Soviet
+        barracks; its StructureFilter unread), None for another effect / observer or a filter not a plain include."""
+        if rule.get('Effect') != 'VISION_UNITS' or rule.get('ObjectRef') != 'UnitVisionObserver':
+            return None
+        return kind_filter(rule.get('UnitFilter', ''))
 
     def port_rule(self, target, rule):
         """E201 complete retail port signature, independent of ordinary yards."""
@@ -172,20 +149,6 @@ class Infiltrators:
         world = self.world
         return (spy.owner == world.human and spy.template == 'AlliedInfiltrationInfantry'
                 and not self.entered(target, 'reset'))
-
-    def vehicle_rule(self, target, rule):
-        """E194: measured factory entry only; intermittent discovery stays a gap."""
-        config = {key: value for key, value in rule.items() if key not in ('xmlns', 'id')}
-        return (target.template == 'AlliedWarFactory'
-                and config == {'Effect': 'VISION_UNITS', 'Duration': '30s',
-                               'UnitDuration': '30s', 'ObjectRef': 'UnitVisionObserver',
-                               'UnitFilter': 'InfiltrationVehicleObjectFilter',
-                               'StructureFilter': 'InfiltrationVehicleStructuresFilter'})
-
-    def vehicle_entry_measured(self, spy, target):
-        world = self.world
-        return (spy.owner == world.human and spy.template == 'AlliedInfiltrationInfantry'
-                and not self.entered(target, 'vehicle'))
 
     def money_rule(self, target, rule):
         """E193: one retail Allied refinery transfer; income blocking is a gap."""
@@ -242,64 +205,39 @@ class Infiltrators:
     def sees(self, side, x, y, air=False):
         """The entered host's VisionRange (sight; its shroud range sees nothing, A408). Parent-death cleanup INFERRED."""
         world, peers = self.world, self.peers
-        return any(owner == side and target.alive and world.frame_now() >= start
+        now = world.frame_now()
+        return any(owner == side and target.alive and now >= start
                    and math.hypot(target.x - x, target.y - y) <= target.sight and peers.looks(target, x, y, air)
-                   for owner, target, start in self.observers)
+                   for owner, target, start in self.observers) or any(
+            owner == side and 0 < math.hypot(body.x - x, body.y - y) <= UNIT_NEAR
+            and self.unit_age(body, start, end) is not None and peers.looks(body, x, y, air)
+            for owner, body, start, end in self.unit_observers)
+
+    def unit_age(self, body, start, end):
+        """Passes since a watched unit's observer began, None when it shows nothing: before it, after its end, the unit
+        dead or walking (A412 engine_infunit b: a walker unseen till it stopped, then on the same clock)."""
+        age = self.world.frame_now() - start
+        return age if 0 <= age < end - start and body.alive and not body.path else None
 
     def unit_discovered(self, side, body):
-        """E199 named-object readout, not a general fog or observer simulation.
-
-        Three independent 300-pass traces share 0/1/1/1/1 starting at the
-        first script pass observing spy disappearance. In the simulator the
-        spy is consumed after scripts, hence that first pass is entry + 1.
-        INFERRED: using that anchor outside the measured entry frames. The
-        three entries differ by five, so a global modulo-five phase is not
-        distinguished by E199. See work/re/e199_vision_clock.md.
-        E200 independently adds the ship: entry 182 (different modulo five),
-        with the same relative sequence. This supports the disappearance anchor,
-        but accepted entry and observer lifetime remain unobserved.
-        No observer birth/death rule follows from this measured readout.
-        """
-        world = self.world
-        now = world.frame_now()
-        for owner, target, start, position in self.unit_observers:
-            if owner != side or target is not body:
-                continue
-            age = now - start
-            if not body.alive or (body.x, body.y) != position or age >= 300:
-                world.gap('InfiltratorContain', body.template,
-                             'VISION_UNITS移动/死亡/300帧后到期未对拍，见 work/re/e199_vision_clock.md')
-                continue
-            if age >= 0 and age % 5 != 0:
+        """A watched unit itself (E199 / E200: 0/1/1/1/1 from the pass after the spy is gone, for UnitDuration; A412
+        engine_infunit b: then every pass for the observer's 10 s LifetimeUpdate, all gone 40 s after entry). Units
+        around it are seen every pass all 40 s (sees, within UNIT_NEAR)."""
+        hold = simunits._frames(10.0)
+        for owner, watched, start, end in self.unit_observers:
+            age = self.unit_age(body, start, end) if owner == side and watched is body else None
+            if age is not None and (age % 5 or age >= end - start - hold):
                 return True
         return False
 
-    def unit_vision(self, spy, target, rule):
-        """Select only the existing same-owner templates measured by E199/E200.
-
-        Filtering beyond these templates and later production remain gaps;
-        do not turn a complete retail filter into unmeasured reveal coverage.
-        """
-        world = self.world
-        measured = {'AlliedWarFactory': 'AlliedAntiVehicleVehicleTech1',
-                    'AlliedAirfield': 'AlliedSupportAircraft',
-                    'AlliedBarracks': 'AlliedEngineer',
-                    'AlliedNavalYard': 'AlliedAntiAirShip'}
-        # These measured complete configurations use a KindOf Include, not the
-        # IncludeThing-only helper above. Do not broaden that helper's contract.
-        kind = {'AlliedWarFactory': 'VEHICLE', 'AlliedAirfield': 'AIRCRAFT',
-                'AlliedBarracks': 'INFANTRY', 'AlliedNavalYard': 'SHIP'}[target.template]
-        for body in world.living():
-            if body.owner != target.owner:
-                continue
-            if kind not in body.kinds:
-                continue
-            if body.template != measured[target.template]:
-                world.gap('InfiltratorContain', body.template,
-                             'VISION_UNITS其他匹配模板未对拍，见 work/re/e199_vision_clock.md')
-                continue
-            self.unit_observers.append((spy.owner, body, world.frame_now() + 1,
-                                        (body.x, body.y)))
+    def unit_vision(self, spy, target, rule, kinds):
+        """Watch every living unit of the host's owner of the filter's kinds (A411: a Japan war factory, a Soviet
+        barracks too) from the pass after entry for UnitDuration + 10 s. Units made later (the StructureFilter's
+        part?) are not watched: unmeasured."""
+        start = self.world.frame_now() + 1
+        end = start + simunits._frames(simunits._secs(rule.get('UnitDuration', '30s')) + 10.0)
+        self.unit_observers += [(spy.owner, body, start, end) for body in self.world.living()
+                                if body.owner == target.owner and kinds & set(body.kinds)]
 
     def spec(self, target):
         """The target's rule (its module's data, shared by the template's things), None without the module."""
@@ -322,10 +260,9 @@ class Infiltrators:
                   and not rule.get('ReplaceWith'))
         if not any((energy, self.vision_rule(target, rule), self.paralyze_rule(target, rule),
                     self.kill_rule(target, rule), self.money_rule(target, rule),
-                    self.vehicle_rule(target, rule), self.reset_rule(target, rule),
-                    self.aircraft_rule(target, rule), self.infantry_rule(target, rule),
-                    self.ship_rule(target, rule), self.port_rule(target, rule))):
-            world.gap('InfiltratorContain', target.template, '仅已测ENERGY、普通VISION、原版PARALYZE、单次STEAL_MONEY、起重机KILL存活、车辆、飞机、步兵、舰船及RESET入楼切片已实现')
+                    self.units_rule(target, rule), self.reset_rule(target, rule),
+                    self.port_rule(target, rule))):
+            world.gap('InfiltratorContain', target.template, '仅已测ENERGY、普通VISION、原版PARALYZE、单次STEAL_MONEY、起重机KILL存活、VISION_UNITS及RESET入楼切片已实现')
             return
         if self.port_rule(target, rule):
             if not self.port_entry_measured(spy):
@@ -333,20 +270,11 @@ class Infiltrators:
                 return
             if world.frame_now() < self.module(target).blocked_until():
                 return  # E201 a: second remains alive; b checks the same order is legal.
-        if self.aircraft_rule(target, rule) and not self.aircraft_entry_measured(spy, target):
-            world.gap('InfiltratorContain', target.template, '飞机VISION_UNITS其他间谍/玩家或重复进入未对拍')
-            return
-        if self.infantry_rule(target, rule) and not self.infantry_entry_measured(spy, target):
-            world.gap('InfiltratorContain', target.template, '步兵VISION_UNITS其他间谍/玩家或重复进入未对拍')
-            return
-        if self.ship_rule(target, rule) and not self.ship_entry_measured(spy, target):
-            world.gap('InfiltratorContain', target.template, '舰船VISION_UNITS其他间谍/玩家或重复进入未对拍')
+        if self.units_rule(target, rule) and self.entered(target, 'units'):
+            world.gap('InfiltratorContain', target.template, 'VISION_UNITS重复进入未对拍')
             return
         if self.reset_rule(target, rule) and not self.reset_entry_measured(spy, target):
             world.gap('InfiltratorContain', target.template, 'RESET其他间谍/玩家或重复进入未对拍')
-            return
-        if self.vehicle_rule(target, rule) and not self.vehicle_entry_measured(spy, target):
-            world.gap('InfiltratorContain', target.template, '车辆VISION_UNITS其他间谍/玩家或重复进入未对拍')
             return
         if self.money_rule(target, rule) and not self.money_entry_measured(spy, target):
             world.gap('InfiltratorContain', target.template, 'STEAL_MONEY其他间谍/玩家、重复进入及余额不足未对拍')
@@ -409,36 +337,13 @@ class Infiltrators:
                 world.world.remove(spy, '进港渗透')
                 world.change()
                 continue
-            if self.aircraft_rule(target, rule):
-                if not self.aircraft_entry_measured(spy, target):
-                    world.gap('InfiltratorContain', target.template, '飞机VISION_UNITS入楼时资格变化未对拍')
+            kinds = self.units_rule(target, rule)
+            if kinds:
+                if self.entered(target, 'units'):
+                    world.gap('InfiltratorContain', target.template, 'VISION_UNITS重复进入未对拍')
                     continue
-                self.mark(target, 'aircraft')
-                self.unit_vision(spy, target, rule)
-                world.gap('InfiltratorContain', target.template,
-                      '飞机VISION_UNITS观察者内部/完整筛选/到期未闭合，见 work/re/e199_vision_clock.md')
-                world.world.remove(spy, '进楼渗透')
-                world.change()
-                continue
-            if self.infantry_rule(target, rule):
-                if not self.infantry_entry_measured(spy, target):
-                    world.gap('InfiltratorContain', target.template, '步兵VISION_UNITS入楼时资格变化未对拍')
-                    continue
-                self.mark(target, 'infantry')
-                self.unit_vision(spy, target, rule)
-                world.gap('InfiltratorContain', target.template,
-                      '步兵VISION_UNITS观察者内部/完整筛选/到期未闭合，见 work/re/e199_vision_clock.md')
-                world.world.remove(spy, '进楼渗透')
-                world.change()
-                continue
-            if self.ship_rule(target, rule):
-                if not self.ship_entry_measured(spy, target):
-                    world.gap('InfiltratorContain', target.template, '舰船VISION_UNITS入楼时资格变化未对拍')
-                    continue
-                self.mark(target, 'ship')
-                self.unit_vision(spy, target, rule)
-                world.gap('InfiltratorContain', target.template,
-                      '舰船VISION_UNITS观察者内部/完整筛选/到期未闭合，见 work/re/e200_ship.md')
+                self.mark(target, 'units')
+                self.unit_vision(spy, target, rule, kinds)
                 world.world.remove(spy, '进楼渗透')
                 world.change()
                 continue
@@ -451,17 +356,6 @@ class Infiltrators:
                 # Never interpret the short ready interruption as a reload time.
                 world.gap('InfiltratorContain', target.template,
                       'RESET真实冷却与就绪条件未闭环，见 work/re/e195_reset.md')
-                world.world.remove(spy, '进楼渗透')
-                world.change()
-                continue
-            if self.vehicle_rule(target, rule):
-                if not self.vehicle_entry_measured(spy, target):
-                    world.gap('InfiltratorContain', target.template, '车辆VISION_UNITS入楼时资格变化未对拍')
-                    continue
-                self.mark(target, 'vehicle')
-                self.unit_vision(spy, target, rule)
-                world.gap('InfiltratorContain', target.template,
-                      '车辆VISION_UNITS观察者内部/完整筛选/到期未闭合，见 work/re/e199_vision_clock.md')
                 world.world.remove(spy, '进楼渗透')
                 world.change()
                 continue

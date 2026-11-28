@@ -416,7 +416,7 @@ def test_a_spy_on_its_way_is_kept_and_an_older_versions_snapshot_refused_whole()
     assert b.infiltrators.going == {spy.serial: (b.bodies['spy'], b.bodies['t'])}
     for s in (a, b):
         s.infiltrators.tick()
-        assert not s.bodies['spy'].alive and s.infiltrators.entered(s.bodies['t'], 'vehicle')
+        assert not s.bodies['spy'].alive and s.infiltrators.entered(s.bodies['t'], 'units')
         assert not s.infiltrators.going
     old = dict(taken, version=5)
     c = _spy_world()

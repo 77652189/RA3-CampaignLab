@@ -62,9 +62,8 @@ def test_the_crane_kill_rule_and_a_sibling_marked_by_the_host():
     assert siminfiltrator._rule({'Effect': 'VISION'}, 2) == {'Effect': 'VISION'}  # only a KILL host is marked
 
 
-SLICES = {'vehicle': 'AlliedWarFactory', 'money': 'AlliedRefinery', 'kill': 'SovietCrane',
-          'paralyze': 'AlliedTechStructure', 'reset': 'SovietSuperWeapon', 'aircraft': 'AlliedAirfield',
-          'infantry': 'AlliedBarracks', 'ship': 'AlliedNavalYard'}
+SLICES = {'units': 'AlliedWarFactory', 'money': 'AlliedRefinery', 'kill': 'SovietCrane',
+          'paralyze': 'AlliedTechStructure', 'reset': 'SovietSuperWeapon'}
 
 
 def test_a_spy_sent_is_followed_as_itself_not_by_its_name():
@@ -79,7 +78,7 @@ def test_a_spy_sent_is_followed_as_itself_not_by_its_name():
     s.infiltrators.send(spy, target)
     spy.path = []
     s.infiltrators.tick()
-    assert not spy.alive and s.infiltrators.entered(target, 'vehicle') and not s.infiltrators.going
+    assert not spy.alive and s.infiltrators.entered(target, 'units') and not s.infiltrators.going
 
 
 def test_a_real_entry_marks_the_building_and_a_second_spy_is_turned_away():

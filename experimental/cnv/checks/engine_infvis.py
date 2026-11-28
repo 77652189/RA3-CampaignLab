@@ -185,6 +185,20 @@ def units(m):
     return t
 
 
+def units_long(m):
+    """b (A412 H1 / H2): a run to 90 s, plus 'there' = passes the walker stands in a 60-square at its goal.
+    Prediction (H1, the observer lives while the host does): the Tsunami / still conscript keep rising to s90;
+    (H2, a walker is picked up only once it stops): the walker's first sighting is its first pass 'there'."""
+    t = units(m)
+    walker = m.find(m.role('walker').name)
+    t.areas['Unitvis there'] = square(walker.x - 1200, walker.y, 60.0)
+    t.counters.append(('Unitvis there', 'there'))
+    t.scripts.append(Script('Unitvis there', [('NAMED_INSIDE_AREA', walker.name, 'Unitvis there')],
+                            [('INCREMENT_COUNTER', 1, 'Unitvis there')], once=False))
+    t.bench = [('bench_watch', dict(seconds=90, every=1, sheet=False, lines=4))]
+    return t
+
+
 CHECKS = {'engine_infvis': {'a': check, 'b': check_soviet, 'c': check_japan, 'd': check_unentered},
           'engine_infvis3': {'a': trio, 'b': trio_allied, 'c': trio_still, 'd': trio_still_s4},
-          'engine_infunit': {'a': units}}
+          'engine_infunit': {'a': units, 'b': units_long}}

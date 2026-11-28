@@ -55,20 +55,3 @@ def test_clock_aircraft_vehicle_sequences_as_on_the_bench():
         assert [s.counters.get(f'Dual {lane} page {page}', 0) for page in range(20)] == [31710] * 20
         assert not s.body(m.role(lane + ' spy').name).alive
         assert s.body(m.role(lane + ' match').name).alive
-
-
-def test_clock_unmeasured_tail_and_motion_stay_gaps():
-    """Do not extrapolate the 300 measured passes into an XML expiry rule."""
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_inffoot', 'c')
-    s = sim.Sim(m, t).run(80)
-    marker = s.body(m.role('match').name)
-    assert not s.infiltrators.unit_discovered(s.human, marker)
-    assert ('InfiltratorContain', marker.template) in s.unmodeled
-    # Move a recorded marker during its measured time window: that case is
-    # explicitly unmeasured, even if the new coordinates happen to be nearby.
-    owner, body, _, position = s.infiltrators.unit_observers[0]
-    s.infiltrators.unit_observers = [(owner, body, s.frame_now() - 1, position)]
-    body.x += 1
-    assert not s.infiltrators.unit_discovered(owner, body)

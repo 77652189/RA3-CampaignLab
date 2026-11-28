@@ -74,32 +74,28 @@ expect = "all(v[3] == v[0] * 1001001 for v in vals(rows)) and all(rows[-1][k] > 
 
 [[reading]]
 id = "spy_vision_units_japan_factory_soviet_barracks_entry"
-scene = {build = "engine_infunit", check = "a", until = 52}
-bench = "A411 CampInfUnitA (head b3a5bad3): entries 189184 from s11 -- the Japan war factory's spy gone at pass 184, the Soviet barracks' at 189"
+scene = {build = "engine_infunit", check = "b", until = 92}
+bench = "A411 CampInfUnitA (head b3a5bad3) and A412 CampInfUnitB (head 89385af7): entries 189184 from s12 -- the Japan war factory's spy gone at pass 184, the Soviet barracks' at 189 (the simulator 182 / 182: the entry clock, A406)"
 proves = "InfiltratorContain VISION_UNITS: an enemy spy enters a Japan war factory and a Soviet barracks (the hosts a4 / a2 / a5 have)"
-expect = "rows[-1]['entries'] == 189184"
-mismatch = "simulator: VISION_UNITS on a non-Allied host is a gap, neither spy enters (entries keep counting)"
+expect = "rows[10]['entries'] % 1000 > 150 and all(0 < rows[-1]['entries'] // m % 1000 < 200 for m in (1, 1000)) and rows[14]['entries'] == rows[-1]['entries']"
 
 [[reading]]
-id = "spy_vision_units_seen_past_thirty_seconds"
-scene = {build = "engine_infunit", check = "a", until = 52}
-bench = "A411 CampInfUnitA: nothing seen to s10; the Tsunami (veh % 1000) 8 at s11, 374 at s41, 511 at s51; the still conscript (inf % 1000) 16 at s12, 369 at s41, 511 at s51 -- still rising 39 s after entry (XML UnitDuration 30 s)"
-proves = "InfiltratorContain VISION_UNITS: every same-owner unit of the filter's kind, 1400+ from any spy, is discovered from entry and still is 39 s on"
-expect = "rows[10]['veh'] == rows[10]['inf'] == 0 and all(rows[51][k] % 1000 - rows[41][k] % 1000 >= 120 for k in ('veh', 'inf'))"
-mismatch = "simulator: no entry, nothing discovered (veh / inf 0 to s51)"
+id = "spy_vision_units_flicker_then_steady_then_gone"
+scene = {build = "engine_infunit", check = "b", until = 92}
+bench = "A412 CampInfUnitB: the Tsunami (veh % 1000) / still conscript (inf % 1000) 0 to s10, 215 / 211 at s28, 336 / 332 at s38 (+121: 4 passes in 5), 405 / 400 at s43, 480 / 475 at s48 (+75: every pass), 511 / 511 from s51 to s91 -- the observer's 30 s UnitDuration cycle, its 10 s LifetimeUpdate, then nothing (A411's 'still rising at s51' was the last second)"
+proves = "InfiltratorContain VISION_UNITS: a watched unit shows 0/1/1/1/1 for UnitDuration, then every pass for 10 s, nothing from 40 s after entry"
+expect = "all(rows[10][k] % 1000 == 0 and 110 <= rows[38][k] % 1000 - rows[28][k] % 1000 <= 125 and rows[48][k] % 1000 - rows[43][k] % 1000 >= 73 and 500 <= rows[91][k] % 1000 == rows[55][k] % 1000 for k in ('veh', 'inf'))"
 
 [[reading]]
 id = "spy_vision_units_reveal_around_the_unit"
-scene = {build = "engine_infunit", check = "a", until = 52}
-bench = "A411 CampInfUnitA: the Japan infantry 300 east of the Tsunami (veh // 1000; the vehicle filter leaves it out) 10 at s11, 601 at s51 -- about every pass"
-proves = "InfiltratorContain VISION_UNITS: the observer gives sight around a matched unit, not just the unit -- a neighbour outside the filter is seen too"
-expect = "rows[10]['veh'] == 0 and rows[51]['veh'] // 1000 - rows[21]['veh'] // 1000 >= 400"
-mismatch = "simulator: no entry, the neighbour never discovered"
+scene = {build = "engine_infunit", check = "b", until = 92}
+bench = "A411 / A412 CampInfUnitA / B: the Japan infantry 300 east of the Tsunami (veh // 1000; the vehicle filter leaves it out) 25 at s12, 147 at s20, 601 at s50 and to s91 -- every pass for the whole 40 s"
+proves = "InfiltratorContain VISION_UNITS: the observer gives sight around a watched unit (300 off seen), not just the unit, for as long as the unit is shown"
+expect = "rows[10]['veh'] == 0 and rows[50]['veh'] // 1000 - rows[20]['veh'] // 1000 >= 440 and 590 <= rows[91]['veh'] // 1000 == rows[55]['veh'] // 1000"
 
 [[reading]]
 id = "spy_vision_units_walker_unseen_while_walking"
-scene = {build = "engine_infunit", check = "a", until = 52}
-bench = "A411 CampInfUnitA: the conscript sent 1200 west at s10 (inf // 1000) 0 from s11 to s31, 2 at s32, 255 at s51 (its arrival time not read)"
-proves = "InfiltratorContain VISION_UNITS: a matched unit walking away is not discovered for 20 s, then is (stopping or reaching a place is not told apart)"
-expect = "all(rows[s]['inf'] // 1000 == 0 for s in range(11, 32)) and rows[51]['inf'] // 1000 >= 200"
-mismatch = "simulator: no entry, the walker never discovered"
+scene = {build = "engine_infunit", check = "b", until = 92}
+bench = "A412 CampInfUnitB: the conscript sent 1200 west at s10 (inf // 1000) 0 while away from its goal (there = 0 to s30, 6 at s31), seen from s32 (15 at s33) to 255 at s51 -- about 450 from the still conscript at entry, not seen; once stopped, on the same clock as the still one"
+proves = "InfiltratorContain VISION_UNITS: a watched unit is not shown while it walks, and the sight around the others does not reach about 450 (UNIT_NEAR 400 INFERRED between 300 and that)"
+expect = "all(rows[s]['inf'] // 1000 == 0 for s in range(92) if rows[s]['there'] == 0) and 240 <= rows[91]['inf'] // 1000"

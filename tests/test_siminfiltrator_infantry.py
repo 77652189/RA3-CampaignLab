@@ -47,7 +47,6 @@ def test_infantry_entry_as_on_the_bench():
     for role, side in (('enemy', 's2'), ('ally', 's5')):
         host = s.body(m.role(role).name)
         assert host.owner == m.player(side) and host.hp == host.max_hp
-    assert ('InfiltratorContain', 'AlliedBarracks') in s.unmodeled
     assert not s.infiltrators.observers
 
 
@@ -84,40 +83,6 @@ def test_infantry_discovery_as_on_the_bench():
                                  (31, 31, 0), (33, 50, 1), (52, 52, 0), (54, 59, 1)):
         rows = [values[2] for second, values in s.series if start <= second <= end]
         assert rows and all(value == expected for value in rows), rows
-
-
-@pytest.mark.parametrize('variant', ['duration', 'filter', 'extra', 'host', 'spy', 'player', 'repeat', 'entry_recheck'])
-def test_infantry_unmeasured_entry_stays_gap(variant):
-    """A measured host must not silently enable other complete configurations."""
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_inffoot', 'a')
-    s = sim.Sim(m, t)
-    target, spy = (s.body(m.role(role).name) for role in ('enemy', 'enemy spy'))
-    rule = s.infiltrators.spec(target)
-    if variant == 'duration':
-        rule['UnitDuration'] = '29s'
-    elif variant == 'filter':
-        rule['UnitFilter'] = 'InfiltrationVehicleObjectFilter'
-    elif variant == 'extra':
-        rule['BlockedDuration'] = '1s'
-    elif variant == 'host':
-        target.template = 'SovietBarracks'
-    elif variant == 'spy':
-        spy.template = 'JapanInfiltrationInfantry'
-    elif variant == 'player':
-        spy.owner = m.player('s6')
-        s.relations[target.owner, spy.owner] = 'Enemy'
-    elif variant == 'repeat':
-        s.infiltrators.mark(target, 'infantry')
-    s.infiltrators.send(spy, target)
-    if variant == 'entry_recheck':
-        assert spy.mode == 'infiltrate'
-        s.infiltrators.mark(target, 'infantry')
-        spy.x, spy.y, spy.path = target.x, target.y, []
-        s.infiltrators.tick()
-    assert spy.alive and not s.infiltrators.going
-    assert ('InfiltratorContain', target.template) in s.unmodeled
 
 
 def test_infantry_wrong_kind_and_third_owner_as_on_the_bench():

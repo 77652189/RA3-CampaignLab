@@ -92,43 +92,6 @@ def test_spy_vehicle_factory_entry_as_on_the_bench(check):
     for role, side in (('enemy', 's1'), ('ally', 's2')):
         factory = s.body(m.role(role).name)
         assert factory.owner == m.player(side) and factory.hp == factory.max_hp
-    assert ('InfiltratorContain', 'AlliedWarFactory') in s.unmodeled
-    assert not s.infiltrators.observers
-
-
-@pytest.mark.parametrize('variant', ['duration', 'unit_duration', 'filter', 'structure_filter',
-                                     'observer', 'host', 'spy', 'player', 'repeat', 'player_at_entry'])
-def test_spy_vehicle_unmeasured_entry_reports_gap(variant):
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_infveh', 'a')
-    s = sim.Sim(m, t)
-    spy, target = s.body(m.role('enemy spy').name), s.body(m.role('enemy').name)
-    fields = {'duration': ('Duration', '29s'), 'unit_duration': ('UnitDuration', '29s'),
-              'filter': ('UnitFilter', 'InfiltrationInfantryObjectFilter'),
-              'structure_filter': ('StructureFilter', 'InfiltrationEnergyStructuresFilter'),
-              'observer': ('ObjectRef', 'VisionObserver')}
-    if variant in fields:
-        key, value = fields[variant]
-        s.infiltrators.spec(target)[key] = value
-    elif variant == 'host':
-        target.template = 'SovietWarFactory'
-    elif variant == 'spy':
-        spy.template = 'JapanInfiltrationInfantry'
-    elif variant == 'player':
-        spy.owner = m.player('s3')
-        s.relations[target.owner, spy.owner] = 'Enemy'
-    elif variant == 'repeat':
-        s.infiltrators.mark(target, 'vehicle')
-    s.infiltrators.send(spy, target)
-    if variant == 'player_at_entry':
-        assert spy.mode == 'infiltrate'
-        spy.owner = m.player('s3')
-        s.relations[target.owner, spy.owner] = 'Enemy'
-        spy.x, spy.y, spy.path = target.x, target.y, []
-        s.infiltrators.tick()
-    assert ('InfiltratorContain', target.template) in s.unmodeled
-    assert spy.alive and not s.infiltrators.going
     assert not s.infiltrators.observers
 
 
