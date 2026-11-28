@@ -31,6 +31,7 @@ from contain_audit import signature              # noqa: E402
 LEVELS = [f'a{k}' for k in range(1, 10)]         # the Allied 9 (missions/a1.py ...), as inventory_ai.LEVELS
 OUT = os.path.join(ROOT, 'docs', 'engine', 'inventory-levels-a.md')
 ACTION, CONDITION, MODULE, NUGGET = '脚本动作', '脚本条件', '物体模块', '武器效果'
+WEAPON = 'WeaponTemplate'                       # retail_twin's group for a weapon's nuggets
 PARTS = (ACTION, CONDITION, MODULE, NUGGET)
 BENCHED, GUESSED, TODO, NA = '已对拍', '推断', '未做', '不涉及'
 # reached in these levels, but nothing there makes it act (its owner's scripts, the AI, the player): (part, name) ->
@@ -51,7 +52,7 @@ def _words(el):
 
 def _read(root, path, objs, weapons, override=False):
     """Add a file's GameObjects ({lower id: (id, {group: [(type, module id, words, signature)]}, parent)}) and WeaponTemplates
-    ({lower id: (id, nugget types, words, parent)}); with override, an id already there is kept (CampaignOverrides,
+    ({lower id: (id, [(nugget type, signature)], words, parent)}); with override, an id already there is kept (CampaignOverrides,
     as retailmodules)."""
     for e in root.iter():
         t = rm._tag(e)
@@ -70,7 +71,7 @@ def _read(root, path, objs, weapons, override=False):
             k = e.get('id').lower()
             if override and k in weapons:
                 continue
-            nug = [rm._tag(n) for n in e.iter() if rm._tag(n).endswith('Nugget')]
+            nug = [(rm._tag(n), signature(n)) for n in e.iter() if rm._tag(n).endswith('Nugget')]
             weapons[k] = (e.get('id'), nug, _words(e), (e.get('inheritFrom') or '').lower() or None)
 
 
@@ -146,23 +147,32 @@ def retail_twin(name, group, typ, sigs):
     """A retail template whose effective modules of this type are exactly these (the one our template `name` is
     named after when it is one of them), or None. Our copy of a retail structure (units/unsellable.py, a mission's
     renamed barracks) carries that retail config, and the inventory's per-config forms (contain_audit) are exact
-    module signatures, so the copy counts under the retail name."""
+    module signatures, so the copy counts under the retail name. Weapons the same way, group WEAPON and a nugget
+    type: our copy of a retail weapon (the Chrono Lag's shell, the Liberty's drones) counts under the retail
+    weapon's name, which the inventory's field forms list."""
     global _twins
     if _twins is None:
-        objs = retail_tables()[0]
+        objs, weapons = retail_tables()
         _twins = collections.defaultdict(list)
-        for k in sorted(objs):
-            for key, s in by_type(effective(k, objs)).items():
-                _twins[key + (s,)].append(objs[k][0])
+        for table, mods in ((objs, effective), (weapons, nugget_mods)):
+            for k in sorted(table):
+                for key, s in by_type(mods(k, table)).items():
+                    _twins[key + (s,)].append(table[k][0])
     twins = _twins.get((group, typ, sigs), [])
     return next((t for t in twins if t.lower() in name.lower()), twins[0] if twins else None)
 
 
-def nuggets(k, weapons, seen=()):
+def nuggets(k, weapons, seen=(), sigs=False):
+    """Weapon k's nugget types after its parents' ((type, signature) with sigs)."""
     if k not in weapons or k in seen:
         return []
     _, nug, _, parent = weapons[k]
-    return (nuggets(parent, weapons, seen + (k,)) if parent else []) + nug
+    return (nuggets(parent, weapons, seen + (k,), sigs) if parent else []) + [n if sigs else n[0] for n in nug]
+
+
+def nugget_mods(k, weapons):
+    """Weapon k's nuggets shaped as effective() modules (group WEAPON), for by_type()."""
+    return [(WEAPON, t, '', (), s) for t, s in nuggets(k, weapons, sigs=True)]
 
 
 def weapon_words(k, weapons, seen=()):
@@ -208,14 +218,15 @@ def level_uses(level):
     placed = {o.template for o in list(getattr(m.map, 'OBJECTS', [])) + list(mm.objects)} | {u.id for u in mm.units}
     seeds = placed | {n for n in named if n.lower() in objs}
     got_o, got_w = reach(seeds, objs, weapons)
-    retail = retail_tables()[0]
+    retail, retail_weapons = retail_tables()
     for k in sorted(got_o):
         for (g, t), sigs in by_type(effective(k, objs)).items():
             twin = objs[k] is not retail.get(k) and retail_twin(objs[k][0], g, t, sigs)
             out[(MODULE, f'{g}/{t}')].add(twin or objs[k][0])
     for k in sorted(got_w):
-        for t in set(nuggets(k, weapons)):
-            out[(NUGGET, t)].add(weapons[k][0])
+        for (g, t), sigs in by_type(nugget_mods(k, weapons)).items():
+            twin = weapons[k] is not retail_weapons.get(k) and retail_twin(weapons[k][0], g, t, sigs)
+            out[(NUGGET, t)].add(twin or weapons[k][0])
     missing = sorted(t for t in placed if t.lower() not in objs)
     return out, missing
 

@@ -71,3 +71,15 @@ def test_our_copy_of_a_retail_structure_counts_under_the_retail_name():
     sigs = inventory_levels.by_type(inventory_levels.effective('alliedpowerplant', inventory_levels.retail_tables()[0]))
     assert inventory_levels.retail_twin('CNV_NoSell_AlliedPowerPlant', *key, sigs[key]) == 'AlliedPowerPlant'
     assert inventory_levels.retail_twin('CNV_NoSell_AlliedPowerPlant', *key, (sigs[key][0][:-1] + ((),),)) is None
+
+
+def test_our_copy_of_a_retail_weapon_counts_under_a_retail_weapon():
+    # A3's Chrono Lag shell is the Guardian's cannon renamed (units/chronolag.py), its InformTargetNugget untouched:
+    # the level's scope names a retail weapon carrying the same nugget; a changed nugget has no retail twin
+    L = inventory_levels
+    uses, _ = L.level_uses('a3')
+    assert 'CNV_ChronoLag_Shell' not in uses[(L.NUGGET, 'InformTargetNugget')]
+    key = (L.WEAPON, 'InformTargetNugget')
+    sigs = L.by_type(L.nugget_mods('alliedantivehiclevehicletech1cannon', L.retail_tables()[1]))
+    assert L.retail_twin('CNV_ChronoLag_Shell', *key, sigs[key]).lower() in L.retail_tables()[1]
+    assert L.retail_twin('CNV_ChronoLag_Shell', *key, (sigs[key][0][:1] + ((('Radius', '1'),),) + sigs[key][0][2:],)) is None
