@@ -715,3 +715,25 @@ bench = "C 11-15 aipointtiny:a (CampPointTinyA_mcp_1115_213437, PASS): SearchRan
 proves = "simai Point search: every point within 1 of the yard is land, nothing qualifies, the slot stays empty and the team home"
 expect = "set(win(1, 30, '在家')) == {4}"
 item = "AI 目标/AITargetingHeuristic.HeuristicType=Point"
+
+# Bench readings of benches/ai/targets/checks.py#engine_aihusk (format: experimental/cnv/readings.py; runner: tests/conformance).
+# The state's picks are the ext log's tgt: lines (teamlog.target_picks); the simulator's side is its team trail.
+
+[[reading]]
+bench_id = "engine_aihusk"
+id = "a_land_husk_heuristic_finds_no_candidate"
+scene = {build = "aihuskkind", check = "a", until = 22, teams = true}
+each = [{build = "aihuskkind"}, {build = "aihusknone"}]
+bench = """B 11-27 (CampHuskKindA_mcp_1127_163403, CampHuskNoneA_mcp_1127_163525; C 11-15 aihusknone the same): CNVStateTP's LandHuskHeuristic at f16 / f466 / f502 found=0 with no candidate at all (count 0), for the plain neutral derrick and for its copy with KindOf +HUSK alike; no team goes out (总数 4 at home to s37)"""
+proves = "simai targets: Husk takes no ordinary neutral object, KindOf HUSK or not (its candidate source is unread; no retail or level object feeds it)"
+item = "AI 目标/AITargetingHeuristic.HeuristicType=Husk"
+expect = "not [r for r in teams() if r['state_key'] == 'CNVStateTP' and r['target']]"
+
+[[reading]]
+bench_id = "engine_aihusk"
+id = "the_named_control_picks_the_same_derrick"
+scene = {build = "aihusknamed", check = "a", until = 22, teams = true}
+bench = "B 11-27 CampHuskNamedA_mcp_1127_163658 (C 11-15 the same): CNVHuskNamed (NamedObject) at f16 found=1, the derrick at (2900, 3300)"
+proves = "simai targets: the bench's derrick is a pickable target (the Husk readings' control)"
+item = "AI 目标/AITargetingHeuristic.HeuristicType=Husk"
+expect = "{r['target'] for r in teams() if r['state_key'] == 'CNVStateTP' and r['target']} == {'UNIT - Husk Oil Control'}"

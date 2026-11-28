@@ -1,7 +1,6 @@
 """Husk rejects ordinary neutral objects; see work/re/c_husk_report.md."""
 import importlib.util
 import json
-import re
 from pathlib import Path
 
 import pytest
@@ -32,26 +31,6 @@ def test_husk_native_selection_distinguishes_ordinary_neutral_oil(build):
             assert row['target'] > 0 and row['point'] == (2900.0, 3300.0)
         else:
             assert row['target'] is None and row['count'] == 0
-
-
-@pytest.mark.parametrize('build', BUILDS)
-def test_husk_named_selection_replays_native(build):
-    if not simai.available():
-        pytest.skip('no private AI model')
-    rows = native_picks(build)
-    assert rows
-    w = simai_run.run(build, 'a', until=3)
-    picks = [text for _, kind, text in w.brains['Soviet_1'].ai.log
-             if kind == 'target' and text.startswith('CNVStateTP: ')]
-    assert bool(picks) == rows[0]['found']
-    if rows[0]['found']:
-        # Native and model object IDs differ; verify the selected model object
-        # is the published exact-name control, not an unrelated neutral object.
-        chosen = {int(re.search(r'-> \[(\d+)\]', text)[1]) for text in picks}
-        assert len(chosen) == 1
-        oil = next(t for t in w.brains['Soviet_1'].view.things if t.id in chosen)
-        assert oil.name == w.sim.m.role('husk oil control').name
-        assert (oil.x, oil.y) == rows[0]['point']
 
 
 @pytest.mark.parametrize('build', BUILDS)

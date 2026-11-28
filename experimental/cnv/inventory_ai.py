@@ -168,13 +168,6 @@ NOTES = {
         '模型仍选真桥终点且保留已消失终点，两strict xfail。'
         '缺桥登记/资格/状态及登记后求值与端点生命周期事实，不据空列表改模型；'
         '两局耗完，不晋升，见work/re/c_bridge_report.md'),
-    '目标/AITargetingHeuristic.HeuristicType=Husk': (GUESSED,
-        'C aihusknone/aihusknamed:a同位普通中立油井，LandHusk阴性与NamedObject阳性；'
-        '两局f16分别found=0/1，阳性选(2900,3300)，s20两组总数4，均PASS。'
-        'tests/test_husk_target_c.py按名回放并断言原选择记录及存活计数。'
-        '模型移除Husk通用中立物回退；缺真实残骸候选提供者时不选目标，'
-        '不以KindOf或模板名字猜登记。原版残骸创建/候选资格/水域阳性仍gap，'
-        '不晋升整项；见work/re/c_husk_report.md'),
     '目标/AITargetingHeuristic.UnderAttack': (GUESSED,
         'C重开复用D164：满血电厂f5记录、f16门true并选中；last33/clear109来源活，'
         '另一对象last146/clear222来源已删，clr不等于同帧门。新aiuagate两局，'

@@ -153,9 +153,10 @@ ON_SCENERY_AS_BENCHED = {'aibd0', 'aibd1', 'aibdidle', 'aibdwho', 'aibdpre',
                          'aiwaterdist', 'aiwaterthreat', 'aiwaternear', 'aiwaterfar',
                          # C's 11-15 target-pick benches on niagara: the control at (2900, 3300) / the plant at
                          # (4500, 2000) stand by an MR_Tree04 as benched (tests/fixtures/<build>_target_picks.txt,
-                         # aiuab*_fight.txt, underattack_*_c.txt; moving them drops the readings)
+                         # aiuab*_fight.txt, underattack_*_c.txt; moving them drops the readings; B 11-27's aihuskkind
+                         # is aihusknone's derrick spot, the pair's contrast)
                          'aiclosest', 'aicrateoff', 'aicrateon', 'aiegarroff', 'aiegarron', 'aigarroff', 'aigarron',
-                         'aihusknamed', 'aihusknone', 'aiuabl', 'aiuabw', 'aiuagate', 'aiunderatk'}
+                         'aihuskkind', 'aihusknamed', 'aihusknone', 'aiuabl', 'aiuabw', 'aiuagate', 'aiunderatk'}
 
 # B's EnterGarrisons house on this grass tuft as benched 11-09 (engine_aigarrison readings).
 GARRISON_SCENERY_PAIR = ((3740.0, 2600.0), ('CC_GRASS06', 3733.2, 2598.6))

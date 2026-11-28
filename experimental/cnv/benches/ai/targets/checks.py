@@ -366,7 +366,7 @@ def engine_aihusk():
         return t
 
 
-    CHECKS = {build: {'a': a} for build in ('aihusknone', 'aihusknamed')}
+    CHECKS = {build: {'a': a} for build in ('aihusknone', 'aihusknamed', 'aihuskkind')}
     return dict(CHECKS=CHECKS)
 
 

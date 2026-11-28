@@ -447,10 +447,12 @@ def aifriendly_bench():
 def aihusk_bench():
     """Husk negative: an ordinary neutral oil derrick is not a land husk.
 
-    The NamedObject control selects the exact same placed derrick. No synthetic
-    HUSK flag or pretend wreck is supplied. Real wreck registration remains a gap.
+    The NamedObject control selects the exact same placed derrick. Real wreck registration remains a gap.
     Prediction before running: LandHuskHeuristic finds nothing; named control finds
     the derrick. Team arrival is outside this selection-only probe.
+    aihuskkind (B 11-27): the same derrick as a copy with KindOf +HUSK (units/unsellable.copy) -- retail and our
+    levels have no object of that kind (SageXML: only LogicCommand's CaptureBuilding filter names it). Predicted
+    LandHuskHeuristic picks it; the bench did not (readings.toml#engine_aihusk): the kind is not what makes a husk.
     """
     mission = aitargetpick_bench()["shared"].mission
     from benches.ai.tactics.scenes import aiteams_bench
@@ -458,14 +460,19 @@ def aihusk_bench():
     host_unit = aiteams_bench()["shared"].host_unit
 
 
-    def husk(named=False):
+    def husk(named=False, kind=False):
+        from units import unsellable
         heuristic = 'CNVHuskNamed' if named else 'LandHuskHeuristic'
-        m = mission('CampHuskNamed' if named else 'CampHuskNone',
+        m = mission('CampHuskNamed' if named else 'CampHuskKind' if kind else 'CampHuskNone',
                     [(heuristic, None)], (0, 0, 0, 4))
         m.ext, m.ext_logs = True, ('target',)  # D174: ra3ext tgt: lines (costly, on demand)
         m.units.append(host_unit())
         m.put(HOST, 'east base', 250, 400, side='s1', role='teams host')
-        m.put('OilDerrick', 'east gate', -250, 0, side='neutral',
+        oil = 'OilDerrick'
+        if kind:
+            m.units.append(unsellable.copy(oil, 'HUSK', 'Husk'))
+            oil = m.units[-1].id
+        m.put(oil, 'east gate', -250, 0, side='neutral',
               name='UNIT - Husk Oil Control', role='husk oil control')
         if named:
             asset, xml, ref = m.assets[0]
@@ -476,7 +483,7 @@ def aihusk_bench():
         return m
 
 
-    MISSION = {'aihusknone': husk, 'aihusknamed': lambda: husk(True)}
+    MISSION = {'aihusknone': husk, 'aihusknamed': lambda: husk(True), 'aihuskkind': lambda: husk(kind=True)}
     return dict(MISSION=MISSION)
 
 
