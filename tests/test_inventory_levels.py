@@ -40,6 +40,12 @@ def test_the_level_scope_a_page_is_generated_from_the_items(tmp_path, monkeypatc
     assert out.read_text(encoding='utf-8') == want
 
 
+def test_a_module_nothing_moves_in_a_level_leaves_that_levels_scope(monkeypatch):
+    key = (inventory_levels.MODULE, 'Behaviors/SpiderHoleUpdate')        # a4: the AI's Tankbusters never dig in
+    monkeypatch.setattr(inventory_levels, 'level_uses', lambda lv: ({key: {'JapanAntiVehicleInfantry'}}, []))
+    assert list(inventory_levels.level_scope(['a3', 'a4'])[0][key]) == ['a3']
+
+
 def test_an_objects_words_naming_another_object_are_not_followed():
     objs = {'tank': ('Tank', {'Behaviors': [('WeaponSetUpdate', 'w', {'gun', 'truck'}, ())]}, None),
             'truck': ('Truck', {}, None), 'shell': ('Shell', {}, None)}

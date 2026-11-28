@@ -33,6 +33,14 @@ OUT = os.path.join(ROOT, 'docs', 'engine', 'inventory-levels-a.md')
 ACTION, CONDITION, MODULE, NUGGET = '脚本动作', '脚本条件', '物体模块', '武器效果'
 PARTS = (ACTION, CONDITION, MODULE, NUGGET)
 BENCHED, GUESSED, TODO, NA = '已对拍', '推断', '未做', '不涉及'
+# reached in these levels, but nothing there makes it act (its owner's scripts, the AI, the player): (part, name) ->
+# (levels, why); level_scope leaves those levels out, the page lists them. Retail use elsewhere keeps its state.
+INERT = {
+    (MODULE, 'Behaviors/SpiderHoleUpdate'): (('a4',), '坦克杀手归 AI 的具名脚本队伍，脚本不按入洞，微操不管（INFERRED，'
+                                             'B 答 work/re/b1127_a419.md 第 1 节）'),
+    (MODULE, 'Behaviors/PrematureDischargeSpecialPower'): (('a4',), 'AI 盖的高级防御塔落在不跑微操的默认队伍，脚本不按、'
+                                                           '玩家占不了（INFERRED，同上第 2 节）'),
+}
 
 
 # ---- the object and weapon tables, with the words each one's data holds
@@ -218,7 +226,8 @@ def level_scope(levels=LEVELS):
     for lv in levels:
         uses, missing[lv] = level_uses(lv)
         for key, eg in uses.items():
-            scope[key][lv] = eg
+            if lv not in INERT.get(key, ((),))[0]:
+                scope[key][lv] = eg
     return scope, missing
 
 
@@ -296,6 +305,8 @@ def render(items, scope, missing):
     if gone:
         lines += ['', '摆了、但原版数据和我们的单位里都找不到的模板（模块没算）：'
                   + '；'.join(f'{lv} ' + '、'.join(f'`{t}`' for t in ts) for lv, ts in gone.items()) + '。']
+    lines += ['', '摆了、但在这几关里不会动的（不算）：'
+              + '；'.join(f'`{n}` {" ".join(lvs)}：{why}' for (_, n), (lvs, why) in INERT.items()) + '。']
     if unknown:
         lines += ['', '编出的脚本里有、清单里没有的名字（不算）：'
                   + '、'.join(f'`{n}`' for _, n, _ in sorted(unknown)) + '。']
