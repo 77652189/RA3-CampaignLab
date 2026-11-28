@@ -2032,6 +2032,8 @@ def aipullback_bench():
         # as the probe has it) -- does another faction / facility draw them home?
         'aipullsov': lambda: mission('CampAIPullSov', factory=True, faction='Soviet'),
         'aipullsvx': lambda: repair_moved(mission('CampAIPullSvX', factory=True, faction='Soviet')),
+        # sax: AlliedArmy's facility moved instead -- the Soviet AI still goes to the crane (lookup by its own Side)
+        'aipullsax': lambda: repair_moved(mission('CampAIPullSaX', factory=True, faction='Soviet'), army='AlliedArmy'),
         'aipulljp': lambda: mission('CampAIPullJp', factory=True, faction='Japan'),
         # ArmyDefinition 2 (work/re b1126_armydef): the game's pull-back looks for a VehicleRepairFacility for a
         # ground mover, a NavalRepairFacility for a water one, an AircraftRepairFacility (one it can enter) for a flyer.

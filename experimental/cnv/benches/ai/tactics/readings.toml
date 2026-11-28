@@ -1039,10 +1039,14 @@ expect = ["all(r['回家'] == 0 for r in rows[14:]) and any(r['到远厂'] >= 3 
 bench_id = "engine_aipullback"
 id = "a_hurt_soviet_tank_team_is_pulled_back_to_the_crane"
 scene = {build = "aipullsov", check = "a", until = 40.0}
-bench = "aipullsov (hurt Soviet tanks): 回家 1 or more from s15 on"
-proves = "simai pullback: a hurt Soviet tank team is pulled back to the crane (the Soviet VehicleRepairFacility)"
+each = [{build = "aipullsov"}, {build = "aipullsax"}]
+bench = """\
+aipullsov (hurt Soviet tanks): 回家 1 or more from s15 on; aipullsax (AlliedArmy's VehicleRepairFacility the barracks, \
+bench 11-27 with sov in one batch): 回家 1 @ s20 .. 3 @ s23, 坦克数 4 -> 0 by s28 (sov 回家 from s19) -- with aipullsvx \
+(SovietArmy's moved: none home) the lookup is the AI player's own Side"""
+proves = "simai pullback: a hurt Soviet tank team is pulled back to the crane (the ArmyDefinition of its own Side)"
 expect = "any(r['回家'] >= 1 for r in rows[14:])"
-item = "AI 阵营/ArmyDefinition.VehicleRepairFacility"
+item = ["AI 阵营/ArmyDefinition.VehicleRepairFacility", "AI 阵营/ArmyDefinition.Side"]
 
 [[reading]]
 bench_id = "engine_aipullback"
