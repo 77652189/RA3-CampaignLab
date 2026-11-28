@@ -4,6 +4,7 @@ from pathlib import Path
 from random import Random
 
 import numpy as np
+from scipy.ndimage import label as connected_components
 
 from experimental.mapgen.campaign_writer import labpaths, noise_field, rules
 from experimental.mapgen.library import SNOW_FIELDS, SNOW_RAMPS, WINTER_SURFACES, texture_kit
@@ -66,7 +67,7 @@ def paint(plan, library, ground, roadbed=None):
         if surface is None:
             raise ValueError(f'block at {plan.blocks[owner].points[0]}: missing surface id, use and kit')
 
-    fixed = {plan.ground}
+    fixed, soil_owners, dirt_paths = {plan.ground}, set(), {}
     for owner, surface in enumerate([*surfaces, None]):
         mask = ground.owners == (owner if surface else -1)
         label, kit, kind = backdrop, ground_kit, ground_class
@@ -102,8 +103,11 @@ def paint(plan, library, ground, roadbed=None):
                     lower, upper = (0.28, 0.72) if winter else (0.18, 0.82)
                     for accent, patch in zip(accents, (noise > upper, noise < lower)):
                         textures[j[patch], i[patch]] = accent
+        shoulder = mask & ground.ramp_edges & ~ground.hidden
         for role_mask, role in roles:
             cells = mask & role_mask
+            if kind == 'Snow' and role == 'cliff':
+                cells &= ~shoulder
             if cells.any():
                 ramp_class = {'Snow': 'Snow', 'Dirt': 'Rock'}.get(kind, 'Dirt')
                 role_class = {'cliff': 'Cliff', 'shore': 'Snow' if ground_class == 'Snow' else 'Sand',
@@ -119,10 +123,14 @@ def paint(plan, library, ground, roadbed=None):
                 textures[cells] = name
                 if role == 'ramp':
                     fixed.add(name)
-        shoulder = mask & ground.ramp_edges & ~ground.hidden
-        # A bare steep cut takes rock; the tread keeps its selected surface.
+                    if role_class == 'Dirt':
+                        soil_owners.add(owner if surface else -1)
+                        if name == named_texture:
+                            dirt_paths[owner] = name
+        # Exposed snow shoulders keep the snow from the adjoining field.
         exposed = shoulder & cliff
-        if exposed.any() and (kits.get(kit, {}).get('Rock') or kits.get(FALLBACK['Rock'], {}).get('Rock')):
+        if kind != 'Snow' and exposed.any() and (
+                kits.get(kit, {}).get('Rock') or kits.get(FALLBACK['Rock'], {}).get('Rock')):
             rock, = _palette(kits, kit, 'Rock', label, Random(f'{kit}:ramp cut'), 1)
             textures[exposed] = rock
         elif named_texture is not None and kind != 'Snow':
@@ -133,6 +141,17 @@ def paint(plan, library, ground, roadbed=None):
                 named_texture, = _palette(kits, kit, 'Dirt' if kind == 'Dirt' else 'Grass', label,
                                           Random(f'{kit}:ramp verge'), 1)
             textures[verge] = named_texture
+
+    if dirt_paths:
+        # A single explicitly painted dirt path continues across the ramp and its exposed flank.
+        paths, count = connected_components(ground.ramp)
+        for index in range(1, count + 1):
+            ramp = paths == index
+            owners = set(ground.owners[ramp & ~ground.blocked])
+            soils = {dirt_paths[i] for i in owners & dirt_paths.keys()}
+            if len(soils) == 1 and owners <= soil_owners:
+                flank = rules.edit_region(ramp) & ground.ramp_edges & cliff
+                textures[(ramp | flank) & ~ground.hidden] = soils.pop()
 
     road_material = asphalt = None
     if roadbed is not None and roadbed.paved.any():

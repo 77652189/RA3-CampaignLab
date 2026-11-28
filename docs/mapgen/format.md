@@ -88,7 +88,7 @@
 
 - 顶层 `commitments` 可写 `kit`、`road_kit`、全图背景的 `ground_texture` 和 `mood`。地点、关型、剧情、时限与风格理由写在卡上。打开本地库的 `retail_moods`，按地点 `place`、气候 `climate` 和原版时段 `time_label` 选图。`mood` 可填条目名称 `name`、原版图 ID，或带原版时段的 ID，例如 `camp_j07_yokohama_stewart@morning` 或 `camp_j07_yokohama_stewart@1`。时段只匹配原图已记录的值，库中没有黎明档时可选相近的固定清晨。倒计时、视野变化和日夜转换由任务脚本另做。省略 `mood` 时沿用容器氛围。
 - 游戏图和编辑器图共用同一份氛围。它来自原版图的 `GlobalLighting`（含时段）、`WorldInfo.weather`、`FogSettings`、`EnvironmentData` 和 `PostEffectsChunk`。库从本机 `work/mapgen_probe/atmosphere.json` 导入条目及原始数据。
-- 在陆地块加 `"ground_texture": "Snow_Iceland03"`，即可用库中的这张贴图打底。库列出了 SDK 描述中的贴图名，展开放之前还会查本机 `Art/Terrain` 下的 `Texture` 和 `BumpTexture` 文件。坡心优先沿用类别相符的指定贴图，让画出的土径或雪面穿过坡道。没有匹配的指定贴图时按套件及坡面类别选材。可通行的坡心跨块按两侧实际材质融合。雪地坡肩保留相邻雪面和露岩，其余坡肩可沿用指定地表。崖面、岸坡和模型路面各自选材。画日式海岸时若富士山的 Hot Springs 贴图缺失，可用有可用地表的套件构建，再用 `TerrainPlan.cliffs` 指定有实测直段的富士山崖件。手写崖段必须与设计崖重合才能指定另一套件，也可放到可玩区以外补景。缺实测直段崖件会阻止出图，其他崖面和坡肩提示随 `*-checks.md` 输出。
+- 在陆地块加 `"ground_texture": "Snow_Iceland03"`，即可用库中的这张贴图打底。库列出了 SDK 描述中的贴图名，展开放之前还会查本机 `Art/Terrain` 下的 `Texture` 和 `BumpTexture` 文件。坡心优先沿用类别相符的指定贴图，让画出的土径或雪面穿过坡道。没有匹配的指定贴图时按套件及坡面类别选材。全坡为土面且仅有一种手画土径时，坡心到裸露陡肩沿用这条土径的贴图。其余坡心跨块按实际邻材融合，裸露雪坡肩保留相邻雪面。崖面、岸坡和模型路面各自选材。实测有开口的崖件让后方地形保持可见。画日式海岸时若富士山的 Hot Springs 贴图缺失，可用有可用地表的套件构建，再用 `TerrainPlan.cliffs` 指定有实测直段的富士山崖件。手写崖段必须与设计崖重合才能指定另一套件，也可放到可玩区以外补景。缺实测直段崖件会阻止出图，其他崖面和坡肩提示随 `*-checks.md` 输出。
 - SDK 的打包图集最多容纳 49 个地表贴图条目。整图重刷后写出器按成图重建贴图表。混用多套地表时可从导出图读取 `mapterrain.Tiles(m, hm.width).textures` 核对实际数量，超限就让相似的块共用底图。
 
 ## 过口与状态

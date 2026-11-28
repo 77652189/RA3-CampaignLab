@@ -259,7 +259,7 @@ def test_winter_woods_leave_a_building_pad_and_ice_bare(slice_inputs, tmp_path, 
     assert result.check_relations()['room'].status == 'pass'
 
 
-def test_snow_ramp_keeps_its_snow_and_exposed_rock_after_dressing(slice_inputs, monkeypatch):
+def test_snow_ramp_keeps_snow_on_its_shoulders_after_dressing(slice_inputs, monkeypatch):
     _, _, _, _, library, _, sage, _ = slice_inputs
     monkeypatch.setattr(paint, 'ART', sage)
     (sage / 'tile').touch()
@@ -290,7 +290,8 @@ def test_snow_ramp_keeps_its_snow_and_exposed_rock_after_dressing(slice_inputs, 
     assert native.ramp[40:42, 45].all() and not native.blocked[40:42, 45].any()
     assert list(ground.textures[40:42, 45]) == ['TownSnow', 'TownSnow']
     assert ground.edge_texture(45, 40, 45, 41, 'TownSnow') == 'TownSnow'
-    assert native.blocked[37, 35] and ground.textures[37, 35] == 'ExposedRock'
+    assert native.blocked[37, 35] and ground.textures[37, 35] == 'TownSnow'
+    assert native.blocked[40, 30] and ground.textures[40, 30] == 'ExposedRock'
     assert ground.raw is native.raw and ground.blocked is native.blocked
 
 

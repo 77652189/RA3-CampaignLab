@@ -22,6 +22,8 @@ SUB_DEPTH = 70              # WorldBuilder manual, docs/research/first-party.md
 SHORE_RISE = 4              # world units per cell: 6.4 writer units, below the ramp limit of 6.5
 VISIBLE = rules.FIELDS.index('visible')
 ON_SHORE = 2 * SHORE_RISE   # two bank cells' rise on each side of the waterline
+# These meshes leave openings in the face. Keep the backing terrain visible.
+_OPEN_CLIFF_FACES = {'VL_CliffWall02', 'YU_SeaCliffWall04', 'YU_SeaCliffWall12'}
 
 @dataclass(frozen=True)
 class Surface:
@@ -496,11 +498,109 @@ def _ramp_cut(start, tangent, ramp, uphill, run, *, ends=0):
     return (begin, end) if begin <= end else None
 
 
-def _cliffs(plan, library, base, at, x, y, ramps):
-    pieces, issues, errors = [], [], []
+def _cliff_joints(cliffs, runs, library, base, at, x, y, ramps):
+    """Return each vertex's turn and signed in/out trims, plus its fittings and masks."""
+    pieces, issues = [], []
     cover = np.zeros(x.shape, bool)
     seams = np.zeros_like(cover)
-    runs = {}
+    incoming, outgoing = defaultdict(list), defaultdict(list)
+    for cliff in cliffs:
+        incoming[cliff.end].append(cliff)
+        outgoing[cliff.start].append(cliff)
+    bounds = x.min(), x.max(), y.min(), y.max()
+    # Supply grade-matched return arms even where only one side was drawn.
+    arms = {}
+    for cliff, (_, tangent, normal, _, _, grade, spec) in runs.items():
+        if spec[0].endswith('_GRID'):
+            continue
+        steps = int((grade[1] - grade[0]) / CLIFF_STEP_RAW)
+        fitting = next((f for f in cliff_corners(library, cliff.kit, steps, spec[0]) if f['turn'] == 90), None)
+        if fitting is None:
+            continue
+        for point, first, links, reach in ((cliff.start, True, incoming, fitting['reach'][0]),
+                                          (cliff.end, False, outgoing, fitting['reach'][1])):
+            if links[point]:
+                continue
+            p = np.asarray(point)
+            q = p + reach * normal
+            if not (bounds[0] <= q[0] <= bounds[1] and bounds[2] <= q[1] <= bounds[3]):
+                continue
+            start, end = (q, p) if first else (p, q)
+            direction = -normal if first else normal
+            inside = tangent if first else -tangent
+            samples = np.linspace(start, end, math.ceil(reach / CELL) + 1)[1:-1]
+            if (not len(samples) or not all(np.all(base[at(samples + side * CELL * inside)] == z)
+                                            for side, z in zip((-1, 1), grade)) or
+                    any(cut[0] < reach and cut[1] > 0 for ramp, uphill, run in ramps
+                        if (cut := _ramp_cut(start, direction, ramp, uphill, run)) is not None)):
+                continue
+            arm = Cliff(tuple(start), tuple(end), cliff.kit)
+            arms[arm] = (start, direction, inside, reach, [(0., reach)], grade, spec)
+            links[point].append(arm)
+
+    ends, fitted = {}, set()
+    runs = runs | arms
+    for cliff, (a, tangent, normal, length, spans, grade, spec) in runs.items():
+        neighbors = incoming[cliff.start]
+        if len(neighbors) != 1 or neighbors[0] not in runs or len(outgoing[cliff.start]) != 1:
+            continue
+        before, = neighbors
+        _, direction, _, prior_length, prior_spans, prior_grade, prior_spec = runs[before]
+        turn = math.atan2(direction[0] * tangent[1] - direction[1] * tangent[0], direction @ tangent)
+        if math.isclose(turn, 0, abs_tol=1e-7) or grade != prior_grade:
+            continue
+        if spans[0][0] != 0 or prior_spans[-1][1] != prior_length:
+            continue  # A ramp has already consumed the vertex.
+        template, length_piece, offset, *_ = spec
+        ends[cliff.start] = abs(turn), 0, 0
+        seams |= (x - a[0])**2 + (y - a[1])**2 <= (length_piece / 2)**2
+        fittings = (cliff_corners(library, cliff.kit, round((grade[1] - grade[0]) / CLIFF_STEP_RAW), template)
+                    if cliff.kit == before.kit and template == prior_spec[0] and not template.endswith('_GRID') else ())
+        for fitting in fittings:
+            reach_in, reach_out = fitting['reach']
+            skew = (turn - math.radians(fitting['turn'])) / 2
+            in_room = prior_length - max(prior_spans[-1][0], ends.get(before.start, (0, 0, 0))[2])
+            out_room = min(spans[0][1], length - ends.get(cliff.end, (0, 0, 0))[1])
+            if (abs(skew) >= math.pi / 4 or max(reach_in, reach_out) * abs(math.sin(skew)) > CELL or
+                    reach_in > in_room or reach_out > out_room):
+                continue
+            dx, dy = fitting['origin']
+            # Split the angular error between the two sockets.
+            c, s = math.cos(skew), math.sin(skew)
+            at_piece = a + (dx * c + dy * s) * tangent + (dy * c - dx * s) * normal
+            face = math.atan2(tangent[1], tangent[0]) + math.radians(fitting['heading']) - skew
+            pieces.append(Piece(fitting['template'], float(at_piece[0]), float(at_piece[1]), face))
+            ends[cliff.start] = abs(turn), reach_in, reach_out
+            fitted.add(cliff.start)
+            if fitting['template'] in _OPEN_CLIFF_FACES:
+                break
+            # Hide only the one-cell ledge below the arms.
+            for axis, run_start, run_end in ((direction, -reach_in, 0), (tangent, 0, reach_out)):
+                along, across = strip_coordinates(x, y, a, axis)
+                cover |= (along >= run_start) & (along < run_end) & (across >= -CELL) & (across < 0)
+            break
+        else:
+            if turn < 0 and not any(name.endswith('_GRID') for name in (template, prior_spec[0])):
+                # Extend inside bends to the high-side axis intersection.
+                miter = math.tan(-turn / 2)
+                ends[cliff.start] = (abs(turn), -min(-prior_spec[2] * miter, prior_spec[1] / 2, prior_length / 2),
+                                     -min(-offset * miter, length_piece / 2, length / 2))
+    joints = {}
+    for cliff in cliffs:
+        delta = unit_direction(np.subtract(cliff.end, cliff.start))
+        for point, direction in ((cliff.start, delta), (cliff.end, -delta)):
+            joints.setdefault(point, []).append(direction)
+    for (px, py), legs in joints.items():
+        if (px, py) not in fitted and len(legs) == 1:
+            if bounds[0] < px < bounds[1] and bounds[2] < py < bounds[3]:
+                issues.append(f'cliff end at {(px, py)}: no measured end fitting')
+        elif (px, py) not in fitted and (len(legs) != 2 or not np.allclose(legs[0], -legs[1])):
+            issues.append(f'cliff corner at {(px, py)}: straight pieces meet without a measured corner fitting')
+    return ends, pieces, cover, seams, issues
+
+
+def _cliffs(plan, library, base, at, x, y, ramps):
+    issues, errors, runs = [], [], {}
     for cliff in plan.cliffs:
         a, b = np.asarray(cliff.start), np.asarray(cliff.end)
         length = math.dist(a, b)
@@ -533,117 +633,33 @@ def _cliffs(plan, library, base, at, x, y, ramps):
         if spec is None:
             errors.append(f'{label}: no measured {steps}-step straight piece')
             continue
-        template, spacing, offset, minimum, filler, short = spec
-        if template.endswith('_GRID') and (
+        if spec[0].endswith('_GRID') and (
                 not np.isclose(tangent.prod(), 0) or np.any(np.mod([a, b], 30))):
             issues.append(f'{label}: GRID runs need cardinal edges on the 30-unit grid')
             continue
         runs[cliff] = (a, tangent, normal, length, spans, grade, spec)
 
-    incoming, outgoing = defaultdict(list), defaultdict(list)
-    for cliff in plan.cliffs:
-        incoming[cliff.end].append(cliff)
-        outgoing[cliff.start].append(cliff)
-    bounds = x.min(), x.max(), y.min(), y.max()
-    # A wall drawn along only one side of a plateau can still have a real
-    # return at its end. Supply that grade-matched arm to the same fitting.
-    for cliff, (a, tangent, normal, length, spans, grade, spec) in tuple(runs.items()):
-        if spec[0].endswith('_GRID'):
-            continue
-        steps = int((grade[1] - grade[0]) / CLIFF_STEP_RAW)
-        fitting = next((f for f in cliff_corners(library, cliff.kit, steps, spec[0]) if f['turn'] == 90), None)
-        if fitting is None:
-            continue
-        for point, first, links, reach in ((cliff.start, True, incoming, fitting['reach'][0]),
-                                          (cliff.end, False, outgoing, fitting['reach'][1])):
-            if links[point]:
-                continue
-            p = np.asarray(point)
-            q = p + reach * normal
-            if not (bounds[0] <= q[0] <= bounds[1] and bounds[2] <= q[1] <= bounds[3]):
-                continue
-            start, end = (q, p) if first else (p, q)
-            direction = -normal if first else normal
-            inside = tangent if first else -tangent
-            samples = np.linspace(start, end, math.ceil(reach / CELL) + 1)[1:-1]
-            if (not len(samples) or not all(np.all(base[at(samples + side * CELL * inside)] == z)
-                                            for side, z in zip((-1, 1), grade)) or
-                    any(cut[0] < reach and cut[1] > 0 for ramp, uphill, run in ramps
-                        if (cut := _ramp_cut(start, direction, ramp, uphill, run)) is not None)):
-                continue
-            arm = Cliff(tuple(start), tuple(end), cliff.kit)
-            runs[arm] = (start, direction, inside, reach, [(0., reach)], grade, spec)
-            links[point].append(arm)
-
-    turns, trims, overlap = {}, {}, {}
-    for cliff, (a, tangent, normal, length, spans, grade, spec) in runs.items():
-        neighbors = incoming[cliff.start]
-        if len(neighbors) != 1 or neighbors[0] not in runs or len(outgoing[cliff.start]) != 1:
-            continue
-        before, = neighbors
-        _, direction, _, prior_length, prior_spans, prior_grade, prior_spec = runs[before]
-        turn = math.atan2(direction[0] * tangent[1] - direction[1] * tangent[0], direction @ tangent)
-        if math.isclose(turn, 0, abs_tol=1e-7) or grade != prior_grade:
-            continue
-        if spans[0][0] != 0 or prior_spans[-1][1] != prior_length:
-            continue  # A ramp has already consumed the vertex.
-        template, length_piece, offset, *_ = spec
-        turns[cliff.start] = abs(turn)
-        seams |= (x - a[0])**2 + (y - a[1])**2 <= (length_piece / 2)**2
-        fittings = (cliff_corners(library, cliff.kit, round((grade[1] - grade[0]) / CLIFF_STEP_RAW), template)
-                    if cliff.kit == before.kit and template == prior_spec[0] and not template.endswith('_GRID') else ())
-        for fitting in fittings:
-            reach_in, reach_out = fitting['reach']
-            skew = (turn - math.radians(fitting['turn'])) / 2
-            in_room = prior_length - max(prior_spans[-1][0], trims.get(before.start, (0, 0))[1])
-            out_room = min(spans[0][1], length - trims.get(cliff.end, (0, 0))[0])
-            if (abs(skew) >= math.pi / 4 or max(reach_in, reach_out) * abs(math.sin(skew)) > CELL or
-                    reach_in > in_room or reach_out > out_room):
-                continue
-            dx, dy = fitting['origin']
-            # Split the angular error between the two sockets instead of
-            # making only the outgoing arm exact.
-            c, s = math.cos(skew), math.sin(skew)
-            at_piece = a + (dx * c + dy * s) * tangent + (dy * c - dx * s) * normal
-            face = math.atan2(tangent[1], tangent[0]) + math.radians(fitting['heading']) - skew
-            pieces.append(Piece(fitting['template'], float(at_piece[0]), float(at_piece[1]), face))
-            trims[cliff.start] = (reach_in, reach_out)
-            # Leave the true join at the fitting ends. Only the one-cell
-            # ledge immediately below the two arms is hidden by the mesh.
-            for axis, run_start, run_end in ((direction, -reach_in, 0), (tangent, 0, reach_out)):
-                along, across = strip_coordinates(x, y, a, axis)
-                cover |= (along >= run_start) & (along < run_end) & (across >= -CELL) & (across < 0)
-            break
-        else:
-            if turn < 0 and not any(name.endswith('_GRID') for name in (template, prior_spec[0])):
-                # At an inside bend the high-side axes cross past the vertex.
-                # Extend each wall to that intersection, within half a module.
-                miter = math.tan(-turn / 2)
-                overlap[cliff.start] = (min(-prior_spec[2] * miter, prior_spec[1] / 2, prior_length / 2),
-                                        min(-offset * miter, length_piece / 2, length / 2))
-
+    ends, pieces, cover, seams, joint_issues = _cliff_joints(plan.cliffs, runs, library, base, at, x, y, ramps)
     for cliff, (a, tangent, normal, length, spans, _, spec) in runs.items():
-        if cliff not in plan.cliffs:
-            continue
         template, spacing, offset, minimum, filler, short = spec
         label = f'{cliff.kit} {cliff.start} → {cliff.end}'
         along_grid, across_grid = strip_coordinates(x, y, a, tangent)
+        first_turn, _, trim_start = ends.get(cliff.start, (0, 0, 0))
+        last_turn, trim_end, _ = ends.get(cliff.end, (0, 0, 0))
         for start, end in spans:
             opening_at_start, opening_at_end = start > 0, end < length
-            first_joint = math.pi if opening_at_start else turns.get(cliff.start, 0)
-            last_joint = math.pi if opening_at_end else turns.get(cliff.end, 0)
+            first_joint = math.pi if opening_at_start else first_turn
+            last_joint = math.pi if opening_at_end else last_turn
             if not opening_at_start:
-                start += trims.get(cliff.start, (0, 0))[1] - overlap.get(cliff.start, (0, 0))[1]
+                start += trim_start
             if not opening_at_end:
-                end -= trims.get(cliff.end, (0, 0))[0] - overlap.get(cliff.end, (0, 0))[0]
+                end -= trim_end
             span = end - start
             if span <= 0:
                 continue
             count = math.floor((span + 1e-7) / spacing)
             unused = span - count * spacing
             pitch, tail = spacing, 0
-            # A joint is resolved to one terrain cell. Share that small
-            # overlap between pieces to reach both ends of its run.
             joint = (first_joint or last_joint) and not template.endswith('_GRID')
             minimum_pitch = min(minimum, max(spacing - CELL, spacing / 2)) if joint else minimum
             if 0 < short < spacing and short <= unused + 1e-7:
@@ -651,8 +667,7 @@ def _cliffs(plan, library, base, at, x, y, ramps):
                 unused -= short
             elif (not count and joint and first_joint and last_joint
                   and opening_at_start != opening_at_end and spacing - span <= CELL):
-                # A short arm between a bend and a ramp can share the
-                # rounding error across both ends, inside the shoulder.
+                # Centre the shortfall between the bend and the shoulder.
                 count, unused = 1, 0
             elif count and unused > 1e-7 and (span - spacing) / count >= minimum_pitch:
                 # The extra full piece reaches both ends without exceeding the measured overlap.
@@ -661,8 +676,7 @@ def _cliffs(plan, library, base, at, x, y, ramps):
                 unused = 0
             if unused > 1e-7:
                 issues.append(f'{label}: {unused:g} units uncovered at ends of [{start:g}, {end:g}]')
-            # Put any slack at the less exposed end. On a GRID run the
-            # phase remains fixed by the existing asset alignment.
+            # Leave slack at the less exposed end, with GRID phase fixed.
             center = template.endswith('_GRID') or math.isclose(first_joint, last_joint)
             covered_start = start + unused * (0.5 if center else float(last_joint > first_joint))
             first = covered_start + min(spacing, span) / 2
@@ -675,21 +689,10 @@ def _cliffs(plan, library, base, at, x, y, ramps):
             for model, center in modules:
                 px, py = a + tangent * center - normal * offset
                 pieces.append(Piece(model, float(px), float(py), math.atan2(tangent[1], tangent[0])))
-            if modules:
+            if modules and template not in _OPEN_CLIFF_FACES:
                 cover |= ((along_grid >= covered_start) & (along_grid < covered_start + span - unused)
                           & (across_grid >= -CELL) & (across_grid < 0))
-    joints = {}
-    for cliff in plan.cliffs:
-        delta = unit_direction(np.subtract(cliff.end, cliff.start))
-        for point, direction in ((cliff.start, delta), (cliff.end, -delta)):
-            joints.setdefault(point, []).append(direction)
-    for (px, py), legs in joints.items():
-        if len(legs) == 1:
-            if (px, py) not in trims and bounds[0] < px < bounds[1] and bounds[2] < py < bounds[3]:
-                issues.append(f'cliff end at {(px, py)}: no measured end fitting')
-        elif (px, py) not in trims and (len(legs) != 2 or not np.allclose(legs[0], -legs[1])):
-            issues.append(f'cliff corner at {(px, py)}: straight pieces meet without a measured corner fitting')
-    return tuple(pieces), tuple(errors + issues), tuple(errors), cover, seams
+    return tuple(pieces), tuple(errors + issues + joint_issues), tuple(errors), cover, seams
 
 
 # Leningrad's run is 100 units long with the front lip 7 to the right of

@@ -89,6 +89,7 @@ def test_exposed_ramp_shoulder_blends_rock_without_opening_the_steep_side(tmp_pa
     kit = 'Heidelberg_HB'
     library = {'kits': {kit: {}}, 'texture_kits': {
         'Heidelberg': {'Grass': tiles('Grass_Heidelberg01'), 'Dirt': tiles('Dirt_Heidelberg01')},
+        'Cape_Cod': {'Dirt': tiles('Dirt_CapeCod04')},
         'Gibraltar': {'Cliff': tiles('Cliff_Gibraltar1')},
         'Yucatan': {'Rock': tiles('Rock_Yucatan01')},
     }}
@@ -106,6 +107,13 @@ def test_exposed_ramp_shoulder_blends_rock_without_opening_the_steep_side(tmp_pa
     assert dressed.textures[47, 50] == 'Dirt_Heidelberg01'
     assert dressed.textures[49, 20] == 'Cliff_Gibraltar1'
     assert dressed.edge_texture(39, 49, 39, 50, dressed.textures[50, 39]) == dressed.textures[50, 39]
+
+    path = Block(((460, 500), (540, 500), (540, 650), (460, 650)), 4,
+                 surface=Surface('dirt path', 'park', kit, ground_texture='Dirt_CapeCod04'))
+    plan = replace(plan, blocks=(*plan.blocks, path))
+    dressed = paint.paint(plan, library, expand(plan, library, 101, 101, 0))
+    assert set(dressed.textures[47, 39:62]) == {'Dirt_CapeCod04'}
+    assert dressed.textures[49, 20] == 'Cliff_Gibraltar1'
 
 
 def test_straight_cliff_continues_across_a_face_split():
@@ -142,8 +150,6 @@ def test_vladivostok_wall_fits_the_run_up_to_the_ramp_shoulders():
     # to the shoulder, at 351 + 37, with the slack at the map edge.
     assert [(p.x, p.y) for p in ground.pieces] == [(37, 226), (94, 226), (388, 226)]
     assert any('56 units uncovered at ends of [351, 481]' in issue for issue in ground.issues)
-    assert ground.hidden[19, :14].all() and not ground.hidden[19, 14:36].any()
-    assert ground.hidden[19, 36:43].all()
 
     short_arm = replace(plan,
                         blocks=(Block(((0, 200), (424, 200), (424, 350), (0, 350)), 4),),
@@ -151,6 +157,16 @@ def test_vladivostok_wall_fits_the_run_up_to_the_ramp_shoulders():
     # The 73-unit arm from x351 to the bend at x424 is only one unit short.
     fitted = expand(short_arm, library, 49, 36, 0)
     assert fitted.pieces[2] == terrain.Piece('VL_CliffWall02', 387.5, 226, 0)
+
+
+@pytest.mark.parametrize('template', ['VL_CliffWall02', 'YU_SeaCliffWall04'])
+def test_open_cliff_face_keeps_the_blocked_ground_visible(template):
+    wall = dict(template=template, length=100, offset_y=-10, height_steps=1, samples=1)
+    plan = TerrainPlan(blocks=(Block(((0, 100), (200, 100), (200, 200), (0, 200)), 4),),
+                       cliffs=(Cliff((0, 100), (200, 100), 'kit'),))
+    ground = expand(plan, {'kits': {'kit': {'cliffs': [wall]}}}, 21, 21, 0)
+    assert len(ground.pieces) == 2 and ground.blocked[9, :20].all()
+    assert not ground.hidden[9, :20].any()
 
 
 def test_corner_piece_uses_the_kit_ports_and_leaves_no_straight_piece_at_the_vertex():
@@ -183,6 +199,11 @@ def test_corner_piece_uses_the_kit_ports_and_leaves_no_straight_piece_at_the_ver
                      cliffs=(Cliff((100, 200), (200, 200), kit), Cliff((200, 200), (200, 100), kit)))
     wall = expand(inside, library, 41, 41, 0)
     assert [(p.template, p.x, p.y) for p in wall.pieces] == [('Wall', 170, 210), ('Wall', 210, 170)]
+
+    library['kits'][kit]['cliff_corners'][0]['template'] = 'YU_SeaCliffWall12'
+    open_corner = expand(plan, library, 41, 41, 0)
+    assert open_corner.pieces[0].template == 'YU_SeaCliffWall12'
+    assert open_corner.blocked[9, 28] and not open_corner.hidden[9, 28]
 
 
 def test_measured_short_cliff_fills_a_straight_run_on_the_same_axis():
