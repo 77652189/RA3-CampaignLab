@@ -13,7 +13,7 @@ from scipy.ndimage import distance_transform_edt
 
 from experimental.mapgen.design import LAND, STEP_WORLD, DesignError, face_rings, on_segment, point_in_ring
 from experimental.mapgen.campaign_writer import RAMP_MAX, mapterrain, newmap, rules
-from experimental.mapgen.library import CLIFF_STEP_RAW, cliff_corners, straight_cliff
+from experimental.mapgen.library import CLIFF_STEP_RAW, STYLE_DEFAULTS, cliff_corners, straight_cliff
 
 CELL = rules.CELL
 RAMP_LENGTH = 180
@@ -85,7 +85,7 @@ class TerrainPlan:
     base_steps: int = 3
     ground: str = 'Grass_Heidelberg01'
     cliff: str = 'Cliff_Gibraltar1'
-    shore: str = 'Sand_SantaMonica01'
+    shore: str = STYLE_DEFAULTS['edges']['shore_surface']['texture']
     quays: tuple = ()
     closed_edges: tuple = ()  # closed land and shoreline cuts, each an (a, b) world segment
     sealed_shores: tuple = ()

@@ -23,6 +23,7 @@ class MapBuild:
     level: str = 'full'
     has_road_kit: bool = False
     ore: dict = field(default_factory=dict)  # node ID -> (pad ID, field, native placement)
+    row_blocks: frozenset[str] | None = None
 
     @property
     def border_index(self):
@@ -33,7 +34,8 @@ class MapBuild:
         if self.sketch is None:
             return {}
         return checks.evaluate(self.sketch, self.ground, self.roadbed, self.layout, CONTAINER[2], self.frame,
-                               self.footprints, sketch_only=self.level == 'sketch', has_road_kit=self.has_road_kit)
+                               self.footprints, sketch_only=self.level == 'sketch', has_road_kit=self.has_road_kit,
+                               row_blocks=self.row_blocks)
 
     def require_full(self):
         if self.level != 'full':
@@ -179,6 +181,7 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
     layout, roadbed = buildings.Layout(()), None
     frame, scenery, footprints, slots = None, (), (), {}
     ore = {}
+    row_blocks = None
     if sketch is not None:
         sage = Path(labpaths.SDK3) / 'SageXML'
         assets = dressing.Assets(catalogue, sage)
@@ -189,7 +192,10 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
                 roadbed = roads.expand(sketch, ground, border, road_kit)
                 # The road markers and bridge generators are already represented by Roadbed.
                 native += tuple(p for p in roadbed.placements if p.side != 'road' and p.template != roads.BRIDGE_TEMPLATE)
-            kits = {name: spec.get('kit', kit) for name, spec in sketch.blocks.items()}
+        kits = {name: spec.get('kit', kit) for name, spec in sketch.blocks.items()}
+        if level == 'sketch':
+            row_blocks = frozenset(name for name, spec in sketch.blocks.items()
+                                   if library.place_recipe(catalogue, kits[name], spec['use']).get('building_row'))
         footprints = assets.occupied(native)
         if level != 'sketch':
             obstacles = tuple(s for obj in footprints for s in obj.placement + obj.collision)
@@ -208,4 +214,4 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
                                          footprints, dressed.footprints)
             ground, scenery, footprints, slots = dressed.ground, dressed.pieces, dressed.footprints, dressed.slots
     return MapBuild(plan, ground, roadbed, layout, sketch, frame, scenery, atmosphere, footprints, slots,
-                    level, road_kit is not None, ore)
+                    level, road_kit is not None, ore, row_blocks)

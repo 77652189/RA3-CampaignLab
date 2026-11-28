@@ -92,7 +92,7 @@ def test_exposed_ramp_shoulder_blends_rock_without_opening_the_steep_side(tmp_pa
         'Cape_Cod': {'Dirt': tiles('Dirt_CapeCod04')},
         'Gibraltar': {'Cliff': tiles('Cliff_Gibraltar1')},
         'Yucatan': {'Rock': tiles('Rock_Yucatan01')},
-    }}
+    }, 'styles': {'Heidelberg': {'places': {'texture_donors': {'Cliff': 'Gibraltar', 'Rock': 'Yucatan'}}}}}
     plan = TerrainPlan(
         blocks=(Block(((0, 500), (1000, 500), (1000, 1000), (0, 1000)), 4,
                       surface=Surface('top', 'park', kit)),),
@@ -171,11 +171,12 @@ def test_open_cliff_face_keeps_the_blocked_ground_visible(template):
 
 def test_corner_piece_uses_the_kit_ports_and_leaves_no_straight_piece_at_the_vertex():
     kit = 'Test'
-    library = {'kits': {kit: {
-        'cliffs': [dict(template='Wall', length=80, offset_y=-10, height_steps=1, samples=20)],
-        'cliff_corners': [dict(template='Corner', straight='Wall', steps=1, turn=90, heading=-90,
-                               origin=(10, 10), reach=(40, 40))],
-    }}}
+    fitting = dict(template='Corner', straight='Wall', steps=1, turn=90, heading=-90,
+                   origin=(10, 10), reach=(40, 40))
+    library = {
+        'kits': {kit: {'cliffs': [dict(template='Wall', length=80, offset_y=-10, height_steps=1, samples=20)]}},
+        'styles': {kit: {'nodes': {'cliff_fittings': [fitting]}}},
+    }
     plan = TerrainPlan(blocks=(Block(((0, 100), (300, 100), (300, 400), (0, 400)), 4),),
                        cliffs=(Cliff((109, 100), (300, 100), kit), Cliff((300, 100), (300, 300), kit)))
     ground = expand(plan, library, 41, 41, 0)
@@ -200,7 +201,7 @@ def test_corner_piece_uses_the_kit_ports_and_leaves_no_straight_piece_at_the_ver
     wall = expand(inside, library, 41, 41, 0)
     assert [(p.template, p.x, p.y) for p in wall.pieces] == [('Wall', 170, 210), ('Wall', 210, 170)]
 
-    library['kits'][kit]['cliff_corners'][0]['template'] = 'YU_SeaCliffWall12'
+    fitting['template'] = 'YU_SeaCliffWall12'
     open_corner = expand(plan, library, 41, 41, 0)
     assert open_corner.pieces[0].template == 'YU_SeaCliffWall12'
     assert open_corner.blocked[9, 28] and not open_corner.hidden[9, 28]
@@ -238,7 +239,7 @@ def test_authored_dirt_track_keeps_its_material_across_the_ramp_join(tmp_path, m
         'Heidelberg': {'Grass': tiles('BaseGrass'), 'Dirt': tiles('BaseDirt')},
         'Cape_Cod': {'Dirt': tiles('TrackDirt')},
         'Gibraltar': {'Cliff': tiles('RockFace')},
-    }}
+    }, 'styles': {'Heidelberg': {'places': {'texture_donors': {'Cliff': 'Gibraltar'}}}}}
     plan = TerrainPlan(ground='BaseGrass', blocks=(
         Block(((0, 0), (200, 0), (200, 150), (0, 150)), 3, surface=Surface('low', 'wildland', kit, 0, 'TrackDirt')),
         Block(((0, 150), (200, 150), (200, 300), (0, 300)), 4, surface=Surface('high', 'wildland', kit, 0, 'TrackDirt')),

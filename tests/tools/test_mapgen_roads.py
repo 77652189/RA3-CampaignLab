@@ -78,6 +78,7 @@ def test_road_to_frame_derives_apron_grade_without_opening_the_backdrop(tmp_path
             'Heidelberg': {'Grass': material('Grass_Heidelberg01'), 'Road': material('Pavement_Heidelberg10')},
             'Gibraltar': {'Cliff': material('Cliff_Gibraltar1')},
         },
+        'styles': {'Heidelberg': {'places': {'texture_donors': {'Cliff': 'Gibraltar'}}}},
     }), encoding='utf8')
     frame = ((100, 200), (700, 200), (700, 600), (100, 600))
     design_file = tmp_path / 'slice.json'
@@ -109,7 +110,10 @@ def test_sub_cell_s_bend_join_exposes_only_the_crossing_quad(tmp_path, monkeypat
         'Heidelberg': {'Grass': materials('Grass_Heidelberg01'),
                        'Road': materials('Pavement_Heidelberg10', 'Pavement_Heidel08')},
         'Havana': {'Road': materials('Pavement_Havana03')},
-    }}
+    }, 'styles': {'Heidelberg': {
+        'places': {'texture_palette': {'exclude': ['Pavement_Heidel08']}},
+        'edges': {'road_surface': {'base': 'Pavement_Heidelberg10', 'infill': 'Pavement_Havana03'}},
+    }}}
     plan = terrain.TerrainPlan(blocks=(terrain.Block(((0, 0), (800, 0), (800, 800), (0, 800)), 3,
                                                      surface=terrain.Surface('city', 'oldtown', KIT, 1)),))
     ground = terrain.expand(plan, library, 81, 81, 0)

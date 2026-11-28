@@ -17,7 +17,7 @@ STREET_RAMP_WIDTH = 180
 ROAD_WIDTH = {"alley": 66.22, "street": 85.48, "avenue": 172.70}
 USE_ALIASES = {"老街": "oldtown", "老城": "oldtown", "town": "oldtown", "住宅": "residential",
                "郊区": "suburb", "广场": "square", "公园": "park", "林地": "woodland", "码头": "dock",
-               "工业": "industrial", "rowhouses": "residential", "shops": "oldtown",
+               "工业": "industrial", "农庄": "farm", "rowhouses": "residential", "shops": "oldtown",
                "apartments": "residential", "towers": "residential", "warehouses": "industrial",
                "villas": "suburb"}
 LAND = frozenset(("foot", "vehicle", "amphibian"))

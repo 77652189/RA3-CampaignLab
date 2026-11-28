@@ -9,7 +9,8 @@ from pathlib import Path
 import numpy as np
 from scipy.ndimage import label
 
-from experimental.mapgen.buildings import FOOT_ONLY_BLOCK, NO_PATH_BLOCK, Shape, TOWN
+from experimental.mapgen.buildings import FOOT_ONLY_BLOCK, NO_PATH_BLOCK, Shape
+from experimental.mapgen.library import place_recipe
 from experimental.mapgen.campaign_writer import rules
 from experimental.mapgen.design import ROAD_WIDTH, ROUTING_CELL, DesignError
 from experimental.mapgen.roads import crosses_water, unpainted_roads
@@ -403,10 +404,12 @@ def _answer(grid, rel, held):
             f'在 {point} 留一块同高的空地，移开侵入的主角，或把集结点移离岸线和坡肩。')
 
 
-def _layout_dependencies(sketch, has_road_kit):
+def _layout_dependencies(sketch, has_road_kit, row_blocks):
     road_edges = [edge for road in sketch.roads for edge in sketch.edges[road]]
     frontage = {block for edge in road_edges for block in sketch.sides[edge]}
-    buildings = any('protagonist' in spec or (name in frontage and spec['use'] in TOWN)
+    if row_blocks is None:
+        row_blocks = {name for name, spec in sketch.blocks.items() if place_recipe({}, '', spec['use']).get('building_row')}
+    buildings = any('protagonist' in spec or (name in frontage and name in row_blocks)
                     for name, spec in sketch.blocks.items() if spec.get('kind') != 'water')
     bridges = any(crosses_water(sketch, edge) for edge in road_edges)
     model_roads = sketch.roads.keys() if has_road_kit else set(unpainted_roads(sketch))
@@ -460,11 +463,11 @@ def check_dressing_routes(sketch, ground, roadbed, layout, border, frame, before
 
 
 def evaluate(sketch, ground, roadbed, layout, border, frame, footprints=(), *, sketch_only=False,
-             has_road_kit=False):
+             has_road_kit=False, row_blocks=None):
     """Answer named orders and check open routes on the exported geometry."""
     if not sketch.relations:
         return {}
-    dependencies = _layout_dependencies(sketch, has_road_kit) if sketch_only else None
+    dependencies = _layout_dependencies(sketch, has_road_kit, row_blocks) if sketch_only else None
     answers, grids = {}, {}
     for name, relation in sketch.relations.items():
         state = relation.get('state', 'base')

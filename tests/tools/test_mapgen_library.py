@@ -42,6 +42,7 @@ def test_library_groups_inherits_and_reports_missing_sources(tmp_path, monkeypat
         {"kit": "First_AA", "from": "Second_BB", "template": "AA_Wall", "map": "game/sample"},
     ]))
     write(work / "mapgen_probe/setpieces.json", '{"units": {}, "groups": [{"id": "sample", "style_kit": "Second_BB"}]}')
+    write(work / "mapgen_probe/dressing.json", '{"First_AA": {"places": {"oldtown": {"street": true}}}}')
     monkeypatch.setattr(library.labpaths, "SDK3", sdk)
     monkeypatch.setattr(library.labpaths, "WORK", work)
     library.main()
@@ -75,6 +76,9 @@ def test_library_groups_inherits_and_reports_missing_sources(tmp_path, monkeypat
     assert [t["id"] for t in data["texture_kits"]["First"]["Road"]] == ["Paving"]
     assert [t["id"] for t in data["texture_kits"]["First"]["Grass"]] == ["Grass"]
     assert data["setpieces"]["groups"][0]["source"] == "work/mapgen_probe/setpieces.json"
+    assert library.place_recipe(data, "First_AA", "oldtown") == {
+        "material": "Road", "building_row": True, "street": True,
+    }
 
     write(work / "logs/e266_prop_blocking.json", json.dumps([
         {"template": "AA_Wall", "cls": "all", "foot": "blocked", "vehicle": "blocked", "crush": "-",

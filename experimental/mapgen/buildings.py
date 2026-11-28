@@ -11,14 +11,10 @@ import numpy as np
 
 from experimental.mapgen.campaign_writer import rules
 from experimental.mapgen.design import DesignError, point_in_ring, signed_area_twice
-from experimental.mapgen.library import sdk_xml
+from experimental.mapgen.library import place_recipe, sdk_xml, style_section
 from experimental.mapgen.roads import ROAD_WIDTH
 from experimental.mapgen.terrain import CELL
 
-# From cityblocks.KINDS: uses with a row, and the rowhouses setback, gap and coverage.
-TOWN = {'oldtown', 'town', 'residential', 'suburb', '老城', '老街', '住宅', '郊区',
-        'rowhouses', 'shops', 'apartments', 'towers', 'warehouses', 'villas'}
-SETBACK, GAP, COVER = 6, 6, 0.25
 EPS = 1e-7
 
 
@@ -202,6 +198,7 @@ class BuildingPlanner:
     def __init__(self, design, ground, library, kits, fronts, sage, border, obstacles=()):
         self.design, self.ground, self.library = design, ground, library
         self.kits = kits
+        self.rows = {kit: style_section(library, kit, 'edges')['building_row'] for kit in set(kits.values())}
         self.fronts = {name.casefold(): angle for name, angle in fronts.items()}
         self.sage, self.border, self.obstacles = sage, border, obstacles
         self._sdk = {}
@@ -326,7 +323,7 @@ class BuildingPlanner:
         angle = round(angle, 12) % math.tau
         placement, collision = (tuple(shape.posed(0., 0., angle) for shape in group)
                                 for group in (template.placement, template.collision))
-        setback = frontage.half_width + SETBACK
+        setback = frontage.half_width + self.rows[self.kits[block]]['setback']
         reach = max(s.support(nx, ny) - s.center[0] * nx - s.center[1] * ny
                     for s in placement + collision)
         offset = setback + reach + depth
@@ -340,6 +337,7 @@ class BuildingPlanner:
         placement, collision = (tuple(replace(s, center=(s.center[0] + x, s.center[1] + y, s.center[2]))
                                       for s in group) for group in (placement, collision))
         shapes = tuple(dict.fromkeys(placement + collision))
+        row = self.rows[self.kits[block]]
         worst = (0., '')
         tx, ty = tangent
         for s in shapes:
@@ -353,15 +351,15 @@ class BuildingPlanner:
                 gap = min(s.segment_gap(a, b) for a, b in pairwise(ring))
                 if (point_in_ring(s.center[:2], ring) == 1) != (index == 0) and gap > 0:
                     gap = -gap
-                worst = max(worst, (SETBACK - gap, 'face setback'))
+                worst = max(worst, (row['setback'] - gap, 'face setback'))
             for road in self.roads:
                 gap = s.segment_gap(road.a, road.b)
-                worst = max(worst, (road.half_width + SETBACK - gap, f'road {road.name} setback'))
+                worst = max(worst, (road.half_width + row['setback'] - gap, f'road {road.name} setback'))
             for other in self.obstacles:
                 worst = max(worst, (-s.gap(other), 'fixed object footprint'))
             for building in placed:
                 for other in building.placement + building.collision:
-                    worst = max(worst, (GAP - s.gap(other), f'{building.template} clearance'))
+                    worst = max(worst, (row['gap'] - s.gap(other), f'{building.template} clearance'))
         if worst[0] > EPS:
             return None, worst
         foundation, miss = self._foundation(shapes, x, y)
@@ -375,7 +373,8 @@ class BuildingPlanner:
     def lock_block(self, block):
         spec = self.design.blocks[block]
         request = spec.get('protagonist')
-        town = spec['use'] in TOWN
+        kit = self.kits[block]
+        town = place_recipe(self.library, kit, spec['use']).get('building_row')
         if request is None and (not town or spec.get('kind') == 'water'):
             return ()
         frontage = self.frontages[block]
@@ -429,8 +428,9 @@ class BuildingPlanner:
                 amount, reason, template = tightest
                 raise DesignError(block, 'buildings', f'{request!r}: tightest miss {template}, {reason}, {amount:.3f} world units')
         if town:
-            rows = [t for t in palette if 'house' in t.name.casefold()]
-            coverage = COVER * (signed_area_twice(ring) - sum(map(signed_area_twice, rings[1:]))) / 2
+            row = self.rows[kit]
+            rows = [t for t in palette if any(w in t.name.casefold() for w in row['anchor_words'])]
+            coverage = row['coverage'] * (signed_area_twice(ring) - sum(map(signed_area_twice, rings[1:]))) / 2
             used = Counter(b.template for b in placed)
             built = sum(t.area for t in palette if used[t.name])
             for f in frontage:
@@ -441,7 +441,7 @@ class BuildingPlanner:
                     # The palette already has a seeded order. Reuse it to break
                     # ties, while taking turns among the facades that really fit.
                     for t in sorted(rows, key=lambda t: (t.name == previous, used[t.name])):
-                        if used[t.name] >= 3:
+                        if used[t.name] >= row['repeat']:
                             continue
                         b, _ = self._fit(block, rings, placed, t, f, kerb, normal, 0., clear_corners=True)
                         if b is not None:

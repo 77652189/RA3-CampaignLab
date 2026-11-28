@@ -10,24 +10,14 @@ import re
 
 import numpy as np
 
-from experimental.mapgen.buildings import Footprint, NO_PATH_BLOCK, Shape, TOWN, geometry_shapes
+from experimental.mapgen.buildings import Footprint, NO_PATH_BLOCK, Shape, geometry_shapes
 from experimental.mapgen.design import DesignError, point_in_ring
-from experimental.mapgen.library import read_shape, sdk_xml, texture_kit
-from experimental.mapgen.paint import USE_CLASS
+from experimental.mapgen.library import place_recipe, read_shape, sdk_xml, style_section, texture_kit
 from experimental.mapgen.roads import ROAD_WIDTH
 from experimental.mapgen.terrain import CELL, Ground, Piece
 
 
-# Heidelberg uses these imported Yucatan plants alongside its own trees.
-# Rushmore likewise shares the Yosemite and Yucatan foliage and scree.
-DONORS = {
-    'Heidelberg_HB': ('YU_BUSH05', 'YU_BUSH04', 'YU_SMALLROCKS01', 'YU_SMALLROCKS02'),
-    'Mount_Rushmore_MR': ('YP_Tree02', 'YU_SMALLROCKS01', 'YU_SMALLROCKS02', 'CC_GRASS08'),
-}
-NATURAL = {'park', 'woodland', 'wildland', 'canyon', 'farm', '公园', '林地'}
-QUAY = {'dock', 'industrial', '码头'}
-# An ornamental group is one WorldBuilder set piece. A secondary frontage
-# gets one, a busy entrance or a wooded edge has room for several.
+# WorldBuilder limits ornamental set pieces to six members.
 SET_PIECE_BUDGET = 6
 KNOWN_BLOCKING = NO_PATH_BLOCK | {'all', 'foot', 'foot_topple', 'rockbig'}
 CELL_PAD = CELL / math.sqrt(2)
@@ -158,13 +148,15 @@ class Assets:
         return tuple(asset for prop in pieces if
                      (asset := self.posed(prop)).placement or asset.blocking not in NO_PATH_BLOCK)
 
-    def palette(self, kit, words):
+    def palette(self, kit, spec):
         entries = self.library['kits'][kit]
-        names = sorted({e['template'] for k in ('props', 'destructibles') for e in entries[k]}
-                       | set(DONORS.get(kit, ())), key=lambda name: (name.casefold(), name))
-        return tuple(name for name in dict.fromkeys(n.casefold() for n in names)
-                     if name.partition('_')[-1].startswith(words) and not any(
-                         bad in name for bad in ('cliff', 'ring', 'grate', 'collapsed', 'collapse', 'dead'))
+        names = set(spec.get('include', ()))
+        prefixes = tuple(spec.get('prefixes', ()))
+        if prefixes:
+            names.update(e['template'] for category in ('props', 'destructibles') for e in entries[category]
+                         if e['template'].casefold().partition('_')[-1].startswith(prefixes))
+        return tuple(name for name in sorted({n.casefold() for n in names})
+                     if not any(word in name for word in spec.get('exclude', ()))
                      and self.get(name) and self.get(name).blocking in NO_PATH_BLOCK)
 
 
@@ -209,7 +201,7 @@ class _Finish:
             if len(group['relative_transforms']) <= SET_PIECE_BUDGET:
                 self.groups[group['style_kit']].append(group)
 
-    def put(self, block, facade, budget, props, *, shoulder=False, frame_block=None):
+    def put(self, block, facade, budget, props, *, shoulder=False):
         key = block, facade
         used = self.counts.setdefault(key, (budget, 0))[1]
         props = tuple(props)
@@ -239,7 +231,7 @@ class _Finish:
         for prop in props:
             identity = f'{facade}:{prop.template}:{prop.x:.9f}:{prop.y:.9f}:{prop.angle:.9f}'
             digest = hashlib.sha256(identity.encode('utf-8')).hexdigest()[:12]
-            slot = f'{block or frame_block}.scenery.{feature}-{digest}'
+            slot = f'{self.block}.scenery.{feature}-{digest}'
             while slot in self.slots:
                 slot += '-next'
             self.slots[slot] = prop
@@ -263,15 +255,15 @@ class _Finish:
                             for child, spec in self.sketch.blocks.items() if spec.get('parent') == block))
 
     def patch(self, block, at, angle, length, width, material, *, slope=False):
-        spec = self.sketch.blocks[block]
-        if spec.get('ground_texture') is not None or (material == 'Dirt' and USE_CLASS.get(spec['use']) == 'Snow'):
-            return  # Keep the authored surface or the paint layer's scoured snow.
+        if self.sketch.blocks[block].get('ground_texture') is not None or material in self.recipe.get('keep_ground', ()):
+            return
         folder = texture_kit(self.kits[block])
         entries = self.assets.library.get('texture_kits', {}).get(folder, {}).get(material, ())
-        names = sorted(e['id'] for e in entries if not e['id'].startswith(('Transition', 'Cliff')))
+        prefixes = tuple(self.texture_policy.get('patch_exclude', ()))
+        names = sorted(e['id'] for e in entries if not e['id'].startswith(prefixes))
         if not names:
             return
-        name = next((n for n in names if n.startswith('Gravel')), names[0])
+        name = next((n for n in names if n.startswith(self.texture_policy.get('patch_prefer', ''))), names[0])
         x, y = at
         radius = math.hypot(length, width)
         i, j = (math.floor((v - radius) / CELL) + self.border for v in (x, y))
@@ -314,159 +306,103 @@ class _Finish:
                         tuple((*key, *value) for key, value in self.counts.items()), slots,
                         (*self.fixed, *(footprint for _, footprint in posed)))
 
+    def fill(self, block, recipe, rng):
+        if outline := recipe.get('outline'):
+            for a, b in pairwise(self.sketch.rings[block]):
+                self.strip(block, '', a, b, self.edges[outline], rng)
+        if 'at' in self.sketch.blocks[block] and (interior := recipe.get('interior')):
+            self.node(block, interior, self.sketch.blocks[block]['at'], rng.uniform(-math.pi, math.pi), rng,
+                      self.nodes[interior])
 
-def _sprigs(palette, rng, at, angle, offsets):
-    if palette:
-        for along, across in offsets:
-            yield Piece(rng.choice(palette), *_offset(at, angle, along, across), rng.uniform(-math.pi, math.pi))
-
-
-def _front(finish, block, groups, palette, rng):
-    sketch, kit = finish.sketch, finish.kits[block]
-    building = next((b for b in finish.locked.get(block, ()) if b.protagonist), None)
-    if building is not None:
-        at = building.x, building.y
-        finish.patch(block, at, building.angle, 6 * CELL, 7 * CELL, 'Road')
-        for group in groups:
-            if group['anchor'].casefold() == building.template.casefold():
-                for depth in (1., .5):
-                    if finish.put(block, 'yard', SET_PIECE_BUDGET,
-                                  _group(group, at, building.angle, locked=True, depth=depth)):
-                        break
-
-    lamps = finish.assets.palette(kit, ('lamp', 'light01'))
-    seats = [g for g in groups if any(word in g['anchor'].casefold() for word in ('bench', 'planter'))]
-    for road, spec in sketch.roads.items():
-        edges = [edge if sides[0] == block else edge[::-1] for edge in sketch.edges[road]
-                 if block in (sides := sketch.sides[edge])]
-        if not edges:
-            continue
-        budget = SET_PIECE_BUDGET * (2 if building and road == building.street else 1)
-        for a, b in edges:
-            _, _, angle, length = _axes(a, b)
-            edge = ROAD_WIDTH[spec['width']] / 2
-            # Work outward from the junction. Keep its turning space and the front door legible.
-            for node, step in ((a, 1), (b, -1)):
-                if len(sketch.junctions.get(node, ())) < 3:
-                    continue
-                for setback in (3, 7, 12):
-                    at = _offset(node, angle, 10 * CELL * step, edge + setback * CELL)
-                    if any(finish.put(block, road, budget, _group(group, at, angle)) for group in seats):
-                        finish.patch(block, at, angle, 5 * CELL, 4 * CELL, 'Road')
-                        break
-            for start in range(0, math.floor(length / CELL), 14):
-                along = (start + rng.uniform(5, 9)) * CELL
-                if along >= length - 3 * CELL:
-                    break
-                at = _offset(a, angle, along, edge + 2 * CELL)
-                props = _sprigs(lamps if start == 0 and lamps else palette, rng, at, angle, [(0, 0)])
-                finish.put(block, road, budget, props)
-
-
-def _edges(finish, block, spans, groups, cover, rocks, trees, rng):
-    sketch = finish.sketch
-    heights = sketch.state_heights['base']
-    corners = defaultdict(list)
-    for a, b, left, right, name, hard_quay in spans:
-        other = right if left == block else left
-        if other is None:
-            continue
-        high = heights[block] > heights[other]
-        shore = sketch.blocks[other].get('kind') == 'water'
-        if heights[block] == heights[other] and not shore:
-            continue
-        if block == right:
-            a, b = b, a
+    def strip(self, block, name, a, b, treatment, rng, *, kerb=0., anchored=False, outside=False):
         _, _, angle, length = _axes(a, b)
-        facade = f'{name} ({a[0]:g},{a[1]:g})–({b[0]:g},{b[1]:g})'
-        opened = any(state.get(name) for state in sketch.state_pass.values())
-        if opened and shore:
-            continue  # The landing stays visually and physically open.
-        if shore:
-            at = _offset(a, angle, length / 2, 7 * CELL)
-            if hard_quay and sketch.blocks[block]['use'] in QUAY:
-                for group in groups:
-                    if group['use'] == '码头' and finish.put(block, facade, SET_PIECE_BUDGET, _group(group, at, angle)):
+        budget = SET_PIECE_BUDGET * treatment.get('anchor_budget' if anchored else 'budget', 1)
+        unit = treatment.get('unit', CELL)
+        target = None if outside else block
+
+        def endpoints(kind):
+            if kind is None:
+                return
+            fitting = self.nodes[kind]
+            for point, sign in ((a, 1), (b, -1)):
+                if len(self.sketch.junctions.get(point, ())) >= fitting.get('degree', 0):
+                    self.node(block, name, point, angle, rng, fitting, budget, kerb=kerb, sign=sign)
+
+        def stations():
+            if treatment.get('middle'):
+                yield 0, length / 2
+            for end in treatment.get('ends', ()):
+                yield 0, min(end * unit, length / 2) if end >= 0 else max(length + end * unit, length / 2)
+            if 'step' in treatment:
+                first, margin, pitch = treatment['step']
+                for start in range(first, math.floor(length / unit - margin), pitch):
+                    jitter = _sample(treatment.get('jitter', 0), rng)
+                    along = (start + jitter) * unit
+                    tail = length - treatment.get('tail', 0) * unit
+                    if treatment.get('clamp'):
+                        along = min(along, tail)
+                    elif 'tail' in treatment and along >= tail:
                         break
-                finish.patch(block, at, angle, 9 * CELL, 5 * CELL, 'Road')
-            finish.put(block, facade, SET_PIECE_BUDGET,
-                       _sprigs(cover, rng, at, angle, [(-30, 15), (20, 0), (40, 16)]))
-            continue
-        if not opened:
-            corners[a].append(angle)
-            corners[b].append(angle)
+                    yield start, along
 
-        # End clumps turn square corners and bracket ramp mouths. The crest
-        # gets foliage behind the rock lip; the toe gets low scree and scrub.
-        stations = [min(2 * CELL, length / 2), max(length - 3 * CELL, length / 2)]
-        if not opened:
-            stations.extend((start + rng.uniform(4, 9)) * CELL for start in
-                            range(10, math.floor(length / CELL - 9), 14))
-        budget = SET_PIECE_BUDGET * (2 if opened else 3)
-        for along in stations:
-            at = _offset(a, angle, along, (3 if high else 4) * CELL)
-            finish.patch(block, at, angle, 5 * CELL, 3 * CELL, 'Dirt', slope=opened)
-            low = ([(0, 0), (2 * CELL, CELL)] if high else [(-CELL, 0), (CELL, CELL)])
-            scrub = tuple(_sprigs(cover, rng, at, angle, low))
-            scree = tuple(_sprigs(rocks, rng, at, angle, [(-CELL, 0)]))
-            if not finish.put(block, facade, budget, (*scrub, *scree)):
-                finish.put(block, facade, budget, scrub)
-            if high and not opened:
-                tree = (3 * CELL, rng.uniform(1.5, 5.5) * CELL)
-                finish.put(block, facade, budget, _sprigs(trees, rng, at, angle, [tree]))
-        if opened:
-            # Follow the raised banks beyond the mouth on both sides. Low
-            # scrub can sit on the non-travel slope, but cannot enter a lane.
-            for point, sign in ((a, -1), (b, 1)):
-                for i in range(1, 4):
-                    at = _offset(point, angle, sign * rng.uniform(1.2, 2.1) * CELL, i * 2 * CELL)
-                    finish.put(block, facade, budget, _sprigs(cover, rng, at, angle, [(0, 0)]), shoulder=True)
+        endpoints(treatment.get('before'))
+        sites = tuple(stations()) if treatment.get('sample_first') else stations()
+        for index, (start, along) in enumerate(sites):
+            # Sample all depths before emitting any of the clusters at this station.
+            depths = [_sample(depth, rng) * CELL for depth in treatment.get('depths', (0,))]
+            node = treatment.get('first', treatment['node']) if index == 0 else treatment['node']
+            for layer, depth in enumerate(depths):
+                at = _offset(a, angle, along, depth + kerb)
+                key = treatment['slot'].format(a=a, start=start, layer=layer) if 'slot' in treatment else name
+                self.node(target, key, at, angle, rng, self.nodes[node], budget)
+        endpoints(treatment.get('after'))
 
-    for point, angles in corners.items():
-        if len(angles) != 2 or abs(math.sin(angles[1] - angles[0])) < 1e-8:
-            continue
-        # A real change in cliff direction gets one cluster across the bend.
-        # Split face names on a straight cliff do not create a new cluster.
-        a, b = angles
-        bisector = math.atan2(math.cos(a) + math.cos(b), -math.sin(a) - math.sin(b))
-        at = _offset(point, bisector, 4 * CELL, 0)
-        key = f'cliff corner {point}'
-        finish.patch(block, at, bisector, 4 * CELL, 2 * CELL, 'Dirt')
-        for palette, offsets in ((trees, [(2 * CELL, 0)]),
-                                 (cover, [(0, -CELL), (0, CELL)]),
-                                 (rocks, [(-CELL, 0)])):
-            for prop in _sprigs(palette, rng, at, bisector, offsets):
-                finish.put(block, key, SET_PIECE_BUDGET, (prop,))
-
-
-def _woodland(finish, block, trees, rng):
-    # Start from the irregular woodland outline. Groups overlap visually
-    # inward, while the established lane and flat-pad guards reserve openings.
-    ring = finish.sketch.rings[block]
-    for a, b in pairwise(ring):
-        _, _, angle, length = _axes(a, b)
-        for station in range(5 * int(CELL), int(length), 12 * int(CELL)):
-            edge = _offset(a, angle, station + rng.uniform(-CELL, CELL), 0)
-            for layer, depth in enumerate((rng.uniform(2, 6), rng.uniform(7, 21))):
-                at = _offset(edge, angle, 0, depth * CELL)
-                group = _sprigs(trees, rng, at, angle, [(-22, 4), (2, -9), (24, 16)])
-                finish.put(block, f'woods {a} {station} {layer}', SET_PIECE_BUDGET, group)
+    def node(self, block, name, at, angle, rng, fitting, budget=SET_PIECE_BUDGET, *,
+             kerb=0., sign=1, building=None):
+        for along, across in fitting.get('offsets', ((0, 0),)):
+            point = _offset(at, angle, _sample(along, rng) * sign * CELL,
+                            kerb + _sample(across, rng) * CELL)
+            for action in fitting['actions']:
+                if 'patch' in action:
+                    length, width, material = action['patch']
+                    self.patch(block, point, angle, length * CELL, width * CELL, material,
+                               slope=action.get('slope', False))
+                elif 'group' in action:
+                    selection = action['group']
+                    for group in self.groups[self.kits[block]]:
+                        anchor = group['anchor'].casefold()
+                        if (building and anchor != building.template.casefold() or
+                                'use' in selection and group['use'] != selection['use'] or
+                                'anchor_words' in selection and not any(w in anchor for w in selection['anchor_words'])):
+                            continue
+                        depths = selection.get('depths', (1.,))
+                        if any(self.put(block, name, budget, _group(group, point, angle, bool(building), depth))
+                               for depth in depths) and building is None:
+                            if follow := action.get('on_success'):
+                                self.node(block, name, point, angle, rng, self.nodes[follow], budget)
+                            if fitting.get('first_fit'):
+                                return
+                            break
+                else:
+                    batches = []
+                    for names, offsets in action['sprigs']:
+                        palette = next((self.palettes[key] for key in names if self.palettes.get(key)), ())
+                        unit = action.get('unit', 1)
+                        offsets = [(x * unit, _sample(y, rng) * unit) for x, y in offsets]
+                        batches.append(tuple(Piece(rng.choice(palette),
+                                                   *_offset(point, angle, x, y),
+                                                   rng.uniform(-math.pi, math.pi))
+                                             for x, y in offsets if palette))
+                    props = tuple(p for batch in batches for p in batch)
+                    if action.get('single'):
+                        for prop in props:
+                            self.put(block, name, budget, (prop,))
+                    elif not self.put(block, name, budget, props, shoulder=action.get('shoulder', False)) and action.get('trim'):
+                        self.put(block, name, budget, batches[0])
 
 
-def _dress_frame(finish, block, cover, trees, rng):
-    for edge, sides in finish.sketch.sides.items():
-        if set(sides) != {block, None}:
-            continue
-        a, b = edge if sides[0] == block else edge[::-1]
-        _, _, angle, length = _axes(a, b)
-        for start in range(0, int(length / CELL) - 6, 18):
-            along = min((start + rng.uniform(4, 12)) * CELL, length - 3 * CELL)
-            at = _offset(a, angle, along, -rng.uniform(6, 13) * CELL)
-            key = f'frame grove {a} {start}'
-            for palette, offsets in ((trees, [(-30, -20), (0, 0), (25, -40)]),
-                                     (cover, [(12, 24), (-26, 4)])):
-                for prop in _sprigs(palette, rng, at, angle, offsets):
-                    finish.put(None, key, SET_PIECE_BUDGET, (prop,), frame_block=block)
+def _sample(value, rng):
+    return rng.uniform(*value) if isinstance(value, (tuple, list)) else value
 
 
 def expand(sketch, ground, roadbed, layout, library, kits, sage, border, frame=None, *, assets=None,
@@ -477,35 +413,70 @@ def expand(sketch, ground, roadbed, layout, library, kits, sage, border, frame=N
     edges = defaultdict(list)
     for border in sketch.borders:
         for section in sketch.border_sections(border):
-            for block in section[2:4]:
-                if block:
-                    edges[block].append((*section, border in sketch.quays))
+            for block in filter(None, section[2:4]):
+                edges[block].append((*section, border in sketch.quays))
+    heights = sketch.state_heights['base']
     for block, spec in sketch.blocks.items():
-        if spec.get('kind') == 'water' or spec['use'] == 'ice':
-            continue
         kit = kits[block]
+        recipe = finish.recipe = place_recipe(library, kit, spec['use'])
+        if spec.get('kind') == 'water' or recipe.get('bare'):
+            continue
+        finish.block = block
+        finish.edges = treatments = style_section(library, kit, 'edges')
+        finish.nodes = nodes = style_section(library, kit, 'nodes')
+        places = style_section(library, kit, 'places')
+        finish.texture_policy = places['texture_palette']
+        palette = places.get('prop_palettes', {})
+        finish.palettes = {key: assets.palette(kit, entry | {'exclude': palette.get('exclude', ())})
+                           for key, entry in palette.items() if key != 'exclude'}
         rng = Random(sketch.block_seed(block))
-        groups = finish.groups[kit]
-        cover = finish.assets.palette(kit, ('bush', 'shrub', 'grass', 'fern'))
-        rocks = finish.assets.palette(kit, ('rock', 'smallrock', 'gardenrock'))
-        trees = finish.assets.palette(kit, ('tree', 'redwood', 'palm'))
-        if spec['use'] in TOWN | {'square', 'park'} or finish.locked.get(block):
-            _front(finish, block, groups, cover, rng)
-        _edges(finish, block, edges[block], groups, cover, rocks, trees, rng)
-        if spec['use'] in {'woodland', 'snow_woodland'}:
-            _woodland(finish, block, trees, rng)
-        elif spec['use'] in NATURAL and 'at' in spec:
-            at = spec['at']
-            angle = rng.uniform(-math.pi, math.pi)
-            # One side of an open lot gains a silhouette. Its centre stays available for manoeuvres.
-            for sign in (-1, 1):
-                center = _offset(at, angle, sign * 10 * CELL, 3 * CELL)
-                finish.put(block, 'open lot', SET_PIECE_BUDGET,
-                           _sprigs(trees, rng, center, angle, [(-30, 30), (15, 45), (30, -15)]))
-                finish.put(block, 'open lot', SET_PIECE_BUDGET,
-                           _sprigs(cover, rng, center, angle, [(-27, 12), (18, -20)]))
-        if frame is not None:
-            # A snow wood carries trees only, past the frame as inside it.
-            _dress_frame(finish, block, () if spec['use'] == 'snow_woodland' else cover, trees,
-                         Random(f'{sketch.block_seed(block)}:frame'))
+        locked = finish.locked.get(block, ())
+        building = next((b for b in locked if b.protagonist), None)
+        if building and 'door' in nodes:
+            finish.node(block, 'yard', (building.x, building.y), building.angle, rng, nodes['door'], building=building)
+        if (recipe.get('street') or locked) and 'street' in treatments:
+            for road, road_spec in sketch.roads.items():
+                for edge in sketch.edges[road]:
+                    sides = sketch.sides[edge]
+                    if block in sides:
+                        a, b = edge if sides[0] == block else edge[::-1]
+                        finish.strip(block, road, a, b, treatments['street'], rng, kerb=ROAD_WIDTH[road_spec['width']] / 2,
+                                     anchored=building is not None and building.street == road)
+
+        corners = defaultdict(list)
+        for a, b, left, right, name, hard_quay in edges[block]:
+            other = right if left == block else left
+            if other is None:
+                continue
+            shore = sketch.blocks[other].get('kind') == 'water'
+            opened = any(state.get(name) for state in sketch.state_pass.values())
+            if (shore and opened) or (not shore and heights[block] == heights[other]):
+                continue
+            high = heights[block] > heights[other]
+            if block == right:
+                a, b = b, a
+            if not shore and not opened:
+                _, _, angle, _ = _axes(a, b)
+                corners[a].append(angle)
+                corners[b].append(angle)
+            if shore:
+                role = recipe.get('hard_shore', 'shore') if hard_quay else 'shore'
+            else:
+                role = ('ramp_crest' if high else 'ramp_toe') if opened else ('crest' if high else 'toe')
+            if role in treatments:
+                facade = f'{name} ({a[0]:g},{a[1]:g})–({b[0]:g},{b[1]:g})'
+                finish.strip(block, facade, a, b, treatments[role], rng)
+        if 'cliff_corner' in nodes:
+            for point, angles in corners.items():
+                if len(angles) == 2 and abs(math.sin(angles[1] - angles[0])) >= 1e-8:
+                    a, b = angles
+                    angle = math.atan2(math.cos(a) + math.cos(b), -math.sin(a) - math.sin(b))
+                    finish.node(block, f'cliff corner {point}', point, angle, rng, nodes['cliff_corner'])
+        finish.fill(block, recipe, rng)
+        if frame is not None and (treatment := recipe.get('frame')):
+            frame_rng = Random(f'{sketch.block_seed(block)}:frame')
+            for edge, sides in sketch.sides.items():
+                if set(sides) == {block, None}:
+                    a, b = edge if sides[0] == block else edge[::-1]
+                    finish.strip(block, '', a, b, treatments[treatment], frame_rng, outside=True)
     return finish.dressing()

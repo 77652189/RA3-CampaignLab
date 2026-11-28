@@ -18,7 +18,7 @@ from xml.etree import ElementTree as ET
 from experimental.campaign import labpaths
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 CLIFF_STEP_RAW = 1792
 PROBE_STEP = CLIFF_STEP_RAW * 0.04375  # one step in cliffs.json's heights (mapstudy's old scale);
                                        # the game reads raw / 25.6, so one step is 70 world units
@@ -43,13 +43,36 @@ def texture_kit(kit):
     return KIT_ALIASES.get(kit, kit.rsplit('_', 1)[0])
 
 
-# Retail winter surfaces mix Solvang snow and exposed Iceland ground.
-WINTER_SURFACES = {
-    'snow_woodland': ('Snow_Solvang08', 'Snow_Solvang10', 'Snow_Solvang01'),
-    'ice': ('Snow_Solvang02', 'Snow_Solvang09', 'Snow_Solvang03'),
+STYLE_DEFAULTS = {
+    'places': {'texture_palette': {'count': 3, 'noise': (12, .18, .82), 'fixed_noise': (22, .28, .72)}} | {
+               use: {'material': material, 'building_row': use in ('oldtown', 'residential', 'suburb')}
+               for material, uses in {
+                   'Road': ('oldtown', 'residential', 'industrial', 'dock', 'square'),
+                   'Grass': ('suburb', 'park', 'woodland', 'wildland'), 'Dirt': ('farm', 'canyon'),
+                   'Sand': ('water',), 'Snow': ('snow', 'snow_woodland', 'ice'),
+               }.items() for use in uses},
+    'edges': {'building_row': {'anchor_words': ('house',), 'repeat': 3, 'coverage': .25, 'setback': 6, 'gap': 6},
+              'shore_surface': {'texture': 'Sand_SantaMonica01', 'material': 'Sand', 'classes': {'Snow': 'Snow'}},
+              'cliff_surface': {'material': 'Cliff', 'keep_shoulder': ('Snow',)},
+              'ramp_surface': {'material': 'Dirt', 'classes': {'Snow': 'Snow', 'Dirt': 'Rock'},
+                               'verge': 'Grass', 'verge_classes': {'Dirt': 'Dirt'}, 'exposed': 'Rock',
+                               'keep_shoulder': ('Snow',)}},
 }
-SNOW_RAMPS = {'Iceland': 'Snow_Iceland04'}
-SNOW_FIELDS = {'Iceland': ('Snow_Solvang01', SNOW_RAMPS['Iceland'], 'Snow_Solvang08')}
+
+
+def style_section(library, kit, section):
+    table = library.get('styles', {})
+    folder = kit if kit in library.get('texture_kits', {}) else texture_kit(kit)
+    result = dict(STYLE_DEFAULTS.get(section, {}))
+    for key in dict.fromkeys(('*', folder, kit)):
+        for name, entry in table.get(key, {}).get(section, {}).items():
+            result[name] = result.get(name, {}) | entry if isinstance(entry, dict) else entry
+    return result
+
+
+def place_recipe(library, kit, use):
+    places = style_section(library, kit, 'places')
+    return places.get('*', {}) | places.get(use, {})
 
 
 # Placement measurements from the 150 game probe take precedence over medians.
@@ -95,7 +118,7 @@ def cliff_corners(library, kit, steps, straight):
     style = kits.get(kit, {})
     donor = next((e.get('borrowing', {}).get('from', kit) for e in style.get('cliffs', ())
                   if e['template'] == straight), kit)
-    return (entry for entry in kits[donor].get('cliff_corners', ())
+    return (entry for entry in style_section(library, donor, 'nodes').get('cliff_fittings', ())
             if entry['steps'] == steps and entry['straight'] == straight)
 
 
@@ -123,7 +146,10 @@ def _revision(path):
 
 @lru_cache(maxsize=4)
 def _load_library(path, revision):
-    return json.loads(path.read_text(encoding='utf-8'))
+    data = json.loads(path.read_text(encoding='utf-8'))
+    if data.get('schema_version', SCHEMA_VERSION) != SCHEMA_VERSION:
+        raise ValueError(f'{path}: regenerate the asset library with experimental.mapgen.library')
+    return data
 
 
 def load_library(path):
@@ -349,6 +375,7 @@ def build_library(sage, work):
             _borrow_cliffs(kits, borrowing, source, issues)
     blocking, source = probe("logs/e266_prop_blocking.json")
     blocking = _blocking(blocking, source, issues) if blocking is not None else {}
+    styles = probe("mapgen_probe/dressing.json")[0] or {}
     corner_path = "mapgen_probe/cliff_joints.json"
     if (work / corner_path).is_file():
         profiles, source = probe(corner_path)
@@ -358,7 +385,7 @@ def build_library(sage, work):
                       for e in style.get(category, ())}
             for entry in entries:
                 if {entry['template'], entry['straight']} <= assets.keys():
-                    style.setdefault('cliff_corners', []).append(
+                    styles.setdefault(kit, {}).setdefault('nodes', {}).setdefault('cliff_fittings', []).append(
                         {**entry, 'source': source, 'evidence': 'measured_from_maps'})
                     key = entry['template'].casefold()
                     if key not in blocking and (basis := _corner_blocking(sage, assets[entry['template']])):
@@ -378,6 +405,7 @@ def build_library(sage, work):
         "texture_kits": textures,
         "retail_moods": moods or {},
         "setpieces": setpieces,
+        "styles": styles,
         "blocking": blocking,
         "issues": [{"kind": kind, "source": source, "detail": detail} for kind, source, detail in sorted(issues)],
     }

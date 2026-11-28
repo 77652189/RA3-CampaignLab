@@ -12,6 +12,42 @@ from experimental.mapgen.roads import Roadbed
 from experimental.mapgen.terrain import Piece, TerrainPlan, expand
 
 
+def _style():
+    def sprigs(palette, *offsets, **options):
+        return {'sprigs': [([palette], offsets)], **options}
+
+    trees = sprigs('trees', (0, 0), (20, 20), (-20, 20))
+    scrub = sprigs('cover', (0, 0))
+    return {'*': {
+        'places': {
+            '*': {'frame': 'frame'}, 'oldtown': {'street': True}, 'park': {'street': True},
+            'dock': {'hard_shore': 'quay'}, 'wildland': {'interior': 'open lot'}, 'ice': {'bare': True},
+            'woodland': {'outline': 'woods'}, 'snow_woodland': {'outline': 'woods'}, 'snow': {'keep_ground': ['Dirt']},
+            'prop_palettes': {'trees': {'prefixes': ['tree']}, 'cover': {'prefixes': ['bush']}},
+        },
+        'edges': {
+            'street': {'node': 'scrub', 'step': [0, 0, 14], 'jitter': [5, 9], 'depths': [2], 'anchor_budget': 2},
+            'quay': {'node': 'cargo', 'middle': True, 'depths': [8]},
+            'ramp_crest': {'node': 'ramp', 'middle': True, 'depths': [3], 'after': 'shoulder', 'budget': 2},
+            'ramp_toe': {'node': 'ramp', 'middle': True, 'depths': [4], 'after': 'shoulder', 'budget': 2},
+            'woods': {'node': 'trees', 'step': [5, 0, 12], 'depths': [3, 8], 'slot': 'woods {a} {start} {layer}'},
+            'frame': {'node': 'frame', 'step': [4, 6, 18], 'depths': [-8], 'slot': 'frame {a} {start}'},
+        },
+        'nodes': {
+            'scrub': {'actions': [scrub]}, 'trees': {'actions': [trees]},
+            'cargo': {'actions': [{'group': {'use': 'dock'}}, {'patch': [9, 5, 'Road']}]},
+            'ramp': {'actions': [{'patch': [5, 3, 'Dirt'], 'slope': True}, scrub]},
+            'shoulder': {'actions': [sprigs('cover', (0, 0), shoulder=True)],
+                         'offsets': [(-2, 2), (-2, 4), (-2, 6)]},
+            'cliff_corner': {'offsets': [(4, 0)], 'actions': [sprigs('trees', (20, 0), single=True),
+                                                            sprigs('cover', (0, -10), (0, 10), single=True)]},
+            'frame': {'actions': [sprigs('trees', (-30, -20), (0, 0), (25, -40), single=True)]},
+            'open lot': {'offsets': [(-10, 3), (10, 3)],
+                         'actions': [sprigs('trees', (-30, 30), (15, 45), (30, -15))]},
+        },
+    }}
+
+
 @pytest.fixture
 def slice_inputs(tmp_path):
     sketch = Design({
@@ -29,7 +65,8 @@ def slice_inputs(tmp_path):
     library = {'kits': {'Town_T': {'buildings': [], 'destructibles': [], 'props': [
         {'template': 'T_' + name, 'geometry': {'shapes': [{'Type': 'CYLINDER', 'MajorRadius': 4}]}}
         for name in ('Tree', 'Bush', 'Wall')
-    ]}}, 'blocking': {'t_tree': {'cls': 'topple'}, 't_bush': {'cls': 'none'}, 't_wall': {'cls': 'all'}}}
+    ]}}, 'blocking': {'t_tree': {'cls': 'topple'}, 't_bush': {'cls': 'none'}, 't_wall': {'cls': 'all'}},
+        'styles': _style()}
     ground = expand(TerrainPlan(), library, 331, 51, 0)
     empty = np.zeros_like(ground.blocked)
     roads = Roadbed('Town_T', (), (), empty, empty.copy(), empty.copy())
@@ -82,11 +119,11 @@ def test_quay_dressing_respects_continuous_authored_paving(slice_inputs, monkeyp
     library['texture_kits'] = {'Town': {'Road': tiles('CargoApron', 'ContinuousPaving'),
                                         'Grass': tiles('Field'), 'Cliff': tiles('RockFace'),
                                         'Sand': tiles('Sand')}}
-    library['setpieces'] = {'groups': [{'style_kit': kit, 'use': '码头', 'anchor': 'T_Bush',
+    library['setpieces'] = {'groups': [{'style_kit': kit, 'use': 'dock', 'anchor': 'T_Bush',
                                       'relative_transforms': [{'template': 'T_Bush', 'dx': 0, 'dy': 0,
                                                                'angle_deg': 0}]}]}
     data = {'version': 2, 'blocks': {
-        'quay': {'at': [300, 370], 'height': 3, 'use': 'dock'},
+        'quay': {'at': [300, 370], 'height': 3, 'use': '码头'},
         'field': {'at': [300, 480], 'height': 3, 'use': 'wildland'},
         'sea': {'at': [300, 160], 'height': 3, 'use': 'water', 'kind': 'water'},
     }, 'borders': {
@@ -105,7 +142,7 @@ def test_quay_dressing_respects_continuous_authored_paving(slice_inputs, monkeyp
                                dict.fromkeys(sketch.blocks, kit), sage, 0)
 
     def has_cargo(result):
-        return any((p.template, p.x, p.y) == ('T_Bush', 300, 370) for p in result.pieces)
+        return any((p.template, p.x, p.y) == ('T_Bush', 300, 380) for p in result.pieces)
 
     soft = finish()
     assert not has_cargo(soft)
@@ -193,7 +230,7 @@ def test_block_kit_selects_ground_buildings_and_scenery(tmp_path, monkeypatch):
     sdk = tmp_path / 'SageXML'
     sdk.mkdir()
     shape = {'Type': 'CYLINDER', 'MajorRadius': 4}
-    library = {'kits': {}, 'texture_kits': {}, 'blocking': {}}
+    library = {'kits': {}, 'texture_kits': {}, 'blocking': {}, 'styles': _style()}
     for kit, prefix, tile in (('Town', 'T', 'Grass_Heidelberg01'), ('Port', 'P', 'Grass_Port')):
         house, tree = f'{prefix}_House', f'{prefix}_Tree'
         source = f'{house}.xml'
@@ -236,6 +273,7 @@ def test_winter_woods_leave_a_building_pad_and_ice_bare(slice_inputs, tmp_path, 
     library['texture_kits'] = {'Town': {'Snow': [
         {'id': tile, 'Texture': 'texture', 'BumpTexture': 'texture'} for tile in winter_tiles
     ]}}
+    library['styles']['Town_T'] = {'places': {'ice': {'textures': ['Snow_Solvang02', 'Snow_Solvang09', 'Snow_Solvang03']}}}
     data = {
         'version': 2,
         'blocks': {
@@ -329,7 +367,7 @@ def test_dressing_cannot_change_weighted_race_distance(tmp_path, monkeypatch):
         {'template': 'T_Tree', 'geometry': {'shapes': [shape]}},
         {'template': 'T_Block', 'geometry': {'shapes': [shape | {'MajorRadius': 40, 'MinorRadius': 40}]}},
     ]}}, 'blocking': {'t_tree': {'cls': 'none'}, 't_block': {'cls': 'all'}},
-        'texture_kits': {'Test': {'Grass': [
+        'styles': _style(), 'texture_kits': {'Test': {'Grass': [
             {'id': 'Grass_Heidelberg01', 'Texture': 'tile', 'BumpTexture': 'tile'}]}}}
     data = {'version': 2, 'blocks': {'yard': {'at': [510, 410], 'height': 3, 'use': 'wildland'}},
             'borders': {'rim': {'line': [[0, 0], [1000, 0], [1000, 800], [0, 800], [0, 0]]}}}

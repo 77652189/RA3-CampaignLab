@@ -28,6 +28,9 @@ def sample(tmp_path, monkeypatch):
         'Saint_Petersburg': {'Road': entries('Asphalt')},
         'Gibraltar': {'Cliff': entries('GibraltarRock')},
         'Cape_Cod': {'Cliff': entries('CapeRock')},
+    }, 'styles': {
+        '*': {'places': {'texture_donors': {'Cliff': 'Cape_Cod'}}},
+        'Heidelberg': {'places': {'texture_donors': {'Cliff': 'Gibraltar'}}},
     }}
     plan = terrain.TerrainPlan(blocks=(
         terrain.Block(_rect(0, 0, 300, 300), 3, surface=terrain.Surface('town', 'oldtown', 'Heidelberg_HB', 7)),
