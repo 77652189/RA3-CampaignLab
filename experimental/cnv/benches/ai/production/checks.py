@@ -2960,6 +2960,8 @@ def engine_aiskirm():
               'aiskvveh': {'z': z, 't': t},
               'aiskvd0': {'z': z},
               'aiskvd9': {'z': z},
+              'aisknr4': {'z': z},
+              'aisknr0': {'z': z},
               'aiskad': {'a': a},
               'aiskfon': {'fm': fm},
               'aiskfof': {'fm': fm},

@@ -1940,6 +1940,11 @@ def aiskirm_bench():
         # builder's uniform draws -> Peacekeepers appear, far fewer Javelins.
         'aiskvd0': lambda: mission('CampAISkVD0', army=ARMY_VEH, defpref='0%'),
         'aiskvd9': lambda: mission('CampAISkVD9', army=ARMY_VEH, defpref='1000%'),
+        # aiskvveh + ten conscripts inside 800 of the AI's yard; UnitBuilderEnemyNearbyMultiplier stock 4 / 0 (the
+        # SDK types it SageUnsignedInt: 0.01 does not compile)
+        'aisknr4': lambda: mission('CampAISkNr4', army='AlliedAntiVehicleVehicleTech1', near='AlliedAntiInfantryInfantry'),
+        'aisknr0': lambda: mission('CampAISkNr0', army='AlliedAntiVehicleVehicleTech1', near='AlliedAntiInfantryInfantry',
+                                   defpref=('UnitBuilderEnemyNearbyMultiplier', '0')),
         # CanBuildInAlliedBuildRadii false / true under a friendly yard (check rpb): l4_allied_radii H1 / H2
         'acbr0': lambda: mission('CampAIAcbr0', allied=False),
         'acbr1': lambda: mission('CampAIAcbr1', allied=True),

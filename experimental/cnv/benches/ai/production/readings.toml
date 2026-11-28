@@ -1777,6 +1777,18 @@ expect = "first(chosen) is not None and (first(other) is None or first(chosen) <
 
 [[reading]]
 bench_id = "engine_aiskirm"
+id = "the_nearby_multiplier_turns_the_first_pick_against_the_infantry_at_the_yard"
+scene = {build = "aisknr4", check = "z", until = 170}
+each = [{build = "aisknr4", chosen = "维和总数", other = "标枪总数"}, {build = "aisknr0", chosen = "标枪总数", other = "维和总数"}]
+item = "AI 人格/UnitBuilderEnemyNearbyMultiplier"
+bench = """\
+B 11-27 (ten Guardians at home, ten Peacekeepers inside 800 of the AI's yard): aisknr4 (stock 4) Peacekeeper first \
+(s32), Javelin s37; aisknr0 (multiplier 0) Javelin first (s32), Peacekeepers 0 to s143"""
+proves = "simai build states: the expected-enemy weight of units near the AI's base is times UnitBuilderEnemyNearbyMultiplier"
+expect = "first(chosen) is not None and (first(other) is None or first(chosen) < first(other))"
+
+[[reading]]
+bench_id = "engine_aiskirm"
 id = "at_1000_percent_the_javelins_wait_to_s151"
 scene = {build = "aiskvd9", check = "z", until = 170}
 bench = "B199 aiskvd9: 标枪 0 to s150, 1 s151, 3 s161"

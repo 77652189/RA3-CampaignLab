@@ -213,8 +213,8 @@ def umod_xml(zero):
 DEFPREF_PID = 'CNVDefPref'            # aiskvd0 / aiskvd9 (check z): 1AlliedBalanced plus UnitBuilderOverallDefensivePreference
 
 
-def defpref_xml(value):
-    """1AlliedBalanced, nothing else changed, with UnitBuilderOverallDefensivePreference=value on the definition."""
+def defpref_xml(value, field='UnitBuilderOverallDefensivePreference'):
+    """1AlliedBalanced, nothing else changed, with field=value on the definition."""
     return '\n'.join([
         '<?xml version="1.0" encoding="utf-8"?>',
         '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
@@ -223,7 +223,7 @@ def defpref_xml(value):
         '    <Include type="instance" source="DATA:SkirmishAI/Personalities/AlliedBalanced.xml" />',
         '  </Includes>',
         f'  <AIPersonalityDefinition id="{DEFPREF_PID}" PersonalityType="{DEFPREF_PID}" inheritFrom="1AlliedBalanced"'
-        f' UnitBuilderOverallDefensivePreference="{value}">',
+        f' {field}="{value}">',
         '  </AIPersonalityDefinition>',
         '</AssetDeclaration>', ''])
 
@@ -672,13 +672,14 @@ def teams_yard(m):
 
 ARMY_INF, ARMY_VEH ='SovietAntiInfantryInfantry', 'SovietAntiVehicleVehicleTech1'   # conscript / Hammer tank
 ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the player owns, idle behind its yard
+NEAR_AT = (-300.0, 300.0)             # aisknr*: the near group's first, from the east base (inside 800 of the yard)
 
 
 def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None,
             buffer=None, new=None, army=None, two=None, observe=False, cap=None, block=None, off=False,
             ptype=None, mintime=None, aidata=None, dear=None, dear_cost=DEAR_COST, power_more=None, mt_secs=300.0,
             carrier=None, unitcap=None, inert=False, power_adv=None, side=None, inert2=False, flip=False, defpref=None,
-            allied=None, wake='xfer', armydef=None, reserve=None, assist=None):
+            allied=None, wake='xfer', armydef=None, reserve=None, assist=None, near=None):
     base = resources.measured(niagara)
     m = Mission(name=name, map=ai_map(flipped(base) if flip else base, lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
@@ -702,9 +703,10 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{UMOD_PID}'
         m.assets.append((f'{UMOD_PID}.xml', umod_xml(umod), f'AIPersonalityDefinition:{UMOD_PID}'))
     if defpref is not None:              # aiskvd0 / aiskvd9 (check z): UnitBuilderOverallDefensivePreference written
-        m.facts['defensive preference'] = defpref
+        m.facts['defensive preference'] = defpref   # aisknr*: (field, value) writes that field instead
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{DEFPREF_PID}'
-        m.assets.append((f'{DEFPREF_PID}.xml', defpref_xml(defpref), f'AIPersonalityDefinition:{DEFPREF_PID}'))
+        xml = defpref_xml(*defpref[::-1]) if isinstance(defpref, tuple) else defpref_xml(defpref)
+        m.assets.append((f'{DEFPREF_PID}.xml', xml, f'AIPersonalityDefinition:{DEFPREF_PID}'))
     if ptype is not None:                # aiskpt / aiskpti (check pt): id CNVPtId, PersonalityType CNVPtType / unwritten
         m.facts['type written'] = int(ptype)
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{PT_PID}'
@@ -826,6 +828,11 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
         for k in range(ARMY_N):
             m.put(army, 'base yard', -150.0 - 60.0 * (k % 5), -150.0 + 60.0 * (k // 5), angle=0.0,
                   role=f'player army {k}')
+    if near is not None:                 # aisknr* (check z): + ARMY_N of the player's `near` NEAR_AT from the AI's yard
+        m.spawns.add(near)
+        for k in range(ARMY_N):
+            m.put(near, 'east base', NEAR_AT[0] - 40.0 * (k % 5), NEAR_AT[1] + 40.0 * (k // 5), angle=0.0,
+                  role=f'player near {k}')
     if jav:                              # aiskjav: one named Javelin soldier of s1's, 100 west of the yard (check e)
         m.spawns.add(JAV)
         m.put(JAV, 'east base', -100.0, 0.0, side='s1', angle=3.1416, name='UNIT - CNV AI Jav', role='ai jav')
