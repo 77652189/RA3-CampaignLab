@@ -5,9 +5,9 @@
 id = "spy_ordinary_vision_enemy_consumed_ally_refused"
 scenes = {a = {build = "engine_infvis", check = "a", until = 37}, b = {build = "engine_infvis", check = "b", until = 37}, c = {build = "engine_infvis", check = "c", until = 37}}
 bench = "E76 a/b/c (Allied / Soviet / Japan yards): enemy/ally/vision = 11100/11100/0 s1-s10, 1100/11100/0 s11-s15 (a's first seen second s16; b s18, c s19)"
-proves = "InfiltratorContain: the enemy spy enters a construction yard and is consumed, the allied spy is refused (s13-s15: the simulator's entry is s13, the clock is spy_vision_three_yards_entry_passes')"
-let = {matches = "lambda rs, lo, hi, wanted: len(rs) > hi and all(v == wanted for v in vals(rs)[lo:hi + 1])"}
-expect = "all(matches(rs, 1, 10, [11100, 11100, 0]) and matches(rs, 13, 15, [1100, 11100, 0]) for rs in (a, b, c))"
+proves = "InfiltratorContain: the enemy spy enters a construction yard and is consumed, the allied spy is refused (s13-s15: the simulator's entry is s13, the clock is spy_vision_three_yards_entry_passes'; vision not compared there: Soviet_1's marker walks off on the bench, A430)"
+let = {matches = "lambda rs, lo, hi, wanted: len(rs) > hi and all(v[:len(wanted)] == wanted for v in vals(rs)[lo:hi + 1])"}
+expect = "all(matches(rs, 1, 10, [11100, 11100, 0]) and matches(rs, 13, 15, [1100, 11100]) for rs in (a, b, c))"
 
 [[reading]]
 id = "spy_ordinary_vision_near_marker_seen"
@@ -30,15 +30,17 @@ mismatch = "simulator 182182182 (every spy at pass 182), bench 187184184"
 id = "spy_vision_three_yards_entered_no_reveal"
 scene = {build = "engine_infvis3", check = "a", until = 41}
 bench = "A406 CampInfVis3: allied / soviet still counting at s41 (465): not seen in 30 s (japan stops at 167 from s22: seen without entry too, b's reading)"
-proves = "InfiltratorContain VISION: three yards entered together do not reveal a marker 700 off (beyond VisionRange)"
+proves = "Soviet_1's own marker 700 off goes unseen 30 s after entry: it has walked off by then (c, A410; i: the yard owner's standing plant 900 off is seen, A430)"
 expect = "rows[-1]['allied'] > rows[-2]['allied'] and rows[-1]['soviet'] > rows[-2]['soviet']"
+mismatch = "simulator: the markers stand (A410) inside the 1000 VISION reveals and are seen from entry; bench still counting at s41"
 
 [[reading]]
 id = "spy_vision_allied_alone_no_reveal"
 scene = {build = "engine_infvis3", check = "b", until = 41}
 bench = "A407 CampInfVis3B (head a9906d7a): only the Allied spy sent, gone at pass 184; allied still counting at s41 (465)"
-proves = "InfiltratorContain VISION: an Allied yard entered alone (no later entry anywhere) does not reveal its near marker in 30 s"
+proves = "an Allied yard entered alone: Soviet_1's walked-off near marker unseen in 30 s, as in a"
 expect = "rows[-1]['allied'] > rows[-2]['allied']"
+mismatch = "simulator: the marker stands inside the 1000 and is seen from entry; bench still counting at s41"
 
 [[reading]]
 id = "spy_vision_unentered_japan_marker_seen_anyway"
@@ -101,3 +103,47 @@ scene = {build = "engine_infunit", check = "b", until = 92}
 bench = "A412 CampInfUnitB: the conscript sent 1200 west at s10 (inf // 1000) 0 while away from its goal (there = 0 to s30, 6 at s31), seen from s32 (15 at s33) to 255 at s51 -- about 450 from the still conscript at entry, not seen; once stopped, on the same clock as the still one"
 proves = "InfiltratorContain VISION_UNITS: a watched unit is not shown while it walks, and the sight around the others does not reach about 450 (UNIT_NEAR 400 INFERRED between 300 and that)"
 expect = "all(rows[s]['inf'] // 1000 == 0 for s in range(92) if rows[s]['there'] == 0) and 240 <= rows[91]['inf'] // 1000"
+
+[[reading]]
+id = "spy_vision_reveals_the_yards_shroud_from_entry"
+scene = {build = "engine_infvis3", check = "h", until = 46}
+bench = "A430 CampInfVis3H (head 33fef925): Soviet_4 markers 900 (near) / 1100 (far) north of the three yards, never in a spy's sight; entries 187184184; near 12 / 12 / 9 at s11, +14..16 every second to 541 / 541 / 538 at s46 (every pass from the spy's gone pass); far 0 throughout"
+proves = "InfiltratorContain VISION (Allied / Soviet / Japan yard): the observer reveals the yard's ShroudClearingRange (1000: 900 seen, 1100 not) from the entry pass, every pass for 35 s -- not its VisionRange 150 / 100 (A409 H6 wrong); the outposts' 750 by the same include INFERRED"
+item = "物体模块 Behaviors/InfiltratorContain:VISION"
+let = {lanes = "('allied', 'soviet', 'japan')"}
+expect = "all(rows[10][k] == 0 and rows[-1][k] // 1000 == 0 and all(12 <= rows[s][k] - rows[s - 1][k] <= 17 for s in range(14, 46)) for k in lanes)"
+
+[[reading]]
+id = "spy_vision_reveals_the_yard_owners_own_plant"
+scene = {build = "engine_infvis3", check = "i", until = 46}
+bench = "A430 CampInfVis3I: h with Soviet_1's own engineer 900 north and its power plant 100 east of it; plant (// 1000 % 1000) 0 to s10, 12 / 12 / 9 at s11, 544 / 544 / 541 at s46; the engineers leave their spot at pass 57 (s2) and Allied / Soviet ones are never seen (Japan's from about s27)"
+proves = "InfiltratorContain VISION: the yard owner's own things inside the 1000 are revealed too, every pass from entry (A430 H10 no); its walking engineers leave the reach (A410's walk-off)"
+item = "物体模块 Behaviors/InfiltratorContain:VISION"
+let = {lanes = "('allied', 'soviet', 'japan')"}
+expect = "all(rows[10][k] // 1000 % 1000 == 0 and all(12 <= rows[s][k] // 1000 % 1000 - rows[s - 1][k] // 1000 % 1000 <= 17 for s in range(14, 46)) for k in lanes)"
+
+[[reading]]
+id = "spy_vision_reveals_past_the_yards_vision_range"
+scene = {build = "engine_infvis3", check = "e", until = 46}
+bench = "A430 CampInfVis3E: markers 120 / 250 north (Japan 90 / 200), inside / outside the VisionRange; from entry both seen every pass to s46 (near and far 527 / 527 / 524 at s45), past g's 10 s of fog left by the spy's own sight"
+proves = "InfiltratorContain VISION: a marker beyond the yard's VisionRange is seen for 35 s after entry"
+item = "物体模块 Behaviors/InfiltratorContain:VISION"
+let = {lanes = "('allied', 'soviet', 'japan')"}
+expect = "all(rows[45][k] // 1000 - rows[25][k] // 1000 >= 290 and rows[45][k] % 1000 - rows[25][k] % 1000 >= 290 for k in lanes)"
+
+[[reading]]
+id = "spy_sees_its_shroud_clearing_not_its_vision_range"
+scene = {build = "engine_infvis3", check = "f", until = 46}
+bench = "A430 CampInfVis3F: no spy sent; the markers 300 / 430 from the idle spy (VisionRange 200, ShroudClearingRange 500) both seen every pass from s1 (44044 at s1, 725725 at s46)"
+proves = "a unit's discovery reach is its ShroudClearingRange, not its VisionRange (sim looks() reads `vision`)"
+let = {lanes = "('allied', 'soviet', 'japan')"}
+expect = "all(rows[-1][k] % 1000 >= 600 and all(rows[s][k] == rows[s][k] % 1000 * 1001 for s in range(1, 46)) for k in lanes)"
+
+[[reading]]
+id = "spy_gone_leaves_its_sight_for_ten_seconds"
+scene = {build = "engine_infvis3", check = "g", until = 46}
+bench = "A430 CampInfVis3G: the spies deleted at 10 s (gone at pass 152) instead of entering; the markers they saw stay seen 151 passes (14014 at s9 ... 151151 from s19 to s46), then not"
+proves = "e's first 10 s after entry are not VISION evidence: the fog closes 151 passes after the last viewer is gone"
+let = {lanes = "('allied', 'soviet', 'japan')"}
+expect = "all(rows[8][k] == 0 and rows[19][k] == rows[-1][k] == 151151 for k in lanes)"
+mismatch = "simulator: what a gone unit saw is unseen the next pass (0 throughout); bench keeps it seen 151 passes -- the general sight layer (sim side_sees), not A's"

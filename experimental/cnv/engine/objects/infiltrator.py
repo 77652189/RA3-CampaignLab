@@ -3,10 +3,9 @@
 One retail Allied plant: 20 seconds of zero supply, spy consumed, owner unchanged.
 Travel/entry reach is INFERRED; the blackout lasts Amount x the entered plant's EnergyProduction
 seconds (engine_infilpow h / i / j, one plant on the grid).
-VISION's observer sees the yard's own VisionRange (150 / Japan 100), not its 1000 shroud (A408 H6):
-engine_infvis:a/b/c's s16-s19 discovery recurs with no entry (d), so it was never VISION;
-engine_infvis3 a/b see nothing within 30 s of entry. A reveal inside VisionRange and
-parent-death cleanup are INFERRED (no bench shows the observer seeing anything).
+VISION's observer sees the yard's ShroudClearingRange (1000) from the entry pass, every pass to 35 s on
+(A430 engine_infvis3 h: Soviet_4 markers 900 north seen, 1100 not, Allied / Soviet / Japan); outposts' 750 and
+parent-death cleanup are INFERRED.
 Observer lifetime, other templates/players/spies and repeated entry remain gaps.
 E138/E205 KILL removes the hostile Allied spy and credits the crane owner;
 fling distance, exact entry clock and death-module dispatch remain gaps.
@@ -203,12 +202,11 @@ class Infiltrators:
         return world.frame_now() < self.attack_until.get(body.serial, 0)
 
     def sees(self, side, x, y, air=False):
-        """The entered host's VisionRange (sight; its shroud range sees nothing, A408). Parent-death cleanup INFERRED."""
+        """The entered host's shroud clearing (its `vision`, A430). Parent-death cleanup INFERRED."""
         world, peers = self.world, self.peers
         now = world.frame_now()
         looks = peers.looks
-        return any(owner == side and target.alive and now >= start
-                   and math.hypot(target.x - x, target.y - y) <= target.sight and looks(target, x, y, air)
+        return any(owner == side and target.alive and now >= start and looks(target, x, y, air)
                    for owner, target, start in self.observers) or any(
             owner == side and 0 < math.hypot(body.x - x, body.y - y) <= UNIT_NEAR
             and self.unit_age(body, start, end) is not None and looks(body, x, y, air)

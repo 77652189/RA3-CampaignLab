@@ -153,6 +153,76 @@ def trio_still_s4(m):
     return trio_still(m)
 
 
+# A430: (near, far) north of each yard's centre: inside / outside its VisionRange (150 / 150 / Japan 100), outside
+# its footprint (bounding radius 85 / 58 / 61) and 300+ from its spy's start (sight 200).
+CLOSE = {'allied': (120, 250), 'soviet': (120, 250), 'japan': (90, 200)}
+
+
+def trio_close(m, send=('allied', 'soviet', 'japan'), spots=CLOSE):
+    """e (A430, the positive control A406-A410 lacked): trio with each near marker moved into its yard's VisionRange,
+    a far one outside it, both the idle Soviet_4's (they do not walk, d). Rows count only from the pass the lane's
+    spy is gone (no p1 unit left near): near seen + 1000 x far seen. Prediction (A409 H6: the observer sees the
+    yard's VisionRange from entry): near rises every pass from entry, far stays 0."""
+    t = trio(m, send=send)
+    for k, (near, far) in spots.items():
+        yard, marker = m.find(m.role(k).name), m.find(m.role(k + ' near').name)
+        marker.y, marker.side = yard.y + near, 's4'
+        m.role(k + ' near').side = 's4'
+        m.put('AlliedEngineer', 'air', 2000 * list(CLOSE).index(k), far, side='s4', role=k + ' far',
+              name='Vision3 far ' + k)
+    t.scripts = [s for s in t.scripts if not s.name.startswith('Vision3 wait')]
+    for k in CLOSE:
+        gone, row = 'Vision3 gone ' + k, 'Vision3 ' + k
+        for role, unit in (('near', 1), ('far', 1000)):
+            t.scripts.append(Script('Vision3 seen %s %s' % (role, k),
+                                    [('FLAG', gone, 1), ('NAMED_DISCOVERED', m.player('p1'), m.role(k + ' ' + role).name)],
+                                    [('INCREMENT_COUNTER', unit, row)], once=False))
+    t.bench = [('bench_watch', dict(seconds=45, every=1, sheet=False, lines=4))]
+    t.expect = [(k, 1, 'ever>=', 1, 45) for k in send] or [('entries', 0, '==', 0)]
+    return t
+
+
+def trio_close_unsent(m):
+    """f: e with no spy sent (every lane counts from the first pass): the markers' sight from anything but VISION.
+    Prediction: all three rows 0 to the end."""
+    return trio_close(m, send=())
+
+
+def trio_close_deleted(m):
+    """g: e with each spy deleted at 10 s instead of entering -- e's counterfactual: what p1 sees once its spy is gone
+    without VISION (the fog closing back over what the spy saw). Prediction: all three rows 0 to the end."""
+    t = trio_close(m)
+    enter = next(s for s in t.scripts if s.name == 'Vision3 enter')
+    enter.do = [('NAMED_DELETE', m.role(k + ' spy').name) for k in CLOSE]
+    t.expect = [(k, 1, '==', 0) for k in CLOSE]
+    return t
+
+
+def trio_shroud(m):
+    """h: e's markers at 900 / 1100 north (inside / outside the yards' 1000 shroud clearing; 1080+ from the spies'
+    start, past their 500, so no fog left over from the spy's own sight -- g: 10 s). e saw the 250 / 200 marker 35 s
+    after entry, so the observer is not the yard's VisionRange (A409 H6 is wrong). Prediction (shroud): near rises
+    every pass from entry, far stays 0."""
+    return trio_close(m, spots={k: (900, 1100) for k in CLOSE})
+
+
+def trio_owner(m):
+    """i: h with the yard owner's own things 900 north -- a Soviet_1 engineer (s1 walks it, A410 H7) and 100 east of
+    it a Soviet_1 power plant (does not walk). Rows: engineer seen + 1000 x plant seen + 1000000 x passes the engineer
+    stands in a 60-square at its spot (counted from the start). a / b's Soviet_1 markers went unseen 30 s after entry
+    though within 1000: H9 a walking thing is not shown, H10 the owner's own things are not. Prediction (sim): both
+    seen every pass from entry."""
+    t = trio_close(m, spots={k: (900, 1100) for k in CLOSE})
+    for k in CLOSE:
+        eng, far = m.find(m.role(k + ' near').name), m.find(m.role(k + ' far').name)
+        eng.side = m.role(k + ' near').side = far.side = m.role(k + ' far').side = 's1'
+        far.template, far.x, far.y = 'SovietPowerPlant', eng.x + 100, eng.y
+        t.areas['Vision3 spot ' + k] = square(eng.x, eng.y, 60.0)
+        t.scripts.append(Script('Vision3 spot ' + k, [('NAMED_INSIDE_AREA', eng.name, 'Vision3 spot ' + k)],
+                                [('INCREMENT_COUNTER', 1000000, 'Vision3 ' + k)], once=False))
+    return t
+
+
 def units(m):
     """A411 VISION_UNITS on the hosts our levels have (missions/infiltrator_vision.py units), both spies sent at 10 s.
 
@@ -200,5 +270,7 @@ def units_long(m):
 
 
 CHECKS = {'engine_infvis': {'a': check, 'b': check_soviet, 'c': check_japan, 'd': check_unentered},
-          'engine_infvis3': {'a': trio, 'b': trio_allied, 'c': trio_still, 'd': trio_still_s4},
+          'engine_infvis3': {'a': trio, 'b': trio_allied, 'c': trio_still, 'd': trio_still_s4,
+                             'e': trio_close, 'f': trio_close_unsent, 'g': trio_close_deleted,
+                             'h': trio_shroud, 'i': trio_owner},
           'engine_infunit': {'a': units, 'b': units_long}}
