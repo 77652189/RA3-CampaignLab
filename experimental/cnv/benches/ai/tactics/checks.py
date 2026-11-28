@@ -2661,6 +2661,7 @@ def engine_aiteamfilter():
       aitfki   a (IncludeKindOf INFANTRY, no ObjectFilter): 步兵在家 0 @ s15; 坦克在家 4 to s55.
       aitfke   a (IncludeKindOf CAN_ATTACK, ExcludeKindOf INFANTRY): 坦克在家 3 @ s14, 0 @ s15; 步兵在家 4 to s55.
       aitfmax  a (MaxUnits 3, 8 Guardians): 坦克在家 8 -> 6 @ s13, 5 from s14 to s55 -- one team of 3.
+      aitfbd   a (aitfki + IsBaseDefenseTeam, bench 2026-11-27): both 4 to s58 -- such a team takes no infantry.
     The simulator (simai) gives the same six (benches/ai/tactics/readings.toml#engine_aiteamfilter team_filters_take_whom_the_bench_sent).
     Bench 2026-11-09 (B round 81, run_queue --jobs 2, all PASS; the second type: Riptide ACVs in the locomotor builds):
       aitfland  AllowedLocomotorTypes LAND: 坦克在家 2 @ s15, 0 from s16; 气垫船在家 4 to s55.
@@ -2739,7 +2740,7 @@ def engine_aiteamfilter():
     CHECKS = {k: {'a': a} for k in ('aitfany', 'aitfnone', 'aitfall', 'aitfki', 'aitfke', 'aitfmax', 'aitfoki', 'aitfokt',
                                      'aitfoke', 'aitfokn', 'aitfland', 'aitfamph', 'aitfwat', 'aitfosi', 'aitfosv', 'aitfosc',
                                      'aiar0', 'aiar1', 'aiar2', 'aiar3', 'aiar4', 'aiar5', 'aiar6', 'aiar7', 'aiar8', 'aiar9',
-                                     'aiar10')}
+                                     'aiar10', 'aitfbd')}
     return dict(CHECKS=CHECKS)
 
 

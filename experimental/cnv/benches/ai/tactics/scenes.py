@@ -3013,6 +3013,9 @@ def aiteamfilter_bench():
         'aitfall': lambda: mission('CampAITFAll', filt=objfilter('ALL', exc=(TANK,)), tanks_home=4, inf_home=0),
         'aitfki': lambda: mission('CampAITFKi', kinds='IncludeKindOf="INFANTRY"', tanks_home=4, inf_home=0),
         'aitfke': lambda: mission('CampAITFKe', kinds='IncludeKindOf="CAN_ATTACK" ExcludeKindOf="INFANTRY"'),
+        # 11-27: aitfki + IsBaseDefenseTeam (retail BaseDefenseController's flag); the model's guess: such a team takes
+        # structures only, so the Peacekeepers stay
+        'aitfbd': lambda: mission('CampAITFBd', kinds='IncludeKindOf="INFANTRY" IsBaseDefenseTeam="true"', tanks_home=4),
         # 11-23: the filter's own KindOf Include / Exclude (retail EngineerIdle ANY Include, BombardmentShipAttack
         # ANY Include + IncludeThing, AttachedBurstDroneRemoval ALL Exclude; the model ignored them in a team). Guesses (the
         # program's filter, CampaignLab work/re d61_b_fields.md 3 / d59 2): IncludeThing passes first; then Exclude kinds

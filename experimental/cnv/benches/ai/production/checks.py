@@ -2139,7 +2139,8 @@ def engine_aiskirm():
             m.spawns.add(tpl)
             counted(counter, label, t, template=tpl, player=s1, most=16)
         w = m.facts['wake at']
-        t.expect += [('标枪总数' if m.facts['player vehicles'] else '维和总数', w + 140.0, 'ever>=', 4, w + 150.0)]
+        pk = not m.facts['player vehicles'] or m.facts.get('defensive preference') == '1000%'   # aiskvd9: Peacekeepers
+        t.expect += [('维和总数' if pk else '标枪总数', w + 140.0, 'ever>=', 4, w + 150.0)]
         t.bench = [('bench_watch', dict(seconds=w + 154.0, every=1, sheet=False, lines=len(t.counters)))]
         return t
     # RESULTS z (bench 2026-11-11, work/logs/b128_counter.log, work/bench_results/aiskv*__z.json; wake ~s10):

@@ -1672,6 +1672,18 @@ INFANTRY -- only the Peacekeepers; VEHICLES -- only the Guardians; SKIRMISH_AI_N
 proves = "simai teams: AllowedLocomotorTypes and RegisteredObjectSet pick whom a team takes"
 expect = "tuple(vals(rows)[39]) == (tanks, other)"
 
+[[reading]]
+bench_id = "engine_aiteamfilter"
+id = "a_base_defense_team_takes_no_infantry"
+item = "AI 组队招人/TeamTemplate.IsBaseDefenseTeam"
+scene = {build = "aitfbd", check = "a", until = 41.0}
+bench = """\
+Bench 2026-11-27, PASS: aitfbd (aitfki's IncludeKindOf INFANTRY team plus IsBaseDefenseTeam) -- (坦克在家, 步兵在家) \
+(4, 4) from s1 to s58; aitfki without the flag sent the Peacekeepers at s15. Whether such a team takes structures is \
+not read"""
+proves = "simai teams: an IsBaseDefenseTeam template takes no units (aitfki's Peacekeepers stay home with it)"
+expect = "(rows[39]['坦克在家'], rows[39]['步兵在家']) == (4, 4)"
+
 # Bench readings of benches/ai/tactics/checks.py#engine_aitransport (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
