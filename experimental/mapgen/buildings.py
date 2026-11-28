@@ -181,8 +181,7 @@ class BuildingPlanner:
         self.frontages = {name: [] for name in design.blocks}
         self.roads = set()
         for block, front in frontages(design):
-            if block is not None:
-                self.frontages[block].append(front)
+            self.frontages[block].append(front)
             if front.a < front.b:
                 self.roads.add(front)
         self.roads = sorted(self.roads, key=lambda f: (f.name, f.a, f.b))
@@ -300,8 +299,7 @@ class BuildingPlanner:
         x, y = (round(p + n * offset, 9) for p, n in zip(kerb, inward))
         return self._place(block, rings, template, frontage.name, x, y, angle, placement, collision, mask)
 
-    def _place(self, block, rings, template, street, x, y, angle, placement, collision,
-               mask=None, protagonist=True):
+    def _place(self, block, rings, template, street, x, y, angle, placement, collision, mask=None):
         placement, collision = (tuple(replace(s, center=(s.center[0] + x, s.center[1] + y, s.center[2]))
                                       for s in group) for group in (placement, collision))
         shapes = tuple(dict.fromkeys(placement + collision))
@@ -326,7 +324,7 @@ class BuildingPlanner:
             return None, miss
         garrisonable = self._garrisonable(block, template)
         blocking = self.library['blocking'].get(template.name.casefold(), {}).get('cls', 'unknown')
-        return Building(template.name, x, y, angle, street, protagonist, placement,
+        return Building(template.name, x, y, angle, street, mask is None, placement,
                         collision, foundation, garrisonable, blocking), None
 
     def protagonist(self, block):
@@ -400,7 +398,6 @@ class BuildingPlanner:
                     for template in sorted(candidates, key=lambda t: t.name == previous):
                         b, _ = self._fit(block, (), template, front, kerb, normal, 0., mask)
                         if b:
-                            b = replace(b, protagonist=False)
                             placed.append(b)
                             previous = template.name
                             self.obstacles += tuple(replace(s, half_x=s.half_x + SETBACK,
@@ -410,22 +407,27 @@ class BuildingPlanner:
             self.obstacles = fixed
             return tuple(placed)
 
-        cells = np.argwhere(mask)
-        center = cells.mean(axis=0)
-        positions = sorted(cells.tolist(), key=lambda p: math.dist(center, p))
+        positions = closest_cells(mask, self.border)
         front = frontage[0] if frontage else None
         heading = math.atan2(-front.tangent[0], front.tangent[1]) if front else 0.
         for template in candidates:
             angle = (heading - template.front) % math.tau
             placement, collision = (tuple(s.posed(0., 0., angle) for s in group)
                                     for group in (template.placement, template.collision))
-            for j, i in positions:
-                x, y = (i - self.border) * CELL, (j - self.border) * CELL
+            for x, y in positions:
                 b, _ = self._place(block, (), template, front.name if front else '', x, y, angle,
-                                   placement, collision, mask, protagonist=False)
+                                   placement, collision, mask)
                 if b:
                     return (b,)
         return ()
+
+
+def closest_cells(mask, border):
+    """World positions of the owned cells, nearest the centroid first."""
+    cells = np.argwhere(mask)
+    center = cells.mean(axis=0)
+    return [((i - border) * CELL, (j - border) * CELL)
+            for j, i in sorted(cells.tolist(), key=lambda p: math.dist(center, p))]
 
 
 def fits(mask, border, at, shapes):

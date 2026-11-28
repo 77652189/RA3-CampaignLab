@@ -12,8 +12,6 @@ from skimage.measure import approximate_polygon, find_contours
 
 from experimental.mapgen import design, terrain
 from experimental.mapgen.campaign_writer import BRIDGE_DECK, bridge as bridge_ends, rules
-
-
 from experimental.mapgen.library import TOWN_USES, child_recipe, child_style, weighted
 
 
@@ -207,6 +205,11 @@ def _ribbon(path, width, headings=None):
     return (*_section(path, width / 2, headings), *reversed(tuple(_section(path, -width / 2, headings))))
 
 
+def tool_segment(template, a, b, *, hard):
+    flags = 8 if hard else 0
+    return tuple(Placement(template, *p, 0., flags=flag | flags, side='road') for p, flag in ((a, 2), (b, 4)))
+
+
 class _Layout:
     def __init__(self, ground, border, kit):
         y, x = (np.indices(ground.raw.shape) - border) * terrain.CELL
@@ -249,12 +252,11 @@ class _Layout:
 
     def tool(self, template, path, width, *, hard=False):
         # Keep each pair consecutive in ObjectsList; common XY forms the bend.
-        for i, (a, b) in enumerate(pairwise(path)):
+        for a, b in pairwise(path):
             if math.dist(a, b) < 1e-6:
                 continue
             self.region(_ribbon((a, b), width), self.verges if hard else self.paved)
-            for p, flag in ((a, 2), (b, 4)):
-                self.objects.append(Placement(template, *p, 0, flags=flag | (8 if hard else 0), side='road'))
+            self.objects.extend(tool_segment(template, a, b, hard=hard))
 
     def verge(self, path, width, headings=None):
         name, size, (trim, trim_size) = VERGES[self.kit]
@@ -657,20 +659,25 @@ class Frontage:
         count = math.ceil(length / terrain.CELL)
         along = [(i + .5) * length / count for i in range(count)]
         if anchor is not None:
-            near = np.clip((anchor[0] - self.a[0]) * tx + (anchor[1] - self.a[1]) * ty, 0, length)
+            projection, _ = terrain.strip_coordinates(*anchor, self.a, (tx, ty))
+            near = np.clip(projection, 0, length)
             along = sorted({near, *along}, key=lambda t: (abs(t - near), t))
         for t in along:
             yield (self.a[0] + t * tx, self.a[1] + t * ty), (-ty, tx)
 
 
-def frontages(sketch):
+def street_edges(sketch):
     for road, spec in sketch.roads.items():
         for edge in sketch.edges[road]:
-            a, b = (tuple(map(float, p)) for p in edge)
-            half = ROAD_WIDTH[spec['width']] / 2
-            for block, start, end in zip(sketch.sides[edge], (a, b), (b, a)):
-                if block is not None:
-                    yield block, Frontage(road, start, end, half)
+            yield road, edge, ROAD_WIDTH[spec['width']] / 2
+
+
+def frontages(sketch):
+    for road, edge, half in street_edges(sketch):
+        a, b = (tuple(map(float, p)) for p in edge)
+        for block, start, end in zip(sketch.sides[edge], (a, b), (b, a)):
+            if block is not None:
+                yield block, Frontage(road, start, end, half)
 
 
 def _frontage_ring(sketch, parent, spec):
@@ -708,21 +715,21 @@ def _frontage_ring(sketch, parent, spec):
 
 def _outlines(mask, x, y):
     """Trace cell outlines without smoothing across another child's cells."""
-    j, i = np.nonzero(mask)
-    crop = mask[j.min():j.max() + 1, i.min():i.max() + 1]
-    loops = find_contours(np.pad(crop, 1), .5)
-    if len(loops) > 1:
-        # A generated ring has no holes. Split across one and trace each side.
-        split = int(loops[1][:, 0].mean() + j.min())
-        for piece in (mask & (np.arange(len(mask))[:, None] < split),
-                      mask & (np.arange(len(mask))[:, None] >= split)):
-            groups, count = label(piece)
-            for k in range(1, count + 1):
-                yield from _outlines(groups == k, x, y)
-        return
-    origin = np.array([x[j.min(), i.min()], y[j.min(), i.min()]])
-    ring = approximate_polygon(loops[0], .01)[:, ::-1]
-    yield mask, tuple(tuple(map(int, p)) for p in (ring - 1) * terrain.CELL + origin)
+    groups, count = label(mask)
+    for k in range(1, count + 1):
+        part = groups == k
+        j, i = np.nonzero(part)
+        row, col = j.min(), i.min()
+        loops = find_contours(np.pad(part[row:j.max() + 1, col:i.max() + 1], 1), .5)
+        if len(loops) > 1:
+            # A generated ring has no holes. Split across one and trace each side.
+            top = np.arange(len(mask))[:, None] < int(loops[1][:, 0].mean() + row)
+            yield from _outlines(part & top, x, y)
+            yield from _outlines(part & ~top, x, y)
+        else:
+            ring = approximate_polygon(loops[0], .01)[:, ::-1]
+            origin = x[row, col], y[row, col]
+            yield part, tuple(tuple(map(int, p)) for p in (ring - 1) * terrain.CELL + origin)
 
 
 def cut_blocks(sketch, ground, roadbed, plan, library, kits, border, occupied, clear=None):
@@ -747,7 +754,7 @@ def cut_blocks(sketch, ground, roadbed, plan, library, kits, border, occupied, c
         if not authored_specs and (occupied is None or (use not in TOWN_USES and parent not in open_parents)):
             continue
         style = child_style(library, kits[parent])
-        mix = style.get('mix_by_use', {}).get('residential' if use == 'suburb' else use, {})
+        mix = style.get('mix_by_use', {}).get(TOWN_USES.get(use), {})
         jj, ii = np.nonzero((owners == own) & free)
         if not len(jj):
             if authored_specs:
@@ -760,31 +767,21 @@ def cut_blocks(sketch, ground, roadbed, plan, library, kits, border, occupied, c
 
         def add(name, use, mask, ring, frontage=(), seed=None):
             j, i = np.argwhere(mask)[0]
-            surface = blocks[own].surface
+            parent_block = blocks[own]
+            surface = parent_block.surface
             spec = dict(parent=parent, use=use, at=(int(xx[j, i]), int(yy[j, i])),
-                        height=sketch.blocks[parent]['height'], kit=surface.kit)
+                        height=parent_block.height, kit=surface.kit)
             if seed is not None:
                 spec['seed'] = seed
-            sketch.blocks[name], sketch.rings[name] = spec, ring
-            kits[name] = surface.kit
-            children[name] = (len(blocks), frontage)
-            local[mask] = len(blocks)
+            sketch.blocks[name], sketch.rings[name], kits[name] = spec, ring, surface.kit
+            owner = len(blocks)
+            children[name], local[mask] = (owner, frontage), owner
             available[mask] = False
-            blocks.append(terrain.Block(ring[:-1], spec['height'], surface=terrain.Surface(
-                name, use, surface.kit, sketch.block_seed(name), surface.ground_texture)))
+            surface = replace(surface, id=name, use=use, seed=sketch.block_seed(name))
+            blocks.append(terrain.Block(ring[:-1], parent_block.height, surface=surface))
 
         for name, spec in authored_specs.items():
-            front = []
-            if 'frontage' in spec:
-                ring, front = _frontage_ring(sketch, parent, spec)
-            elif 'ring' in spec:
-                ring = tuple(map(tuple, spec['ring']))
-                if ring[-1] == ring[0]:
-                    ring = ring[:-1]
-            else:
-                px, py = sketch.points[spec['point']]['at']
-                h = spec['size'] / 2
-                ring = ((px-h, py-h), (px+h, py-h), (px+h, py+h), (px-h, py+h))
+            ring, front = (spec['ring'], []) if 'ring' in spec else _frontage_ring(sketch, parent, spec)
             mask, distance = terrain.polygon_mask(ring, xx, yy, distances=True)
             interior = mask & (distance > 1e-7)
             if np.any(interior & claimed):
@@ -804,14 +801,12 @@ def cut_blocks(sketch, ground, roadbed, plan, library, kits, border, occupied, c
             add(name, spec['use'], mask, closed, front, spec.get('seed'))
 
         def cut(mask, kind, front=()):
-            groups, count = label(mask)
-            for k in range(1, count + 1):
-                for part, ring in _outlines(groups == k, xx, yy):
-                    name = f'{parent}-cut-{len(generated) + 1}'
-                    while name in sketch.ids:
-                        name += '-next'
-                    add(name, kind, part, ring, front)
-                    generated[name] = dict(parent=parent, use=kind, ring=ring[:-1])
+            for part, ring in _outlines(mask, xx, yy):
+                name = f'{parent}-cut-{len(generated) + 1}'
+                while name in sketch.ids:
+                    name += '-next'
+                add(name, kind, part, ring, front)
+                generated[name] = dict(parent=parent, use=kind, ring=ring[:-1])
 
         if clear is not None and parent in open_parents:
             cut(clear[window] & available, 'reserved')

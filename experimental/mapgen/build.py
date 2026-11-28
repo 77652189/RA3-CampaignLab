@@ -202,12 +202,13 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
         kits = {name: spec.get('kit', kit) for name, spec in sketch.blocks.items()}
         footprints = assets.occupied(native)
         frame = terrain.design_frame(sketch, ground, background_count, border)
+        occupied = clear = None
         if level != 'sketch':
             obstacles = tuple(s for obj in footprints for s in obj.placement + obj.collision)
             planner = buildings.BuildingPlanner(sketch, ground, catalogue, kits, fronts or {}, sage, border,
                                                 obstacles)
-            anchors = {block: (planner.protagonist(block),) for block in sorted(sketch.blocks)
-                       if 'protagonist' in sketch.blocks[block]}
+            groups = {name: (planner.protagonist(name),) for name, spec in sorted(sketch.blocks.items())
+                      if 'protagonist' in spec}
             y, x = (np.indices(ground.raw.shape) - border) * terrain.CELL
             clear = np.zeros_like(ground.blocked)
             for rel in sketch.relations.values():
@@ -216,12 +217,13 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
                     half = rel['side'] / 2 + terrain.CELL / 2
                     clear |= (abs(x - px) <= half) & (abs(y - py) <= half)
             occupied = clear.copy()
-            anchor_shapes = tuple(s for b, in anchors.values() for s in b.placement + b.collision)
+            anchor_shapes = tuple(s for b, in groups.values() for s in b.placement + b.collision)
             for shape in anchor_shapes:
                 occupied |= shape.contains(x, y, pad=terrain.CELL / 2)
+        if level != 'sketch' or sketch.child_specs:
             plan, ground, children, generated = roads.cut_blocks(
                 sketch, ground, roadbed, plan, catalogue, kits, border, occupied, clear)
-            groups = anchors.copy()
+        if level != 'sketch':
             planner.obstacles += anchor_shapes
             updated = list(plan.blocks)
             for name, (owner, frontage) in children.items():
@@ -235,8 +237,7 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
                                           or (spec['use'] == 'parking' and not parking[name])):
                     parent = spec['parent']
                     style = library.child_style(catalogue, kits[parent])
-                    parent_use = sketch.blocks[parent]['use']
-                    mix = style['mix_by_use']['residential' if parent_use == 'suburb' else parent_use]
+                    mix = style['mix_by_use'][library.TOWN_USES[sketch.blocks[parent]['use']]]
                     choices = {use: count for use, count in mix.items()
                                if use not in library.BUILDING_USES | {'parking'}}
                     if not choices:
@@ -246,8 +247,6 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
                     updated[owner] = replace(updated[owner], surface=replace(updated[owner].surface, use=fallback))
             plan = replace(plan, blocks=tuple(updated))
             layout = buildings.Layout(tuple((name, groups.get(name, ())) for name in sorted(sketch.blocks)))
-        elif sketch.child_specs:
-            plan, ground, _, _ = roads.cut_blocks(sketch, ground, None, plan, catalogue, kits, border, None)
     if level == 'full':
         ground = paint.paint(plan, catalogue, ground, roadbed)
     if sketch is not None:
@@ -255,10 +254,11 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
         ground = frame.close(ground)
         if level == 'full':
             dressed = dressing.expand(sketch, ground, roadbed, layout, catalogue, kits, sage, border, frame,
-                                       assets=assets, native=footprints, children=children, parking=parking)
+                                       assets=assets, native=footprints, children=children)
             checks.check_dressing_routes(sketch, ground, roadbed, layout, border, frame,
                                          footprints, dressed.footprints)
-            ground, scenery, footprints, slots = dressed.ground, dressed.pieces, dressed.footprints, dressed.slots
+            ground, footprints, slots = dressed.ground, dressed.footprints, dressed.slots
+            scenery = (*dressed.pieces, *(mark for marks in parking.values() for mark in marks))
     built = MapBuild(plan, ground, roadbed, layout, sketch, frame, scenery, atmosphere, footprints, slots,
                     level, road_kit is not None, ore, generated)
     if dump_children is not None:

@@ -12,7 +12,7 @@ import numpy as np
 from scipy import ndimage as nd
 
 from experimental.campaign import mapscript, mapsprite, mapstudy, mapterrain, mapxml
-from experimental.mapgen.library import sdk_footprint, sdk_xml
+from experimental.mapgen.library import road_tools, sdk_footprint, sdk_xml
 from ra3voice import big
 
 
@@ -179,8 +179,7 @@ def read_map(game, sage, catalogue, spec, parking_models):
     playable[y0:y1, x0:x1] = True
 
     objects = mapxml.objects(native)
-    widths = {r.attrib['id'].lower(): (r.attrib['id'], float(r.attrib['RoadWidth']))
-              for r in sdk_xml(sage / 'GlobalData/Roads.xml').iter('Road')}
+    widths = road_tools(sage)
     segments = []
     for a, b in pairwise(objects):
         if a['flags'] & 6 == 2 and b['flags'] & 6 == 4 and a['template'] == b['template']:

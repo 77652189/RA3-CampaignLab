@@ -76,19 +76,20 @@ def paint(plan, library, ground, roadbed=None):
                 raise ValueError(f'block {label}: missing kit {surface.kit} (terrain kit {kit})')
             recipe = place_recipe(library, key, surface.use)
             mined = child_recipe(library, key, surface.use)
-            if mined:
-                textures[mask] = _named(catalogue, label, weighted(Random(surface.seed), mined['textures']))
-                fixed.update(set(textures[mask]))
-                continue
-            if surface.use == 'reserved':
-                textures[mask] = _named(catalogue, label, surface.ground_texture or plan.ground)
-                continue
-            if 'material' not in recipe:
+            direct = bool(mined) or surface.use == 'reserved'
+            texture = surface.ground_texture
+            if direct:
+                texture = weighted(Random(surface.seed), mined['textures']) if mined else texture or plan.ground
+            elif 'material' not in recipe:
                 raise ValueError(f'block {label}: unknown use {surface.use}')
-            kind = recipe['material']
-            if surface.ground_texture is not None:
-                named_texture = _named(catalogue, label, surface.ground_texture)
+            kind = recipe.get('material')
+            if texture is not None:
+                named_texture = _named(catalogue, label, texture)
                 textures[mask] = named_texture
+                if mined and mask.any():
+                    fixed.add(named_texture)
+                if direct:
+                    continue
             else:
                 rng = Random(f'{label}:{surface.seed}')
                 fixed_palette = recipe.get('textures')

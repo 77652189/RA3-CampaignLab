@@ -308,6 +308,7 @@ class Design:
                 edges = _split_lines({name: ring})[name]
                 _need(len(set(ring[:-1])) == len(edges) == len(ring) - 1 and signed_area_twice(ring),
                       name, "ring", "expected a simple polygon")
+                self.child_specs[name] = spec | {"ring": ring[:-1]}
             elif geometry == {"frontage", "depth"}:
                 front = spec["frontage"]
                 _fields(front, name, "road", "from to")
@@ -319,8 +320,12 @@ class Design:
             elif geometry == {"point", "size"}:
                 _ref(spec["point"], self.points, name, "point")
                 _number(spec["size"], name, "size")
-                _need(spec["size"] > 0 and self.points[spec["point"]]["block"] == parent,
+                point = self.points[spec["point"]]
+                _need(spec["size"] > 0 and point["block"] == parent,
                       name, "size", "expected positive size around a point in the parent")
+                x, y = point["at"]
+                h = spec["size"] / 2
+                self.child_specs[name] = spec | {"ring": ((x-h, y-h), (x+h, y-h), (x+h, y+h), (x-h, y+h))}
             else:
                 raise DesignError(name, "child", "give a ring, frontage with depth, or point with size")
 

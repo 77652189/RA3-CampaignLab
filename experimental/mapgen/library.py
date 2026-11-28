@@ -74,7 +74,7 @@ def place_recipe(library, kit, use):
     return places.get('*', {}) | places.get(use, {})
 
 
-TOWN_USES = frozenset(('oldtown', 'residential', 'suburb'))
+TOWN_USES = {'oldtown': 'oldtown', 'residential': 'residential', 'suburb': 'residential'}
 BUILDING_USES = frozenset(('house', 'commercial', 'civic', 'rowhouse'))
 RECIPE_USES = {'rowhouse': 'house', 'reserved': None}
 
@@ -183,6 +183,11 @@ def _sdk_xml(path, revision):
 def sdk_xml(path):
     """Reuse the read-only SDK document across layout and dressing passes."""
     return _sdk_xml(path, _revision(path))
+
+
+def road_tools(sage):
+    return {r.attrib['id'].lower(): (r.attrib['id'], float(r.attrib['RoadWidth']))
+            for r in sdk_xml(sage / 'GlobalData/Roads.xml').iter('Road')}
 
 
 def read_shape(node):

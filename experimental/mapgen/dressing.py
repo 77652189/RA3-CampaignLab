@@ -10,10 +10,12 @@ import re
 
 import numpy as np
 
-from experimental.mapgen.buildings import Footprint, NO_PATH_BLOCK, Shape, fits, geometry_shapes
+from experimental.mapgen.buildings import Footprint, NO_PATH_BLOCK, Shape, closest_cells, fits, geometry_shapes
 from experimental.mapgen.design import DesignError, point_in_ring, signed_area_twice
-from experimental.mapgen.library import TOWN_USES, child_recipe, place_recipe, read_shape, sdk_xml, style_section, texture_kit, weighted
-from experimental.mapgen.roads import ROAD_WIDTH, Placement
+from experimental.mapgen.library import (
+    TOWN_USES, child_recipe, place_recipe, read_shape, road_tools, sdk_xml, style_section, texture_kit, weighted,
+)
+from experimental.mapgen.roads import street_edges, tool_segment
 from experimental.mapgen.terrain import CELL, Ground, Piece
 
 
@@ -26,7 +28,7 @@ CELL_PAD = CELL / math.sqrt(2)
 @dataclass(frozen=True)
 class Dressing:
     ground: Ground
-    pieces: tuple[Piece | Placement, ...]
+    pieces: tuple[Piece, ...]
     facades: tuple[tuple[str, str, int, int], ...]  # block, feature, allowance, used
     slots: dict[str, Piece]
     footprints: tuple[Footprint, ...]
@@ -63,12 +65,8 @@ def _nearest(at, a, b):
 
 
 def _lanes(sketch, layout, roadbed):
-    roads = {
-        road: tuple(Lane(road, tuple(map(float, a)), tuple(map(float, b)), ROAD_WIDTH[spec['width']] / 2)
-                    for a, b in sketch.edges[road])
-        for road, spec in sketch.roads.items()
-    }
-    yield from (lane for group in roads.values() for lane in group)
+    for road, (a, b), half in street_edges(sketch):
+        yield Lane(road, tuple(map(float, a)), tuple(map(float, b)), half)
     for bridge in roadbed.bridges if roadbed is not None else ():
         yield Lane(bridge.road, *bridge.landings, bridge.deck_width / 2)
     for border, spec in sketch.borders.items():
@@ -81,9 +79,9 @@ def _lanes(sketch, layout, roadbed):
         yield Lane(name, point['at'], point['at'], 2 * CELL)
     for name, group in layout.blocks:
         for b in group:
-            if b.garrisonable and b.street in roads:
+            if b.garrisonable and b.street in sketch.roads:
                 at = (b.x, b.y)
-                entry = min((_nearest(at, lane.start, lane.end) for lane in roads[b.street]),
+                entry = min((_nearest(at, *[tuple(map(float, p)) for p in edge]) for edge in sketch.edges[b.street]),
                             key=lambda xy: math.dist(at, xy))
                 yield Lane(f'{name} garrison entrance', entry, at, CELL)
     for name, relation in sketch.relations.items():
@@ -218,9 +216,8 @@ class _Finish:
             asset = self.assets.posed(prop)
             kind, footprint = asset.blocking, _guard_shapes(asset, prop)
             point = (prop.x, prop.y)
-            if self.child_mask is not None and not fits(self.child_mask, self.border, point, asset.placement + footprint):
-                return False
-            if self.unreserved is not None and not fits(self.unreserved, self.border, point, asset.placement + footprint):
+            mask = self.unreserved if self.child_mask is None else self.child_mask
+            if mask is not None and not fits(mask, self.border, point, asset.placement + footprint):
                 return False
             on_edge = shoulder and kind in NO_PATH_BLOCK
             if not self.fits(block, point, shoulder=on_edge) or any(
@@ -453,7 +450,7 @@ def _sample(value, rng):
 
 
 def expand(sketch, ground, roadbed, layout, library, kits, sage, border, frame=None, *, assets=None,
-           native=(), children=None, parking=None):
+           native=(), children=None):
     """Place kit scenery after ground, roads, paint and building lock have been resolved."""
     assets = assets or Assets(library, sage)
     children = children or {}
@@ -466,17 +463,16 @@ def expand(sketch, ground, roadbed, layout, library, kits, sage, border, frame=N
     heights = sketch.state_heights['base']
     for block, spec in sketch.blocks.items():
         kit = kits[block]
+        finish.block = block
+        rng = Random(sketch.block_seed(block))
         if block in children:
             if spec['use'] != 'reserved':
                 owner, front = children[block]
-                finish.block = block
-                finish.dress_child(block, ground.owners == owner, child_recipe(library, kit, spec['use']),
-                                   front, Random(sketch.block_seed(block)))
+                finish.dress_child(block, ground.owners == owner, child_recipe(library, kit, spec['use']), front, rng)
             continue
         recipe = finish.recipe = place_recipe(library, kit, spec['use'])
         if spec.get('kind') == 'water' or recipe.get('bare'):
             continue
-        finish.block = block
         finish.edges = treatments = style_section(library, kit, 'edges')
         finish.nodes = nodes = style_section(library, kit, 'nodes')
         places = style_section(library, kit, 'places')
@@ -484,20 +480,17 @@ def expand(sketch, ground, roadbed, layout, library, kits, sage, border, frame=N
         palette = places.get('prop_palettes', {})
         finish.palettes = {key: assets.palette(kit, entry | {'exclude': palette.get('exclude', ())})
                            for key, entry in palette.items() if key != 'exclude'}
-        rng = Random(sketch.block_seed(block))
         locked = finish.locked.get(block, ())
         building = next((b for b in locked if b.protagonist), None)
         town = spec['use'] in TOWN_USES and bool(style_section(library, kit, 'lots') or children)
         if not town and building and 'door' in nodes:
             finish.node(block, 'yard', (building.x, building.y), building.angle, rng, nodes['door'], building=building)
         if not town and (recipe.get('street') or locked) and 'street' in treatments:
-            for road, road_spec in sketch.roads.items():
-                for edge in sketch.edges[road]:
-                    sides = sketch.sides[edge]
-                    if block in sides:
-                        a, b = edge if sides[0] == block else edge[::-1]
-                        finish.strip(block, road, a, b, treatments['street'], rng, kerb=ROAD_WIDTH[road_spec['width']] / 2,
-                                     anchored=building is not None and building.street == road)
+            for road, edge, half in street_edges(sketch):
+                if block in (sides := sketch.sides[edge]):
+                    a, b = edge if sides[0] == block else edge[::-1]
+                    finish.strip(block, road, a, b, treatments['street'], rng, kerb=half,
+                                 anchored=building is not None and building.street == road)
 
         corners = defaultdict(list)
         for a, b, left, right, name, hard_quay in edges[block]:
@@ -536,30 +529,25 @@ def expand(sketch, ground, roadbed, layout, library, kits, sage, border, frame=N
                 if set(sides) == {block, None}:
                     a, b = edge if sides[0] == block else edge[::-1]
                     finish.strip(block, '', a, b, treatments[treatment], frame_rng, outside=True)
-    dressed = finish.dressing()
-    return replace(dressed, pieces=(*dressed.pieces, *(p for marks in (parking or {}).values() for p in marks)))
+    return finish.dressing()
 
 
 def parking_bays(recipe, sage, mask, border, frontage):
     """Fit the measured bay-marking tool at its SDK width."""
-    path = sage / 'GlobalData/Roads.xml'
-    if not path.is_file():
+    if not mask.any() or not (sage / 'GlobalData/Roads.xml').is_file():
         return ()
-    tools = {n.attrib['id'].casefold(): float(n.attrib['RoadWidth']) for n in sdk_xml(path).iter('Road')}
+    tools = road_tools(sage)
     matches = [(e['count'], t) for entries in recipe['edges'].values() for e in entries
                if 'parkinglines' in (t := e['template'] or '').casefold() and t.casefold() in tools]
-    if not matches or not mask.any():
+    if not matches:
         return ()
     _, template = max(matches)
-    width = tools[template.casefold()]
-    cells = np.argwhere(mask)
+    _, width = tools[template.casefold()]
     headings = [_axes(f.a, f.b)[2] for f in frontage] or [0., math.pi / 2]
-    center = cells.mean(axis=0)
-    for j, i in sorted(cells.tolist(), key=lambda p: math.dist(center, p)):
-        at = ((i - border) * CELL, (j - border) * CELL)
+    for at in closest_cells(mask, border):
         for angle in headings:
             shape = Shape('BOX', (*at, 0.), width, width / 2, 0., angle)
             if fits(mask, border, at, (shape,)):
-                return tuple(Placement(template, *_offset(at, angle, end, 0), 0., flags=flag, side='road')
-                             for end, flag in ((-width, 10), (width, 12)))
+                a, b = (_offset(at, angle, end, 0) for end in (-width, width))
+                return tool_segment(template, a, b, hard=True)
     return ()
