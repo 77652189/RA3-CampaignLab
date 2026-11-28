@@ -3,10 +3,9 @@
 A named enter order recycles each 1000-credit Hammer for 750 credits to the
 tank owner at its own or a friendly retail crane. A Hammer damaged to 50%
 before the order also returns 750. An Apocalypse returns 1500 at its own
-crane or at a mutual ally's crane, with the refund going to the tank owner.
-With one-way friendship and neutrality, the crane owner's relationship controls
-entry. The module-off control stays outside the approach area. Exact entry reach
-and timing are inferred.
+crane, at a mutual ally's crane, or at a friendly crane that the tank owner sees
+as neutral. The refund goes to the tank owner. The module-off control stays
+outside the approach area. Exact entry reach and timing are inferred.
 """
 from parts import Script, Test, square
 
@@ -29,11 +28,12 @@ def check(m, allied=False, *, one_way=False, damaged=False, apocalypse=False):
     lanes = [('on', 1), ('off', 2)]
     if apocalypse:
         lanes.append(('apoc', 4))
+    reverse_hammer = one_way and not apocalypse
     alive_scale = 1
     if allied:
         other, other_wallet = m.player('s2'), 'Ally Wallet'
-        # Four HUD lines fit. Reserve enough decimal places for all approach bits.
-        alive_scale = 100 if one_way else 10
+        # Four HUD lines fit. Reserve two digits for the four-lane Hammer check.
+        alive_scale = 100 if reverse_hammer else 10
         t.counters = [(frame, frame), (alive, 'State'), (wallet, wallet), (other_wallet, other_wallet)]
         t.scripts[2].do = [('SET_COUNTER_TO_COUNTER', alive, approach)]
         t.scripts[0].do.extend([
@@ -48,7 +48,7 @@ def check(m, allied=False, *, one_way=False, damaged=False, apocalypse=False):
             crane.side = m.find(crane.name).side = 's2'
         else:
             lanes.append(('ally', 4))
-    if one_way:
+    if reverse_hammer:
         site = 'switch gun'
         m.put('SovietCrane', site, name='Crane reverse', role='crane reverse')
         m.put('SovietAntiVehicleVehicleTech1', site, 0, 200, side='s2',
@@ -77,7 +77,7 @@ def check(m, allied=False, *, one_way=False, damaged=False, apocalypse=False):
                    [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', tank, health)], once=False),
         ])
     t.expect = [(frame, 0, 'ever==', 225)]
-    if one_way:
+    if reverse_hammer:
         t.expect += [('State', 0, 'ever==', 1005), (wallet, 0, 'ever==', 1500),
                      (other_wallet, 0, '==', 0)]
     elif allied and apocalypse:
@@ -101,6 +101,7 @@ CHECKS = {'engine_cranerecycle': {'a': check, 'b': lambda m: check(m, damaged=Tr
           'engine_cranerecycleapoc': {
               'a': lambda m: check(m, apocalypse=True),
               'b': lambda m: check(m, allied=True, apocalypse=True),
+              'c': lambda m: check(m, allied=True, one_way=True, apocalypse=True),
           },
           'engine_cranerecycleally': {
               'a': lambda m: check(m, allied=True),

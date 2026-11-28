@@ -43,6 +43,17 @@ and (rows[-1]['Frame'], rows[-1]['State'], rows[-1]['Wallet'], rows[-1]['Ally Wa
 """
 
 [[reading]]
+id = "a_crane_friendly_to_a_neutral_apocalypse_recycles_it_for_1500"
+scene = {build = "engine_cranerecycleapoc", check = "c", until = 15.5}
+bench = "E320 CampRecycleApC_mcp_1128_034952: Frame / State / Wallet / Ally Wallet f45–67 70/0/0, f76–82 71/0/0, f89 75/0/0, f98–105 65/750/0, f113–225 25/2250/0"
+proves = "Changing only the tank owner's relationship to Neutral leaves the recycling sequence intact: the same-owner Hammer pays 750, the Apocalypse approaches and pays another 1500 to its owner, and the module-off Apocalypse survives outside approach range. The crane owner's wallet stays empty."
+expect = """
+(any(45 <= r['Frame'] <= 67 and (r['State'], r['Wallet'], r['Ally Wallet']) == (70, 0, 0) for r in rows)
+and any((r['State'], r['Wallet'], r['Ally Wallet']) == (65, 750, 0) for r in rows)
+and (rows[-1]['Frame'], rows[-1]['State'], rows[-1]['Wallet'], rows[-1]['Ally Wallet']) == (225, 25, 2250, 0))
+"""
+
+[[reading]]
 id = "a_named_enter_order_at_an_allied_crane_credits_the_hammer_owner"
 scene = {build = "engine_cranerecycleally", check = "a", until = 15.5}
 bench = "E309 CampRecycleAlA_mcp_1127_154021: Frame / State / Wallet / Ally Wallet f45–68 70/0/0, f76–90 75/0/0, f98–225 25/1500/0"

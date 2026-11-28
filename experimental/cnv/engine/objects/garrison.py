@@ -233,18 +233,15 @@ class Garrisons:
         return False                        # one of them dead: not sent (the port answers so: review 11-19 k #4)
 
     def recycle_refund(self, u, g):
-        """E308/E309/E316/E318/E319: named entry at a Soviet Crane for a Hammer or an Apocalypse."""
-        hammer = u.template == 'SovietAntiVehicleVehicleTech1'
-        apocalypse = u.template == 'SovietAntiVehicleVehicleTech3'
-        if (not (hammer or apocalypse) or g.template != 'SovietCrane'
+        """E308/E309/E316/E318–E320: named entry at a Soviet Crane for a Hammer or an Apocalypse."""
+        if (u.template not in ('SovietAntiVehicleVehicleTech1', 'SovietAntiVehicleVehicleTech3')
+                or g.template != 'SovietCrane'
                 or 'AIRBORNE_TARGET' in (set(u.status) | u.script_status)):
             return None
-        if u.owner != g.owner:
-            # The one-way Friend/Neutral case is only covered for the Hammer.
-            tank_relation = self.relation((u.owner, g.owner))
-            tank_eligible = tank_relation == 'Friend' or (hammer and tank_relation == 'Neutral')
-            if self.relation((g.owner, u.owner)) != 'Friend' or not tank_eligible:
-                return None
+        if u.owner != g.owner and (
+                self.relation((g.owner, u.owner)) != 'Friend'
+                or self.relation((u.owner, g.owner)) not in ('Friend', 'Neutral')):
+            return None
 
         def read(xml):
             return next((simunits._attr(head, 'CashBackPercent')
