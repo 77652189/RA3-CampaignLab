@@ -17,6 +17,17 @@ def cancel_interrupted_c4(child, parent, rule):
         weapons.set_clip_clock(detonation, None)
 
 
+def ends_gone(world, child, parent, rule):
+    """Either end of a link dead, after DIE_WHEN_PARENT_HAS_FORBIDDEN_STATUS (A420, engine_attachterror f / g): the
+    Terror Drone dies once its parent has ForbiddenParentStatus (UNDERGOING_REPAIR: a repair drone on it), unless the
+    drone itself has IgnoreForbiddenParentStatusStatus (UNDER_IRON_CURTAIN; the parent's is not read). Dead within 4 s
+    of the bit; the exact frame INFERRED (this tick)."""
+    if (child.alive and parent.alive and parent.status & rule.get('die_forbidden', set())
+            and not child.status & rule['ignore']):
+        world.kill(child, '附着的父对象有禁止状态')
+    return not child.alive or not parent.alive
+
+
 @nugget('Attach', 'effect')
 class Attach:
     """Each attach effect ({module, forbidden, include, exclude}) whose filter the target passes (none of the

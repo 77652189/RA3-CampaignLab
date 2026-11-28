@@ -1973,7 +1973,7 @@ class Sim:
             return
         bits = {}
         for key, (child, parent, rule) in list(self.attachments.items()):
-            if not child.alive or not parent.alive:
+            if simattach.ends_gone(self.world, child, parent, rule):
                 del self.attachments[key]
                 simattach.cancel_interrupted_c4(child, parent, rule)
                 if (rule.get('die_with_parent') and child.alive and not parent.alive and not parent.deleted

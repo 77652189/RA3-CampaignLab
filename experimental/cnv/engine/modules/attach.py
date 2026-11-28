@@ -36,8 +36,9 @@ REPAIR = dict(CloseEnoughRange='20.0', InitialAttachDelay='0.25s', ParentStatusT
 REPAIR_KIDS = [('ObjectFilter', dict(Rule='ANY', Include='VEHICLE AIRCRAFT HUGE_VEHICLE',
                                      StatusBitFlagsExclude='NOT_IN_WORLD', Relationship='ALLIES'), 0)]
 # the retail Terror Drone's block (SovietScoutVehicle; engine_attachterror a): attaches like the simple shape and its
-# child dies with a parent killed by another (a script's NAMED_KILL). Bounce, unmanned detach, the forbidden-status death
-# and the parent's own INTERNAL_DESTRUCTION are not modelled (the rule's flags keep them; INFERRED / gap)
+# child dies with a parent killed by another (a script's NAMED_KILL) and with a parent UNDERGOING_REPAIR unless the
+# child itself is UNDER_IRON_CURTAIN (engine_attachterror f / g; the parent's curtain does not spare it). Bounce, unmanned
+# detach and the parent's own INTERNAL_DESTRUCTION are not modelled (the rule's flags keep them; INFERRED / gap)
 TERROR = dict(ParentStatus='VEHICLE_ATTACHED BOOBY_TRAPPED', CloseEnoughRange='5', Range='10',
               AttachedObjectStatus='IGNORE_AI_COMMAND ENCLOSED NON_AUTOACQUIRABLE UNATTACKABLE',
               AttachedModelConditions='HIDDEN', Flags=frozenset(
@@ -103,6 +104,7 @@ class AttachData(module.ModuleData):
                 # range None: no gate at the hit -- the bench's drone dispatches at its weapon's 25 past the parent's
                 # edge (49 centre to centre) and attaches; whether Range 10 gates a closer hit is unread (INFERRED)
                 flags=set(TERROR['Flags']), range=None, die_with_parent=True,
+                die_forbidden={TERROR['ForbiddenParentStatus']}, ignore={TERROR['IgnoreForbiddenParentStatusStatus']},
                 child=set(TERROR['AttachedObjectStatus'].split()) | {'ATTACHED'},
                 parent=set(TERROR['ParentStatus'].split())))
         c4 = _native(head, inner, C4, C4_KIDS, keep=('ForbiddenParentStatus',))

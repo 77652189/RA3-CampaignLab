@@ -786,8 +786,55 @@ def engine_attachterror():
         return t
 
 
+    def forbidden(plan):
+        """A420: DIE_WHEN_PARENT_HAS_FORBIDDEN_STATUS (UNDERGOING_REPAIR, ignored under UNDER_IRON_CURTAIN). plan:
+        {lane: ((second, role, bit), ...)} set by script. Packed per lane: 100 child alive when the 16 s bit goes on
+        (meant as a frame count; the script runs once) + at 20 s parent alive 1 / VEHICLE_ATTACHED 2 / BOOBY_TRAPPED
+        4, child alive 8 / ATTACHED 16, +32 child ATTACHED at 14 s. MEASURED 11-27 (CampAttTerrorF/G_mcp_1127_1915 /
+        _1914): f 133 / 133 / 109 / 109 -- the repair bit kills the drone, its parent's bits go with it, the parent's
+        curtain does not spare it (predicted it would); g 163 / 163 / 109 / 109 -- the drone's own curtain does."""
+        def check(m):
+            t = Test()
+            start = [('MAP_REVEAL_ALL_PERM', m.player('p1'))]
+            for phase, at in (('Fire', 6.), ('Before', 14.), ('Curtain', 15.), ('Kill', 16.), ('Late', 20.)):
+                start.append(('SET_MILLISECOND_TIMER', 'AttTerror '+phase, at))
+            fire, sets = [], {}
+            for lane in LANES:
+                child, parent = ['Terror '+lane+' '+role for role in ('child', 'parent')]
+                c = 'CNV_AttTerror_'+lane
+                t.counters.append((c, lane+' terror packed'))
+                start.extend(('UNIT_CHANGE_OBJECT_STATUS', who, 'NO_ATTACK', 1) for who in (child, parent))
+                fire.extend((('UNIT_CHANGE_OBJECT_STATUS', child, 'NO_ATTACK', 0), ('NAMED_ATTACK_NAMED', child, parent)))
+                for at, role, bit in plan.get(lane, ()):
+                    who = 'Terror '+lane+' '+role
+                    sets.setdefault('Curtain' if at == 15 else 'Kill', []).append(
+                        ('UNIT_CHANGE_OBJECT_STATUS', who, status(bit), 1))
+                t.scripts.append(Script('Test - frames '+lane,
+                    [('TIMER_EXPIRED', 'AttTerror Kill'), ('FLAG', 'AttTerror sampled Late', 0),
+                     ('NAMED_NOT_DESTROYED', child)], [('INCREMENT_COUNTER', 100, c)]))
+                for phase, weight, who, bit in (('Before', 32, child, 'ATTACHED'), ('Late', 1, parent, None),
+                                                ('Late', 2, parent, 'VEHICLE_ATTACHED'), ('Late', 4, parent, 'BOOBY_TRAPPED'),
+                                                ('Late', 8, child, None), ('Late', 16, child, 'ATTACHED')):
+                    t.scripts.append(Script(f'Test - {phase} {lane} {weight}',
+                        [('TIMER_EXPIRED', 'AttTerror '+phase), ('FLAG', 'AttTerror sampled '+phase, 0),
+                         ('NAMED_NOT_DESTROYED', who)] + ([('UNIT_HAS_OBJECT_STATUS', who, status(bit))] if bit else []),
+                        [('INCREMENT_COUNTER', weight, c)]))
+            for phase in ('Before', 'Late'):
+                t.scripts.append(Script('Test - close '+phase, [('TIMER_EXPIRED', 'AttTerror '+phase)],
+                                        [('SET_FLAG', 'AttTerror sampled '+phase, 1)]))
+            t.scripts.insert(0, Script('Test - start', [], start))
+            t.scripts.append(Script('Test - fire', [('TIMER_EXPIRED', 'AttTerror Fire')], fire))
+            for phase, acts in sets.items():
+                t.scripts.append(Script('Test - set '+phase, [('TIMER_EXPIRED', 'AttTerror '+phase)], acts))
+            t.bench = [('bench_watch', dict(seconds=24., every=.5, sheet=False, lines=4))]
+            return t
+        return check
+
+    REPAIR, CURTAIN = (16, 'parent', 'UNDERGOING_REPAIR'), (15, 'parent', 'UNDER_IRON_CURTAIN')
     MISSION = {'engine_attachterror': mission}
-    CHECKS = {'engine_attachterror': {'a': check}}
+    CHECKS = {'engine_attachterror': {'a': check,
+        'f': forbidden({'base': (REPAIR,), 'high': (CURTAIN, REPAIR), 'order': (REPAIR,)}),
+        'g': forbidden({'base': ((15, 'child', 'UNDER_IRON_CURTAIN'), REPAIR), 'high': (CURTAIN,)})}}
     return dict(MISSION=MISSION, CHECKS=CHECKS)
 
 

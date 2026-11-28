@@ -93,6 +93,22 @@ item = "武器效果 AttachNugget:恐怖机器人近战"
 expect = ["any(v == [127000, 127000, 3000, 3000] for t, v in zip(times, vals(rows)) if 14 <= t < 16)", "vals(rows)[-1] == [127007, 127000, 3006, 3002]"]
 
 [[reading]]
+bench_id = "engine_attachterror"
+id = "native_terror_dies_when_its_parent_is_under_repair"
+scene = {build = "engine_attachterror", check = "f", until = 24, shot_clock = true}
+bench = "CampAttTerrorF_mcp_1127_191535: s18-s25 = 133 / 133 / 109 / 109 (A420; 16 s UNDERGOING_REPAIR on the base / high / order parents, the high one UNDER_IRON_CURTAIN from 15 s)"
+proves = "the retail Terror Drone's DIE_WHEN_PARENT_HAS_FORBIDDEN_STATUS: a parent UNDERGOING_REPAIR kills the attached drone and its VEHICLE_ATTACHED / BOOBY_TRAPPED go; a curtain on the parent does not spare it; the bit on an unlinked parent kills nothing (engine/combat/attach.py ends_gone)"
+expect = "vals(rows)[-1] == [133, 133, 109, 109]"
+
+[[reading]]
+bench_id = "engine_attachterror"
+id = "native_terror_under_its_own_curtain_outlives_the_repair"
+scene = {build = "engine_attachterror", check = "g", until = 24, shot_clock = true}
+bench = "CampAttTerrorG_mcp_1127_191417: s18-s25 = 163 / 163 / 109 / 109 (A420; base: the drone UNDER_IRON_CURTAIN at 15 s, its parent UNDERGOING_REPAIR at 16 s; high: the parent's curtain alone)"
+proves = "IgnoreForbiddenParentStatusStatus UNDER_IRON_CURTAIN is read on the drone itself: curtained, it stays attached (its parent VEHICLE_ATTACHED / BOOBY_TRAPPED) through the repair bit"
+expect = "vals(rows)[-1] == [163, 163, 109, 109]"
+
+[[reading]]
 bench_id = "engine_attachc4"
 id = "native_c4_attaches_marks_and_a_forbidden_parent_takes_the_mark_alone"
 scene = {build = "engine_attachc4", check = "a", until = 24, shot_clock = true}
