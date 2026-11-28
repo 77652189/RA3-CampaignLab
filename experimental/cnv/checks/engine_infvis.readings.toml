@@ -83,7 +83,9 @@ expect = "rows[10]['entries'] % 1000 > 150 and all(0 < rows[-1]['entries'] // m 
 id = "spy_vision_units_flicker_then_steady_then_gone"
 scene = {build = "engine_infunit", check = "b", until = 92}
 bench = "A412 CampInfUnitB: the Tsunami (veh % 1000) / still conscript (inf % 1000) 0 to s10, 215 / 211 at s28, 336 / 332 at s38 (+121: 4 passes in 5), 405 / 400 at s43, 480 / 475 at s48 (+75: every pass), 511 / 511 from s51 to s91 -- the observer's 30 s UnitDuration cycle, its 10 s LifetimeUpdate, then nothing (A411's 'still rising at s51' was the last second)"
-proves = "InfiltratorContain VISION_UNITS: a watched unit shows 0/1/1/1/1 for UnitDuration, then every pass for 10 s, nothing from 40 s after entry"
+proves = "InfiltratorContain VISION_UNITS: a watched unit shows 0/1/1/1/1 for UnitDuration, then every pass for 10 s, nothing from 40 s after entry -- one observer for all four UnitFilter forms (the airfield / naval yard 30 s cycle measured in E199 / E200; their 10 s steady and 40 s end, the sight radius, a repeat entry and units made after entry INFERRED)"
+item = ["物体模块 Behaviors/InfiltratorContain:VISION_UNITS_VEHICLE", "物体模块 Behaviors/InfiltratorContain:VISION_UNITS_INFANTRY",
+        "物体模块 Behaviors/InfiltratorContain:VISION_UNITS_AIRCRAFT", "物体模块 Behaviors/InfiltratorContain:VISION_UNITS_SHIP"]
 expect = "all(rows[10][k] % 1000 == 0 and 110 <= rows[38][k] % 1000 - rows[28][k] % 1000 <= 125 and rows[48][k] % 1000 - rows[43][k] % 1000 >= 73 and 500 <= rows[91][k] % 1000 == rows[55][k] % 1000 for k in ('veh', 'inf'))"
 
 [[reading]]

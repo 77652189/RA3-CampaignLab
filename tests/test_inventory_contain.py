@@ -254,17 +254,26 @@ def test_infiltrator_reset_configuration_stays_guessed_until_cooldown_replays():
     assert 'strict xfail' in reset['why'] and 'work/re/e195_reset.md' in reset['why']
 
 
-def test_infiltrator_vehicle_configuration_stays_guessed_until_discovery_replays():
+@pytest.mark.parametrize('form, share, uses, templates', [
+    ('VEHICLE', 'infiltrator_vehicle_share', 4, 4), ('INFANTRY', 'infiltrator_infantry_share', 3, 3),
+    ('AIRCRAFT', 'infiltrator_aircraft_share', 2, 2), ('SHIP', 'infiltrator_ship_share', 3, 3)])
+def test_infiltrator_unit_vision_forms_cite_the_a412_reading(form, share, uses, templates):
     if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
         pytest.skip('needs SDK and retail placement cache')
-    assert contain_audit.infiltrator_vehicle_share() == {'campaign': 4, 'templates': 4}
+    assert getattr(contain_audit, share)() == {'campaign': uses, 'templates': templates}
+    rows = _rows('InfiltratorContain')
+    row = next(r for r in rows if r['name'].endswith(':VISION_UNITS_' + form))
+    assert (row['uses'], row['all'], row['state']) == (uses, templates, inventory.BENCHED)
+    assert row['why'].endswith('::spy_vision_units_flicker_then_steady_then_gone')     # the A412 reading's item
+    assert (sum(r['uses'] for r in rows), sum(r['all'] for r in rows)) == (34, 38)
+
+
+def test_infiltrator_vehicle_and_ship_forms_scope_by_host():
+    if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
+        pytest.skip('needs SDK and retail placement cache')
     rows = _rows('InfiltratorContain')
     vehicle = next(r for r in rows if r['name'].endswith(':VISION_UNITS_VEHICLE'))
-    assert (vehicle['uses'], vehicle['all'], vehicle['state']) == (4, 4, inventory.GUESSED)
-    assert (inventory.MODULE, vehicle['name']) not in inventory.BENCHED_TESTS
-    assert sum(r['uses'] for r in rows) == 34
-    assert sum(r['all'] for r in rows) == 38
-    assert 'strict xfail' in vehicle['why'] and 'work/re/e194_vehicle.md' in vehicle['why']
+    ship = next(r for r in rows if r['name'].endswith(':VISION_UNITS_SHIP'))
     import inventory_levels
     scope, _ = inventory_levels.expand_forms(rows, {
         (inventory.MODULE, 'Behaviors/InfiltratorContain'): {
@@ -272,6 +281,11 @@ def test_infiltrator_vehicle_configuration_stays_guessed_until_discovery_replays
     assert scope[(inventory.MODULE, vehicle['name'])]['a1'] == {'AlliedWarFactory'}
     assert scope[(inventory.MODULE, 'Behaviors/InfiltratorContain:VISION_UNITS_INFANTRY')]['a1'] == {'AlliedBarracks'}
     assert (inventory.MODULE, 'Behaviors/InfiltratorContain') not in scope
+    scope, _ = inventory_levels.expand_forms(rows, {
+        (inventory.MODULE, 'Behaviors/InfiltratorContain'): {
+            'a1': {'AlliedNavalYard', 'UnknownPlant'}}})
+    assert scope[(inventory.MODULE, ship['name'])]['a1'] == {'AlliedNavalYard'}
+    assert scope[(inventory.MODULE, 'Behaviors/InfiltratorContain')]['a1'] == {'UnknownPlant'}
 
 
 @pytest.mark.parametrize('field, value', [
@@ -306,51 +320,6 @@ def test_infiltrator_ordinary_vision_configuration_keeps_timing_gap():
     assert 'strict xfail' in vision['why'] and 'work/re/e196_vision.md' in vision['why']
     assert sum(r['uses'] for r in rows) == 34
     assert sum(r['all'] for r in rows) == 38
-
-
-def test_infiltrator_aircraft_configuration_keeps_discovery_gap():
-    if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
-        pytest.skip('needs SDK and retail placement cache')
-    assert contain_audit.infiltrator_aircraft_share() == {'campaign': 2, 'templates': 2}
-    rows = _rows('InfiltratorContain')
-    aircraft = next(r for r in rows if r['name'].endswith(':VISION_UNITS_AIRCRAFT'))
-    assert (aircraft['uses'], aircraft['all'], aircraft['state']) == (2, 2, inventory.GUESSED)
-    assert (inventory.MODULE, aircraft['name']) not in inventory.BENCHED_TESTS
-    assert sum(r['uses'] for r in rows) == 34
-    assert sum(r['all'] for r in rows) == 38
-    assert 'strict xfail' in aircraft['why'] and 'work/re/e197_aircraft.md' in aircraft['why']
-
-
-def test_infiltrator_infantry_configuration_keeps_discovery_gap():
-    if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
-        pytest.skip('needs SDK and retail placement cache')
-    assert contain_audit.infiltrator_infantry_share() == {'campaign': 3, 'templates': 3}
-    rows = _rows('InfiltratorContain')
-    infantry = next(r for r in rows if r['name'].endswith(':VISION_UNITS_INFANTRY'))
-    assert (infantry['uses'], infantry['all'], infantry['state']) == (3, 3, inventory.GUESSED)
-    assert (inventory.MODULE, infantry['name']) not in inventory.BENCHED_TESTS
-    assert sum(r['uses'] for r in rows) == 34
-    assert sum(r['all'] for r in rows) == 38
-    assert 'strict xfail' in infantry['why'] and 'work/re/e198_infantry.md' in infantry['why']
-
-
-def test_infiltrator_ship_configuration_keeps_discovery_gap():
-    if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
-        pytest.skip('needs SDK and retail placement cache')
-    assert contain_audit.infiltrator_ship_share() == {'campaign': 3, 'templates': 3}
-    rows = _rows('InfiltratorContain')
-    ship = next(r for r in rows if r['name'].endswith(':VISION_UNITS_SHIP'))
-    assert (ship['uses'], ship['all'], ship['state']) == (3, 3, inventory.GUESSED)
-    assert (inventory.MODULE, ship['name']) not in inventory.BENCHED_TESTS
-    assert sum(r['uses'] for r in rows) == 34
-    assert sum(r['all'] for r in rows) == 38
-    assert 'work/re/e200_ship.md' in ship['why']
-    import inventory_levels
-    scope, _ = inventory_levels.expand_forms(rows, {
-        (inventory.MODULE, 'Behaviors/InfiltratorContain'): {
-            'a1': {'AlliedNavalYard', 'UnknownPlant'}}})
-    assert scope[(inventory.MODULE, ship['name'])]['a1'] == {'AlliedNavalYard'}
-    assert scope[(inventory.MODULE, 'Behaviors/InfiltratorContain')]['a1'] == {'UnknownPlant'}
 
 
 def test_infiltrator_port_configuration_partition():
