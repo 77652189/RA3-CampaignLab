@@ -566,7 +566,8 @@ def restore(sim, s):
     sim.bodies.update((key, things[serial]) for key, serial, *_ in s['bodies'])
     for f, part in made.items():    # a part the run made on first use (Sim.harm, Sim.specials ...): check made it
         setattr(sim, f, part)
-    bridge_pairs = set(sim.ground.bridge_pairs)
+    ground = sim.ground
+    bridge_pairs = set(ground.bridge_pairs)
     taken = {path for path, _ in s['host']}
     for p, kind in list(_state_paths(sim)):
         if kind == STATE and '.'.join(p) not in taken:
@@ -574,9 +575,9 @@ def restore(sim, s):
     for path, e in s['host']:
         p = tuple(path.split('.'))
         _write(_get(sim, p[:-1]), p[-1], e, lambda x: snap.decode(x, things, extra), c)
-    if bridge_pairs != sim.ground.bridge_pairs.keys():
-        sim.ground.rebuild_bridge_decks()
-    sim.ground.cache.clear()
+    if bridge_pairs != ground.bridge_pairs.keys():
+        ground.rebuild_bridge_decks()
+    ground.cache.clear()
     return things
 
 

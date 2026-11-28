@@ -206,11 +206,12 @@ class Infiltrators:
         """The entered host's VisionRange (sight; its shroud range sees nothing, A408). Parent-death cleanup INFERRED."""
         world, peers = self.world, self.peers
         now = world.frame_now()
+        looks = peers.looks
         return any(owner == side and target.alive and now >= start
-                   and math.hypot(target.x - x, target.y - y) <= target.sight and peers.looks(target, x, y, air)
+                   and math.hypot(target.x - x, target.y - y) <= target.sight and looks(target, x, y, air)
                    for owner, target, start in self.observers) or any(
             owner == side and 0 < math.hypot(body.x - x, body.y - y) <= UNIT_NEAR
-            and self.unit_age(body, start, end) is not None and peers.looks(body, x, y, air)
+            and self.unit_age(body, start, end) is not None and looks(body, x, y, air)
             for owner, body, start, end in self.unit_observers)
 
     def unit_age(self, body, start, end):

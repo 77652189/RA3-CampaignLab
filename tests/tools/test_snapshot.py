@@ -4,7 +4,8 @@ equal (4.2), and run on to its end as the one never stopped; every field of the 
 sorted (4.3); the fields called static the same on the new world; what it cannot keep an error. The kernel's and
 the executor's own: tests/modules/test_snapshot_kernel.py. The 9 missions without the AI frame for frame: 11b-3c.
 On the island (simsmall): a sequential script queued and run, an order given, a moved waypoint, a module's field
-set in the run (review 1119e #1-#4 #8 #9); a cut at the run's end refused (review 1119g #3)."""
+set in the run (review 1119e #1-#4 #8 #9); a cut at the run's end refused (review 1119g #3).
+A broken bridge deck stays closed after restoring onto a fresh run."""
 import gc
 import io
 import json
