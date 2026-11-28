@@ -2,9 +2,10 @@
 
 A named enter order recycles each 1000-credit Hammer for 750 credits to the
 tank owner at its own or a friendly retail crane. A Hammer damaged to 50%
-before the order also returns 750. With one-way friendship and
-neutrality, the crane owner's relationship controls entry. The module-off
-control stays outside the approach area. Exact entry reach and timing are inferred.
+before the order also returns 750, and a same-owner Apocalypse returns 1500.
+With one-way friendship and neutrality, the crane owner's relationship controls
+entry. The module-off control stays outside the approach area. Exact entry reach
+and timing are inferred.
 """
 from parts import Script, Test, square
 
@@ -13,7 +14,7 @@ FRIEND = (2, 0.0, 'Friend')
 NEUTRAL = (1, 0.0, 'Neutral')
 
 
-def check(m, allied=False, *, one_way=False, damaged=False):
+def check(m, allied=False, *, one_way=False, damaged=False, apocalypse=False):
     t = Test()
     player, frame, alive, approach, wallet = m.player('p1'), 'Frame', 'Alive', 'Approach', 'Wallet'
     t.counters = [(key, key) for key in (frame, alive, approach, wallet)]
@@ -25,6 +26,8 @@ def check(m, allied=False, *, one_way=False, damaged=False):
         Script('Test - wallet', [], [('SET_PLAYER_MONEY_TO_COUNTER', player, wallet)], once=False),
     ]
     lanes = [('on', 1), ('off', 2)]
+    if apocalypse:
+        lanes.append(('apoc', 4))
     alive_scale = 1
     if allied:
         other, other_wallet = m.player('s2'), 'Ally Wallet'
@@ -75,6 +78,9 @@ def check(m, allied=False, *, one_way=False, damaged=False):
     elif allied:
         t.expect += [('State', 0, 'ever==', 25), (wallet, 0, 'ever==', 1500),
                      (other_wallet, 0, '==', 0)]
+    elif apocalypse:
+        # The frame counter stops at 225 (15 logic seconds). Judge the final state.
+        t.expect += [(alive, 15, '==', 2), (approach, 15, '==', 5), (wallet, 15, '==', 2250)]
     else:
         t.expect += [(alive, 0, 'ever==', 2), (wallet, 0, 'ever==', 750)]
     if damaged:
@@ -84,6 +90,7 @@ def check(m, allied=False, *, one_way=False, damaged=False):
 
 
 CHECKS = {'engine_cranerecycle': {'a': check, 'b': lambda m: check(m, damaged=True)},
+          'engine_cranerecycleapoc': {'a': lambda m: check(m, apocalypse=True)},
           'engine_cranerecycleally': {
               'a': lambda m: check(m, allied=True),
               'c': lambda m: check(m, allied=True, one_way=True),

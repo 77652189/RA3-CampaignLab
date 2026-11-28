@@ -21,6 +21,17 @@ and 0 < rows[-1]['Health'] < 100)
 """
 
 [[reading]]
+id = "a_named_enter_order_recycles_an_apocalypse_for_1500_at_its_own_crane"
+scene = {build = "engine_cranerecycleapoc", check = "a", until = 15.5}
+bench = "E318 CampRecycleApA_mcp_1128_023359: Frame / Alive / Approach / Wallet f45–67 7/0/0, f75–82 7/1/0, f91 7/5/0, f98–105 6/5/750, f112–225 2/5/2250"
+proves = "The same-owner Apocalypse approaches the retail Soviet Crane, is lost and adds 1500 to the 750 from the Hammer. The module-off Apocalypse stays outside the approach area and survives. Exact entry reach and timing remain inferred."
+expect = """
+(any(45 <= r['Frame'] <= 67 and (r['Alive'], r['Approach'], r['Wallet']) == (7, 0, 0) for r in rows)
+and any((r['Alive'], r['Approach'], r['Wallet']) == (6, 5, 750) for r in rows)
+and (rows[-1]['Frame'], rows[-1]['Alive'], rows[-1]['Approach'], rows[-1]['Wallet']) == (225, 2, 5, 2250))
+"""
+
+[[reading]]
 id = "a_named_enter_order_at_an_allied_crane_credits_the_hammer_owner"
 scene = {build = "engine_cranerecycleally", check = "a", until = 15.5}
 bench = "E309 CampRecycleAlA_mcp_1127_154021: Frame / State / Wallet / Ally Wallet f45–68 70/0/0, f76–90 75/0/0, f98–225 25/1500/0"

@@ -233,8 +233,10 @@ class Garrisons:
         return False                        # one of them dead: not sent (the port answers so: review 11-19 k #4)
 
     def recycle_refund(self, u, g):
-        """E308/E309/E316: the named enter order for a retail Hammer at a Soviet Crane."""
-        if (u.template != 'SovietAntiVehicleVehicleTech1' or g.template != 'SovietCrane'
+        """E308/E309/E316/E318: named entry at a Soviet Crane for a Hammer or a same-owner Apocalypse."""
+        hammer = u.template == 'SovietAntiVehicleVehicleTech1'
+        own_apocalypse = u.template == 'SovietAntiVehicleVehicleTech3' and u.owner == g.owner
+        if (not (hammer or own_apocalypse) or g.template != 'SovietCrane'
                 or 'AIRBORNE_TARGET' in (set(u.status) | u.script_status)):
             return None
         # The crane owner's Friend permits entry even when the Hammer's owner is Neutral.
