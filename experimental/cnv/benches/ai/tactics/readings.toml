@@ -1684,6 +1684,23 @@ not read"""
 proves = "simai teams: an IsBaseDefenseTeam template takes no units (aitfki's Peacekeepers stay home with it)"
 expect = "(rows[39]['坦克在家'], rows[39]['步兵在家']) == (4, 4)"
 
+[[reading]]
+bench_id = "engine_aiteamfilter"
+id = "a_base_defense_team_takes_towers_all_within_the_max_distance"
+item = "AI 组队招人/TeamTemplate.BaseDefenseMaxDistance"
+scene = {build = "aibdd4", check = "a", until = 30.0, teams = true}
+each = [{build = "aibdd4", towers = [1, 2]}, {build = "aibdd7", towers = [1, 2, 3]}, {build = "aibddn", towers = [1, 2, 3]}]
+bench = """\
+Bench 2026-11-27 (CampAIBdd4A_mcp_1127_220731, CampAIBdd7A_mcp_1127_220939, CampAIBddnA_mcp_1127_221137; ext team: \
+lines): three AI Multigunners at y 3100 / 3400 / 3700 -- the team takes them at frame 153: 400 the first two (the \
+third, 300 from the second but 600 from the first, stays in the default team to f871), 700 and unset all three; \
+Guardians and Peacekeepers 4 / 4 at home throughout (aibddn NOREAD: its s40 counter frame missing, 4 4 s2.67-s57.2)"""
+proves = """\
+simai teams: an IsBaseDefenseTeam team takes the AI's base defences, each within BaseDefenseMaxDistance of every \
+member (not a chain); unset = no limit; no units"""
+let = {held = "sorted({m['name'] for r in teams() if r['state_key'] == 'CNVStateTF' for m in r['members']})"}
+expect = ["held == [f'UNIT - CNV AI Tower {k}' for k in towers]", "(rows[29]['坦克在家'], rows[29]['步兵在家']) == (4, 4)"]
+
 # Bench readings of benches/ai/tactics/checks.py#engine_aitransport (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]

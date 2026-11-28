@@ -326,7 +326,7 @@ MODEL_HOOKS = {
     # one-think lag); a gathering team whose slot's target is gone ends (TeamMaker._slots); PathfindingCheckType at
     # recruiting (D152): the slot's target as a point
     'teams': (('has_target', lambda b: lambda ai, key, n: b.slot_target(ai, key, n) is not None),
-              ('target_of', 'slot_target'), ('reach', 'reach_target'), ('carry', 'carry'),
+              ('target_of', 'slot_target'), ('reach', 'reach_target'), ('carry', 'carry'), ('defenses', 'defenses'),
               # RequireCanAttackTarget (d61 2): some weapon of the unit takes the target object; range is moving's
               ('can_attack', lambda b: lambda ai, u, i: (t := b.body_of(i)) is None
                or any(b.observe.can_hit(w, t) for w in u.body.weapons)),
@@ -1703,6 +1703,17 @@ class Brain:
             if b.serial not in self.wrappers:
                 self.wrappers[b.serial] = Unit(b, self.observe, self.hunt_target)
             out.append(self.wrappers[b.serial])
+        return out
+
+    def defenses(self, ai, frame):
+        """The AI's own base defences (KindOf FS_BASE_DEFENSE structures), an IsBaseDefenseTeam team's candidates
+        (teams.TeamMaker.defenses). INFERRED: the set's garrisons not offered; its order = the bodies' order."""
+        out = []
+        for b in self.living():
+            if b.owner == self.player and 'FS_BASE_DEFENSE' in b.kinds and 'STRUCTURE' in b.kinds:
+                if b.serial not in self.wrappers:
+                    self.wrappers[b.serial] = Unit(b, self.observe, self.hunt_target)
+                out.append(self.wrappers[b.serial])
         return out
 
     def owned(self, ai, frame):

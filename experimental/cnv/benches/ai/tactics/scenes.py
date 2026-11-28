@@ -2935,7 +2935,7 @@ def aiteamfilter_bench():
 
     def mission(name, kinds=KINDS, filt='', max_units=8, tanks=4, inf=4, tanks_home=0, inf_home=4, second=INF,
                 locos='LAND AMPHIBIOUS', objset='', always=False, late=0, late_unit=TANK, static=False, tp_at=None,
-                tanks_out=0, plant_at=None, at_plant=0, tp_named=(), named_out=0):
+                tanks_out=0, plant_at=None, at_plant=0, tp_named=(), named_out=0, towers=0):
         """second: the other unit type (Peacekeepers, or Riptide ACVs in the locomotor builds); inf / inf_home count it.
         always: the team's AlwaysRecruit; late: Guardians the AI builds itself (a war factory, a plant, the opener);
         late_unit: what the opener builds instead (round 89: aiar4 Riptides)."""
@@ -3001,6 +3001,13 @@ def aiteamfilter_bench():
                 m.scripts += [Script(f'CNV AI - Tpn timer {k}', [], [('SET_MILLISECOND_TIMER', f'CNV AI Tpn {k}', at)]),
                               Script(f'CNV AI - Tpn {k}', [('TIMER_EXPIRED', f'CNV AI Tpn {k}')],
                                      [('UNIT_TELEPORT_TO_WAYPOINT', 'UNIT - CNV AI Tank 1', 'CNV AI Out')])]
+        for k in range(towers):     # 11-28 aibdd*: Multigunners in a line 300 apart, read by the teams host
+            m.put('AlliedBaseDefense', 'east base', 500.0, -300.0 + 300.0 * k, side='s1',
+                  name=f'UNIT - CNV AI Tower {k + 1}', role=f'ai tower {k + 1}')
+        if towers:
+            m.ext = True
+            m.units.append(aiteams_bench()["shared"].host_unit())
+            m.put('CNVTeamsHost', 'east base', 250.0, 400.0, side='s1', role='teams host')
         if late:
             m.put('AlliedWarFactory', 'east base', 0, FACTORY_DY, side='s1', name='UNIT - CNV AI Factory', role='ai factory')
             m.put('AlliedPowerPlant', 'east base', 0, PLANT_DY, side='s1', name='UNIT - CNV AI Plant', role='ai plant')
@@ -3016,6 +3023,11 @@ def aiteamfilter_bench():
         # 11-27: aitfki + IsBaseDefenseTeam (retail BaseDefenseController's flag); the model's guess: such a team takes
         # structures only, so the Peacekeepers stay
         'aitfbd': lambda: mission('CampAITFBd', kinds='IncludeKindOf="INFANTRY" IsBaseDefenseTeam="true"', tanks_home=4),
+        # 11-28: three AI Multigunners 300 apart in a line, a base-defence team without IncludeKindOf, BaseDefenseMaxDistance
+        # 400 / 700 / unset; read (work/re b1128_bdmax.md): a defence joins only within the distance of every member
+        **{f'aibdd{s}': (lambda s=s, d=d: mission(f'CampAIBdd{s}', kinds='IsBaseDefenseTeam="true"' + d, tanks_home=4,
+                                                  locos='LAND WATER AMPHIBIOUS AIR', towers=3))
+           for s, d in (('4', ' BaseDefenseMaxDistance="400"'), ('7', ' BaseDefenseMaxDistance="700"'), ('n', ''))},
         # 11-23: the filter's own KindOf Include / Exclude (retail EngineerIdle ANY Include, BombardmentShipAttack
         # ANY Include + IncludeThing, AttachedBurstDroneRemoval ALL Exclude; the model ignored them in a team). Guesses (the
         # program's filter, CampaignLab work/re d61_b_fields.md 3 / d59 2): IncludeThing passes first; then Exclude kinds
