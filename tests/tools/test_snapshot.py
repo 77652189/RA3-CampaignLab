@@ -308,6 +308,27 @@ def test_an_order_given_is_kept():
     assert [x[3] for x in b.commands.issued()] == [x[3] for x in a.commands.issued()] == ['posted', 'done']
 
 
+def test_a_broken_deck_stays_closed_after_restore():
+    a, b = _island(), _island()
+    pair = ((300, 300), (400, 300), 'start', 'end')
+    for s in (a, b):
+        ground = s.ground
+        ground.bridge_pairs[pair] = s.bodies['unit']
+        ground.deck[:] = ground.strip(*pair[:2], 120, 0)
+        ground.bridge_only[:] = ground.deck.repeat(ground.d, 0).repeat(ground.d, 1)
+        ground.fine['ground'] |= ground.bridge_only
+        ground.grids['ground'] |= ground.deck
+    assert a.ground.bridge_only.any()
+
+    a.bodies['unit'].alive = False
+    assert a.ground.set_blocks([])
+    _fork(a, b)
+
+    assert not b.ground.deck.any()
+    assert not b.ground.fine['ground'][b.ground.bridge_only].any()
+    assert (b.ground.grids['foot'] == a.ground.grids['foot']).all()
+
+
 def test_waypoints_are_each_runs_own():
     """1119e #4: two runs of one mission do not share its waypoints; writing one back leaves the source as it is."""
     a = _seq_world()

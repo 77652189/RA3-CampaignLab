@@ -604,9 +604,14 @@ class Ground:
         broken = [pair for pair, center in self.bridge_pairs.items() if center is not None and not center.alive]
         if not broken:
             return False
-        import platmap
         for pair in broken:
             self.bridge_pairs.pop(pair)
+        self.rebuild_bridge_decks()
+        return True
+
+    def rebuild_bridge_decks(self):
+        """Rebuild routing from the remaining bridge pairs after a loss or snapshot restore."""
+        import platmap
         self.deck.fill(False)
         walk = self.fine['ground']
         decks = np.zeros_like(walk)
@@ -616,7 +621,6 @@ class Ground:
         walk &= ~self.bridge_only | decks
         h, w = self.deck.shape
         self.grids['foot'] = self.grids['ground'] = walk.reshape(h, self.d, w, self.d).all(axis=(1, 3))
-        return True
 
     def strip(self, p, q, width, over):
         """Cells within width / 2 of segment p-q, the segment `over` longer at both ends."""

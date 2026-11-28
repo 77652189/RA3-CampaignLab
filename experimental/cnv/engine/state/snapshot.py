@@ -8,7 +8,7 @@ How a field is kept (SIM / BODY below; a dict there is a part: an object whose o
   ALIAS     another field's object under a second name (`ALIASES`): not taken, checked to be the same object
   KERNEL    the world's: World.snapshot (the schedule, the modules' STATE, made, frame, used, gaps)
   EXECUTOR  the script port's Executor.snapshot (an executor that cannot: an error)
-  CACHE     read from data that does not change in a run (the new world fills its own)
+  CACHE     derived from setup or saved state (the new world fills its own)
   WIRE      hooks, views and back-references the constructor makes
   STATIC    the mission's and the run's setup, the same on the new world (tests/tools/test_snapshot.py checks it)
 
@@ -64,13 +64,15 @@ SIM = {
     'wallet': {'money': STATE, 'income': STATE, 'sharing': STATE, 'money_cap': STATE, 'mined': STATE},
     'mining': {'nodes': STATE, 'mined_to': STATE, 'docks': STATE},
     'ground': {'waterline': STATIC, 'water': STATIC, 'b': STATIC, 'd': STATIC, 'e': STATIC, 'zgrid': STATIC,
-               'grids': STATIC, 'fine': STATIC, 'deck': STATIC, 'xy': STATIC, 'borders': STATIC,
+               'grids': CACHE, 'fine': CACHE, 'deck': CACHE, 'xy': STATIC, 'borders': STATIC,
+               'bridge_only': STATIC, 'bridge_pairs': STATE,
                'blocked': STATE, 'placed': STATE, 'version': STATE, 'shapes': STATE, 'cache': CACHE,
                'foot': STATE, 'foot_shapes': STATE},
     'repairs': {'world': WIRE, 'wallet': WIRE, 'ai_switches': ALIAS, 'blocked': STATE, 'players': STATE},
     'heal': {'passive_area_of': CACHE},
     'life': {'lose_of': CACHE, 'blasts_of': CACHE, 'made_of': CACHE},
-    'garrison': {'world': WIRE, 'move': WIRE, 'boxes': STATE, 'where': STATE, 'seat': STATE, 'going': STATE, 'log': STATE,
+    'garrison': {'world': WIRE, 'move': WIRE, 'templates': ALIAS, 'kill': WIRE, 'credit': WIRE, 'relation': WIRE,
+                 'boxes': STATE, 'where': STATE, 'seat': STATE, 'going': STATE, 'log': STATE,
                  'ejecting': STATE, 'flying': STATE, 'leaving': STATE},
     'infiltrators': {'world': WIRE, 'peers': WIRE, 'wallet': WIRE, 'going': STATE, 'off_until': STATE,
                      'observers': STATE, 'unit_observers': STATE, 'paralyzed_until': STATE, 'attack_until': STATE},
@@ -108,7 +110,8 @@ WORLD = {
 # a second name -> the path of the object it names
 ALIASES = {('used',): ('world', 'used'), ('unmodeled',): ('world', 'gaps'),
            ('money',): ('wallet', 'money'), ('income',): ('wallet', 'income'), ('sharing',): ('wallet', 'sharing'),
-           ('money_cap',): ('wallet', 'money_cap'), ('repairs', 'ai_switches'): ('ai_switches',)}
+           ('money_cap',): ('wallet', 'money_cap'), ('repairs', 'ai_switches'): ('ai_switches',),
+           ('garrison', 'templates'): ('own',)}
 
 BODY = {'modules': KERNEL, 'serial': KERNEL, '_find_cache': CACHE}     # the last two: Thing's slots
 for _f in ('name template owner x y z vision kinds immune_until armor radius sight '
@@ -563,6 +566,7 @@ def restore(sim, s):
     sim.bodies.update((key, things[serial]) for key, serial, *_ in s['bodies'])
     for f, part in made.items():    # a part the run made on first use (Sim.harm, Sim.specials ...): check made it
         setattr(sim, f, part)
+    bridge_pairs = set(sim.ground.bridge_pairs)
     taken = {path for path, _ in s['host']}
     for p, kind in list(_state_paths(sim)):
         if kind == STATE and '.'.join(p) not in taken:
@@ -570,6 +574,8 @@ def restore(sim, s):
     for path, e in s['host']:
         p = tuple(path.split('.'))
         _write(_get(sim, p[:-1]), p[-1], e, lambda x: snap.decode(x, things, extra), c)
+    if bridge_pairs != sim.ground.bridge_pairs.keys():
+        sim.ground.rebuild_bridge_decks()
     sim.ground.cache.clear()
     return things
 
