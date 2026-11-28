@@ -233,18 +233,18 @@ class Garrisons:
         return False                        # one of them dead: not sent (the port answers so: review 11-19 k #4)
 
     def recycle_refund(self, u, g):
-        """E308/E309/E316/E318: named entry at a Soviet Crane for a Hammer or a same-owner Apocalypse."""
+        """E308/E309/E316/E318/E319: named entry at a Soviet Crane for a Hammer or an Apocalypse."""
         hammer = u.template == 'SovietAntiVehicleVehicleTech1'
-        own_apocalypse = u.template == 'SovietAntiVehicleVehicleTech3' and u.owner == g.owner
-        if (not (hammer or own_apocalypse) or g.template != 'SovietCrane'
+        apocalypse = u.template == 'SovietAntiVehicleVehicleTech3'
+        if (not (hammer or apocalypse) or g.template != 'SovietCrane'
                 or 'AIRBORNE_TARGET' in (set(u.status) | u.script_status)):
             return None
-        # The crane owner's Friend permits entry even when the Hammer's owner is Neutral.
-        # Enemy and implicit relationships were not measured.
-        if u.owner != g.owner and (
-                self.relation((g.owner, u.owner)) != 'Friend'
-                or self.relation((u.owner, g.owner)) not in ('Friend', 'Neutral')):
-            return None
+        if u.owner != g.owner:
+            # The one-way Friend/Neutral case is only covered for the Hammer.
+            tank_relation = self.relation((u.owner, g.owner))
+            tank_eligible = tank_relation == 'Friend' or (hammer and tank_relation == 'Neutral')
+            if self.relation((g.owner, u.owner)) != 'Friend' or not tank_eligible:
+                return None
 
         def read(xml):
             return next((simunits._attr(head, 'CashBackPercent')

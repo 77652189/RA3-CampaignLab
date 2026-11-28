@@ -32,6 +32,17 @@ and (rows[-1]['Frame'], rows[-1]['Alive'], rows[-1]['Approach'], rows[-1]['Walle
 """
 
 [[reading]]
+id = "a_named_enter_order_at_an_allied_crane_credits_the_apocalypse_owner"
+scene = {build = "engine_cranerecycleapoc", check = "b", until = 15.5}
+bench = "E319 CampRecycleApB_mcp_1128_031257: Frame / State / Wallet / Ally Wallet f44–66 70/0/0, f75–82 71/0/0, f90 75/0/0, f97–103 65/750/0, f112–225 25/2250/0"
+proves = "At a mutual ally's crane the Apocalypse approaches, is lost and adds 1500 to its owner's wallet after the same-owner Hammer adds 750. The crane owner's wallet stays empty, and the module-off Apocalypse survives without approaching. State combines ten times the survival bits with the latched approach bits."
+expect = """
+(any(44 <= r['Frame'] <= 66 and (r['State'], r['Wallet'], r['Ally Wallet']) == (70, 0, 0) for r in rows)
+and any((r['State'], r['Wallet'], r['Ally Wallet']) == (65, 750, 0) for r in rows)
+and (rows[-1]['Frame'], rows[-1]['State'], rows[-1]['Wallet'], rows[-1]['Ally Wallet']) == (225, 25, 2250, 0))
+"""
+
+[[reading]]
 id = "a_named_enter_order_at_an_allied_crane_credits_the_hammer_owner"
 scene = {build = "engine_cranerecycleally", check = "a", until = 15.5}
 bench = "E309 CampRecycleAlA_mcp_1127_154021: Frame / State / Wallet / Ally Wallet f45–68 70/0/0, f76–90 75/0/0, f98–225 25/1500/0"

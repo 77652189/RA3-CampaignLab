@@ -2,7 +2,8 @@
 
 A named enter order recycles each 1000-credit Hammer for 750 credits to the
 tank owner at its own or a friendly retail crane. A Hammer damaged to 50%
-before the order also returns 750, and a same-owner Apocalypse returns 1500.
+before the order also returns 750. An Apocalypse returns 1500 at its own
+crane or at a mutual ally's crane, with the refund going to the tank owner.
 With one-way friendship and neutrality, the crane owner's relationship controls
 entry. The module-off control stays outside the approach area. Exact entry reach
 and timing are inferred.
@@ -42,7 +43,11 @@ def check(m, allied=False, *, one_way=False, damaged=False, apocalypse=False):
         ])
         t.scripts.append(Script('Test - ally wallet', [],
                                 [('SET_PLAYER_MONEY_TO_COUNTER', other, other_wallet)], once=False))
-        lanes.append(('ally', 4))
+        if apocalypse:
+            crane = m.role('crane apoc')
+            crane.side = m.find(crane.name).side = 's2'
+        else:
+            lanes.append(('ally', 4))
     if one_way:
         site = 'switch gun'
         m.put('SovietCrane', site, name='Crane reverse', role='crane reverse')
@@ -75,6 +80,9 @@ def check(m, allied=False, *, one_way=False, damaged=False, apocalypse=False):
     if one_way:
         t.expect += [('State', 0, 'ever==', 1005), (wallet, 0, 'ever==', 1500),
                      (other_wallet, 0, '==', 0)]
+    elif allied and apocalypse:
+        t.expect += [('State', 15, '==', 25), (wallet, 15, '==', 2250),
+                     (other_wallet, 15, '==', 0)]
     elif allied:
         t.expect += [('State', 0, 'ever==', 25), (wallet, 0, 'ever==', 1500),
                      (other_wallet, 0, '==', 0)]
@@ -90,7 +98,10 @@ def check(m, allied=False, *, one_way=False, damaged=False, apocalypse=False):
 
 
 CHECKS = {'engine_cranerecycle': {'a': check, 'b': lambda m: check(m, damaged=True)},
-          'engine_cranerecycleapoc': {'a': lambda m: check(m, apocalypse=True)},
+          'engine_cranerecycleapoc': {
+              'a': lambda m: check(m, apocalypse=True),
+              'b': lambda m: check(m, allied=True, apocalypse=True),
+          },
           'engine_cranerecycleally': {
               'a': lambda m: check(m, allied=True),
               'c': lambda m: check(m, allied=True, one_way=True),
