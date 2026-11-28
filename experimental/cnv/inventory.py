@@ -305,7 +305,10 @@ NOTES = {
     (NUGGET, 'SpecialPowerNugget:干扰消费者'): (GUESSED, '1用量，暂停额外SPN消费：engine_spnscr c原版四路删减、受害者真实开火、靶子封闭暴露窗，早HP100/100/90/90、晚HP90/90/80/80，打包301000090/301000090/300999080/300999080实机PASS；tests/test_special_power_nugget.py具名回放。停火差异由AttributeModifier决定，保留/删SPN相等不能证明额外消费者no-op；b仅NAMED_STOP仍续射，原预测strict xfail保留。两局耗完，缺SpecialPower开始/结束及命令消费观测，不晋升完整消费者，见work/re/c_spnscr_active_report.md'),
     (NUGGET, 'SpecialPowerNugget:附着dummy消费者'): (TODO, '1用量，暂停：JapanScoutInfantryAttachWeaponWarhead引用OBJECT dummy模板及原版宿主；缺独立派发/附着读数，不能按Dummy名字推定无操作；需Attach模块观测，work/re/c_spnclosure_report.md'),
     (MODULE, 'Behaviors/OCLSpecialPower'): (BENCHED, '总控第四切片按已测边界收尾：tests/test_simocl.py具名回放engine_oclcurtain/engine_oclnone/engine_oclwrong a，铁幕宿主匹配模块才保护并记事件，删除/改绑模块无保护/事件；engine_oclempty a空声明无保护且事件1；engine_oclcopy a完整原版载荷改名仍保护100/100且事件1；engine_oclzero a仅外层Count=0无保护且事件1。只闭合铁幕派发和零数量不保护边界，未测生成数量/通用生成；其他非零数量/载荷/超武、位置/过滤、按钮/冷却仍gap，继承、等价空声明及格式等价INFERRED，不表示全模块全字段验证；见 work/re/e_ocl_e65.md'),
-    (MODULE, 'Behaviors/RadarBehavior'): (GUESSED, 'E158-E162原版盟军雷达宿主（原生PlayerSpellBook雷达已去掉）：删宿主、只删电厂、两同类宿主先后删、受伤致死、脚本双向换主。台上小地图有无只从HUD截图读，模拟器不模拟雷达也没有计数器能读，所以读数（benches/ui/presentation/readings.toml#engine_radar）只核对前提（存活、PLAYER_HAS_POWER、归属）、不挂本项；HUD结果写在读数bench里。精确注销/换主帧、建造中、工程师占领、其他宿主仍gap；见work/re/e158_radar.md等'),
+    (MODULE, 'Behaviors/RadarBehavior'): (NA, '纯表现（只管小地图，A414 据读程序 work/re/l2_radar.md）：模块只在宿主换主 / 生效 / 离开时'
+        '把宿主加进或移出所属玩家的雷达表；这张表唯一的逻辑读者是"玩家有没有雷达"判断，它的调用者全是小地图界面'
+        '（画不画、干扰倒计时、图标和闪点），脚本、AI、视野都不读。E158–E162 台上小地图有无与此相符'
+        '（benches/ui/presentation/readings.toml#engine_radar 只核前提）'),
     # review 1121nn: the readings stay (checks/engine_activate / _hitreaction_e), the main behavior not modelled
     (MODULE, 'Behaviors/HitReactionBehavior'): (GUESSED, '维和举盾已对拍：E172受击HIT_REACTION位、engine_hitreaction_r受击转向（原版94/删模块83，checks/engine_hitreaction_e.readings.toml）；征召兵BITTEN后反应30帧并取消走路已对拍（A396/E280，checks/engine_dogbite.readings.toml），早期快照仍有时差；征召兵无视idle的转向、JapanEmperor待量，idle判定和刷新时序INFERRED'),
     (NUGGET, 'TintObjectsNugget'): (NA, '纯表现：Color及Pre/Sustained/PostColorTime、Frequency/Amplitude仅控制染色动画；engine_tint pair实测2/90/2/90，独立DamageNugget解释全部伤害，test_simbench_c重放；不声称像素已验证'),

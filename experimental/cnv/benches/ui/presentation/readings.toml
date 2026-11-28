@@ -67,7 +67,7 @@ expect = [
 # E158-E162: one retail Allied radar dish, the native PlayerSpellBook radar removed (work/re/e158_radar.md ...).
 # The counters are the scene's prerequisites (dish / support alive, PLAYER_HAS_POWER, owner), NOT the radar: the
 # minimap was read off the saved HUD frames, which the simulator does not model -- so no reading carries
-# 物体模块 Behaviors/RadarBehavior (inventory.py keeps it 推断).
+# 物体模块 Behaviors/RadarBehavior (inventory.py: 不涉及, the minimap is its only reader).
 
 [[reading]]
 bench_id = "engine_radar"
