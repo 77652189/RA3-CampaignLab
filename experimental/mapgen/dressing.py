@@ -10,10 +10,10 @@ import re
 
 import numpy as np
 
-from experimental.mapgen.buildings import Footprint, NO_PATH_BLOCK, Shape, geometry_shapes
-from experimental.mapgen.design import DesignError, point_in_ring
-from experimental.mapgen.library import place_recipe, read_shape, sdk_xml, style_section, texture_kit
-from experimental.mapgen.roads import ROAD_WIDTH
+from experimental.mapgen.buildings import Footprint, NO_PATH_BLOCK, Shape, fits, geometry_shapes
+from experimental.mapgen.design import DesignError, point_in_ring, signed_area_twice
+from experimental.mapgen.library import TOWN_USES, child_recipe, place_recipe, read_shape, sdk_xml, style_section, texture_kit, weighted
+from experimental.mapgen.roads import ROAD_WIDTH, Placement
 from experimental.mapgen.terrain import CELL, Ground, Piece
 
 
@@ -26,7 +26,7 @@ CELL_PAD = CELL / math.sqrt(2)
 @dataclass(frozen=True)
 class Dressing:
     ground: Ground
-    pieces: tuple[Piece, ...]
+    pieces: tuple[Piece | Placement, ...]
     facades: tuple[tuple[str, str, int, int], ...]  # block, feature, allowance, used
     slots: dict[str, Piece]
     footprints: tuple[Footprint, ...]
@@ -184,7 +184,7 @@ def _group(group, at, angle, locked=False, depth=1.):
 
 
 class _Finish:
-    def __init__(self, sketch, ground, roadbed, layout, assets, kits, border, frame, fixed):
+    def __init__(self, sketch, ground, roadbed, layout, assets, kits, border, frame, fixed, children):
         self.sketch, self.ground, self.roadbed = sketch, ground, roadbed
         self.kits, self.border = kits, border
         self.assets, self.fixed = assets, fixed
@@ -193,6 +193,10 @@ class _Finish:
         self.obstacles = [s for obj in (*fixed, *(b for _, group in layout.blocks for b in group))
                           for s in obj.placement + obj.collision]
         self.slots, self.counts = {}, {}
+        self.child_mask = None
+        self.reserved = np.isin(ground.owners, [owner for name, (owner, _) in children.items()
+                                                if sketch.blocks[name]['use'] == 'reserved'])
+        self.unreserved = ~self.reserved if self.reserved.any() else None
         self.texture = ground.textures.copy()
         self.dry = (ground.raw > ground.waterline) & ~ground.blocked
         self.frame = frame
@@ -214,6 +218,10 @@ class _Finish:
             asset = self.assets.posed(prop)
             kind, footprint = asset.blocking, _guard_shapes(asset, prop)
             point = (prop.x, prop.y)
+            if self.child_mask is not None and not fits(self.child_mask, self.border, point, asset.placement + footprint):
+                return False
+            if self.unreserved is not None and not fits(self.unreserved, self.border, point, asset.placement + footprint):
+                return False
             on_edge = shoulder and kind in NO_PATH_BLOCK
             if not self.fits(block, point, shoulder=on_edge) or any(
                     not self.fits(block, s.center[:2], shoulder=on_edge) for s in footprint):
@@ -274,7 +282,7 @@ class _Finish:
         c, s = math.cos(angle), math.sin(angle)
         mask = ((dx * c + dy * s) / length)**2 + ((dy * c - dx * s) / width)**2 <= 1
         window = np.s_[j:min(l, self.dry.shape[0]), i:min(k, self.dry.shape[1])]
-        mask &= self.dry[window] & ~self.ground.hidden[window]
+        mask &= self.dry[window] & ~self.ground.hidden[window] & ~self.reserved[window]
         if self.roadbed is not None:
             mask &= ~self.roadbed.paved[window]
         if not slope:
@@ -313,6 +321,36 @@ class _Finish:
         if 'at' in self.sketch.blocks[block] and (interior := recipe.get('interior')):
             self.node(block, interior, self.sketch.blocks[block]['at'], rng.uniform(-math.pi, math.pi), rng,
                       self.nodes[interior])
+
+    def dress_child(self, block, mask, recipe, front, rng):
+        self.child_mask = mask
+        row, col = np.nonzero(mask)
+        contents = recipe['contents']
+        props = {p: count for p, count in contents['scattered_props'].items()
+                 if self.assets.get(p) is not None}
+        ring = self.sketch.rings[block]
+        for a, b in pairwise(ring if signed_area_twice(ring) > 0 else ring[::-1]):
+            _, _, angle, length = _axes(a, b)
+            if length < 2 * CELL:
+                continue
+            mid = _offset(a, angle, length / 2, 0)
+            roadside = any(math.dist(mid, _nearest(mid, f.a, f.b)) <= f.half_width + CELL for f in front)
+            role = 'street' if roadside else 'lot_to_lot'
+            entries = {e['template'] or '': e['count'] for e in recipe['edges'].get(role, ())
+                       if e['template'] is None or self.assets.get(e['template'])}
+            # Road-tool kerbs run continuously in the roadbed. Child edges add measured props.
+            if entries and (template := weighted(rng, entries)):
+                at = _offset(a, angle, length / 2, 2 * CELL)
+                self.put(block, role, SET_PIECE_BUDGET, (Piece(template, *at, angle),))
+        at = tuple((np.array([col.mean(), row.mean()]) - self.border) * CELL)
+        angle = _axes(front[0].a, front[0].b)[2] if front else 0.
+        for group in sorted(contents['set_pieces'], key=lambda group: -group['count']):
+            members = (Piece(group['anchor'], *at, angle), *_group(group, at, angle, locked=True))
+            if self.put(block, 'contents', SET_PIECE_BUDGET, members):
+                break
+        if props:
+            self.put(block, 'contents', SET_PIECE_BUDGET, (Piece(weighted(rng, props), *at, angle),))
+        self.child_mask = None
 
     def strip(self, block, name, a, b, treatment, rng, *, kerb=0., anchored=False, outside=False):
         _, _, angle, length = _axes(a, b)
@@ -415,10 +453,11 @@ def _sample(value, rng):
 
 
 def expand(sketch, ground, roadbed, layout, library, kits, sage, border, frame=None, *, assets=None,
-           native=()):
+           native=(), children=None, parking=None):
     """Place kit scenery after ground, roads, paint and building lock have been resolved."""
     assets = assets or Assets(library, sage)
-    finish = _Finish(sketch, ground, roadbed, layout, assets, kits, border, frame, native)
+    children = children or {}
+    finish = _Finish(sketch, ground, roadbed, layout, assets, kits, border, frame, native, children)
     edges = defaultdict(list)
     for border in sketch.borders:
         for section in sketch.border_sections(border):
@@ -427,6 +466,13 @@ def expand(sketch, ground, roadbed, layout, library, kits, sage, border, frame=N
     heights = sketch.state_heights['base']
     for block, spec in sketch.blocks.items():
         kit = kits[block]
+        if block in children:
+            if spec['use'] != 'reserved':
+                owner, front = children[block]
+                finish.block = block
+                finish.dress_child(block, ground.owners == owner, child_recipe(library, kit, spec['use']),
+                                   front, Random(sketch.block_seed(block)))
+            continue
         recipe = finish.recipe = place_recipe(library, kit, spec['use'])
         if spec.get('kind') == 'water' or recipe.get('bare'):
             continue
@@ -441,9 +487,10 @@ def expand(sketch, ground, roadbed, layout, library, kits, sage, border, frame=N
         rng = Random(sketch.block_seed(block))
         locked = finish.locked.get(block, ())
         building = next((b for b in locked if b.protagonist), None)
-        if building and 'door' in nodes:
+        town = spec['use'] in TOWN_USES and bool(style_section(library, kit, 'lots') or children)
+        if not town and building and 'door' in nodes:
             finish.node(block, 'yard', (building.x, building.y), building.angle, rng, nodes['door'], building=building)
-        if (recipe.get('street') or locked) and 'street' in treatments:
+        if not town and (recipe.get('street') or locked) and 'street' in treatments:
             for road, road_spec in sketch.roads.items():
                 for edge in sketch.edges[road]:
                     sides = sketch.sides[edge]
@@ -481,11 +528,38 @@ def expand(sketch, ground, roadbed, layout, library, kits, sage, border, frame=N
                     a, b = angles
                     angle = math.atan2(math.cos(a) + math.cos(b), -math.sin(a) - math.sin(b))
                     finish.node(block, f'cliff corner {point}', point, angle, rng, nodes['cliff_corner'])
-        finish.fill(block, recipe, rng)
+        if not town:
+            finish.fill(block, recipe, rng)
         if frame is not None and (treatment := recipe.get('frame')):
             frame_rng = Random(f'{sketch.block_seed(block)}:frame')
             for edge, sides in sketch.sides.items():
                 if set(sides) == {block, None}:
                     a, b = edge if sides[0] == block else edge[::-1]
                     finish.strip(block, '', a, b, treatments[treatment], frame_rng, outside=True)
-    return finish.dressing()
+    dressed = finish.dressing()
+    return replace(dressed, pieces=(*dressed.pieces, *(p for marks in (parking or {}).values() for p in marks)))
+
+
+def parking_bays(recipe, sage, mask, border, frontage):
+    """Fit the measured bay-marking tool at its SDK width."""
+    path = sage / 'GlobalData/Roads.xml'
+    if not path.is_file():
+        return ()
+    tools = {n.attrib['id'].casefold(): float(n.attrib['RoadWidth']) for n in sdk_xml(path).iter('Road')}
+    matches = [(e['count'], t) for entries in recipe['edges'].values() for e in entries
+               if 'parkinglines' in (t := e['template'] or '').casefold() and t.casefold() in tools]
+    if not matches or not mask.any():
+        return ()
+    _, template = max(matches)
+    width = tools[template.casefold()]
+    cells = np.argwhere(mask)
+    headings = [_axes(f.a, f.b)[2] for f in frontage] or [0., math.pi / 2]
+    center = cells.mean(axis=0)
+    for j, i in sorted(cells.tolist(), key=lambda p: math.dist(center, p)):
+        at = ((i - border) * CELL, (j - border) * CELL)
+        for angle in headings:
+            shape = Shape('BOX', (*at, 0.), width, width / 2, 0., angle)
+            if fits(mask, border, at, (shape,)):
+                return tuple(Placement(template, *_offset(at, angle, end, 0), 0., flags=flag, side='road')
+                             for end, flag in ((-width, 10), (width, 12)))
+    return ()

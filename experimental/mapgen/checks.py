@@ -1,5 +1,6 @@
 """Answer v2 relations against the terrain, decks and locked buildings that will be written."""
 
+from collections import Counter
 from dataclasses import dataclass
 from html import escape
 from itertools import pairwise
@@ -10,7 +11,7 @@ import numpy as np
 from scipy.ndimage import label
 
 from experimental.mapgen.buildings import FOOT_ONLY_BLOCK, NO_PATH_BLOCK, Shape
-from experimental.mapgen.library import place_recipe
+from experimental.mapgen.library import BUILDING_USES, TOWN_USES
 from experimental.mapgen.campaign_writer import rules
 from experimental.mapgen.design import OPEN_PURPOSES, ROAD_WIDTH, ROUTING_CELL, DesignError
 from experimental.mapgen.roads import crosses_water, unpainted_roads
@@ -106,7 +107,7 @@ class _Grid:
 
                 mask = face(name)
                 for child, block in sketch.blocks.items():
-                    if block.get('parent') == name:
+                    if block.get('parent') == name and child in sketch.state_heights['base']:
                         mask &= ~face(child)
             else:
                 mask = np.zeros(self.z.shape, bool)
@@ -408,13 +409,10 @@ def _answer(grid, rel, held):
             f'在 {point} 留一块同高的空地，移开侵入的物件，或把位置移离岸线和坡肩。')
 
 
-def _layout_dependencies(sketch, has_road_kit, row_blocks):
+def _layout_dependencies(sketch, has_road_kit):
     road_edges = [edge for road in sketch.roads for edge in sketch.edges[road]]
-    frontage = {block for edge in road_edges for block in sketch.sides[edge]}
-    if row_blocks is None:
-        row_blocks = {name for name, spec in sketch.blocks.items() if place_recipe({}, '', spec['use']).get('building_row')}
-    buildings = any('protagonist' in spec or (name in frontage and name in row_blocks)
-                    for name, spec in sketch.blocks.items() if spec.get('kind') != 'water')
+    buildings = any('protagonist' in spec or spec['use'] in TOWN_USES
+                    for spec in sketch.blocks.values() if spec.get('kind') != 'water') or bool(sketch.child_specs)
     bridges = any(crosses_water(sketch, edge) for edge in road_edges)
     model_roads = sketch.roads.keys() if has_road_kit else set(unpainted_roads(sketch))
     return buildings, bridges, model_roads
@@ -467,11 +465,11 @@ def check_dressing_routes(sketch, ground, roadbed, layout, border, frame, before
 
 
 def evaluate(sketch, ground, roadbed, layout, border, frame, footprints=(), *, sketch_only=False,
-             has_road_kit=False, row_blocks=None):
+             has_road_kit=False):
     """Answer named orders and check open routes on the exported geometry."""
     if not sketch.relations:
         return {}
-    dependencies = _layout_dependencies(sketch, has_road_kit, row_blocks) if sketch_only else None
+    dependencies = _layout_dependencies(sketch, has_road_kit) if sketch_only else None
     answers, grids = {}, {}
     for name, relation in sketch.relations.items():
         state = relation.get('state', 'base')
@@ -567,3 +565,36 @@ def draw_failures(sketch, answers, path):
                 for k, i in enumerate(range(0, len(message), 39))]
         svg.append('</g>')
     Path(path).write_text('\n'.join([*svg, '</svg>']), encoding='utf-8')
+
+
+def child_contents(plan, ground, layout, scenery, children, level, border):
+    """Use actual buildings and native bay markers on the same ownership grid as paint."""
+    if not children:
+        return {}
+    def owner(obj):
+        i, j = (round(v / CELL) + border for v in (obj.x, obj.y))
+        if 0 <= j < ground.owners.shape[0] and 0 <= i < ground.owners.shape[1]:
+            return ground.owners[j, i]
+        return -1
+
+    buildings = Counter(owner(b) for _, group in layout.blocks for b in group)
+    props = Counter(map(owner, scenery))
+    bays = Counter(owner(a) for a, b in pairwise(scenery)
+                   if getattr(a, 'flags', None) == 10 and getattr(b, 'flags', None) == 12
+                   and a.template == b.template and 'parkinglines' in a.template.casefold() and owner(a) == owner(b))
+
+    answers = {}
+    for i, block in enumerate(plan.blocks):
+        if block.surface is None:
+            continue
+        name, use = block.surface.id, block.surface.use
+        if name not in children:
+            continue
+        wanted = 2 if use == 'rowhouse' else int(use in BUILDING_USES or use == 'parking')
+        found = bays[i] if use == 'parking' else buildings[i] + (props[i] if use == 'reserved' else 0)
+        ok = found >= wanted if use != 'reserved' else found == 0
+        pending = level == 'sketch' or (use == 'parking' and level == 'layout')
+        status = 'pending' if pending else 'pass' if ok else 'fail'
+        answers[f'{name}.contents'] = Answer(status, f'{name}（{use}）配方内容', (name,),
+                                             '' if ok else f'需要 {wanted}，实际 {found}。')
+    return answers

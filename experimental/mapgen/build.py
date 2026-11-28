@@ -2,7 +2,11 @@
 
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
+import json
 from pathlib import Path
+from random import Random
+
+import numpy as np
 
 from experimental.mapgen import buildings, checks, design, dressing, library, paint, roads, terrain
 from experimental.mapgen.campaign_writer import CONTAINER, MapFile, labpaths, mapterrain, newmap
@@ -16,14 +20,14 @@ class MapBuild:
     layout: buildings.Layout
     sketch: design.Design | None
     frame: terrain.DesignFrame | None
-    scenery: tuple[terrain.Piece, ...]
+    scenery: tuple[terrain.Piece | roads.Placement, ...]
     atmosphere: dict | None = None
     footprints: tuple[buildings.Footprint, ...] = ()
     scenery_slots: dict[str, terrain.Piece] = field(default_factory=dict)
     level: str = 'full'
     has_road_kit: bool = False
     ore: dict = field(default_factory=dict)  # node ID -> (pad ID, field, native placement)
-    row_blocks: frozenset[str] | None = None
+    generated: dict = field(default_factory=dict)
 
     @property
     def border_index(self):
@@ -33,9 +37,11 @@ class MapBuild:
     def check_relations(self):
         if self.sketch is None:
             return {}
-        return checks.evaluate(self.sketch, self.ground, self.roadbed, self.layout, CONTAINER[2], self.frame,
-                               self.footprints, sketch_only=self.level == 'sketch', has_road_kit=self.has_road_kit,
-                               row_blocks=self.row_blocks)
+        answers = checks.evaluate(self.sketch, self.ground, self.roadbed, self.layout, CONTAINER[2], self.frame,
+                               self.footprints, sketch_only=self.level == 'sketch', has_road_kit=self.has_road_kit)
+        return answers | checks.child_contents(self.plan, self.ground, self.layout, self.scenery,
+                                                self.sketch.child_specs.keys() | self.generated.keys(),
+                                                self.level, CONTAINER[2])
 
     def require_full(self):
         if self.level != 'full':
@@ -50,7 +56,8 @@ class MapBuild:
             for piece in group:
                 yield roads.Placement(piece.template, piece.x, piece.y, piece.angle)
         for piece in self.scenery:
-            yield roads.Placement(piece.template, piece.x, piece.y, piece.angle)
+            yield piece if isinstance(piece, roads.Placement) else roads.Placement(
+                piece.template, piece.x, piece.y, piece.angle)
         for _, _, placement in self.ore.values():
             yield placement
 
@@ -145,14 +152,14 @@ def _ore(sketch):
 
 
 def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, road_kit=None, fronts=None,
-          level='full'):
+          level='full', dump_children=None):
     """Expand a v2 design or terrain-only plan against the asset library.
 
     Design faces define the playable ground and supply the grade at a dry
     rectangular frame. Blocks can override the default kit for their surfaces, buildings
     and scenery. Road_kit supplies model roads; fronts gives measured civilian
     front angles in radians. Sketch stops at terrain, layout adds roads and buildings,
-    and full adds surface paint, dressing and mood.
+    and full adds surface paint, dressing and mood. Dump_children exports generated block entries.
     """
     if level not in ('sketch', 'layout', 'full'):
         raise ValueError(f'Unknown map build level: {level!r}')
@@ -181,7 +188,7 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
     layout, roadbed = buildings.Layout(()), None
     frame, scenery, footprints, slots = None, (), (), {}
     ore = {}
-    row_blocks = None
+    generated, children, parking = {}, {}, {}
     if sketch is not None:
         sage = Path(labpaths.SDK3) / 'SageXML'
         assets = dressing.Assets(catalogue, sage)
@@ -193,25 +200,67 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
                 # The road markers and bridge generators are already represented by Roadbed.
                 native += tuple(p for p in roadbed.placements if p.side != 'road' and p.template != roads.BRIDGE_TEMPLATE)
         kits = {name: spec.get('kit', kit) for name, spec in sketch.blocks.items()}
-        if level == 'sketch':
-            row_blocks = frozenset(name for name, spec in sketch.blocks.items()
-                                   if library.place_recipe(catalogue, kits[name], spec['use']).get('building_row'))
         footprints = assets.occupied(native)
+        frame = terrain.design_frame(sketch, ground, background_count, border)
         if level != 'sketch':
             obstacles = tuple(s for obj in footprints for s in obj.placement + obj.collision)
-            layout = buildings.BuildingPlanner(sketch, ground, catalogue, kits, fronts or {}, sage, border,
-                                               obstacles).lock()
+            planner = buildings.BuildingPlanner(sketch, ground, catalogue, kits, fronts or {}, sage, border,
+                                                obstacles)
+            anchors = {block: (planner.protagonist(block),) for block in sorted(sketch.blocks)
+                       if 'protagonist' in sketch.blocks[block]}
+            y, x = (np.indices(ground.raw.shape) - border) * terrain.CELL
+            clear = np.zeros_like(ground.blocked)
+            for rel in sketch.relations.values():
+                if rel.get('purpose'):
+                    px, py = sketch.points[rel['point']]['at']
+                    half = rel['side'] / 2 + terrain.CELL / 2
+                    clear |= (abs(x - px) <= half) & (abs(y - py) <= half)
+            occupied = clear.copy()
+            anchor_shapes = tuple(s for b, in anchors.values() for s in b.placement + b.collision)
+            for shape in anchor_shapes:
+                occupied |= shape.contains(x, y, pad=terrain.CELL / 2)
+            plan, ground, children, generated = roads.cut_blocks(
+                sketch, ground, roadbed, plan, catalogue, kits, border, occupied, clear)
+            groups = anchors.copy()
+            planner.obstacles += anchor_shapes
+            updated = list(plan.blocks)
+            for name, (owner, frontage) in children.items():
+                spec = sketch.blocks[name]
+                mask = (ground.owners == owner) & ~clear
+                groups[name] = planner.contents(name, mask, frontage)
+                if spec['use'] == 'parking':
+                    recipe = library.child_recipe(catalogue, kits[name], 'parking')
+                    parking[name] = dressing.parking_bays(recipe, sage, mask, border, frontage)
+                if name in generated and ((spec['use'] in library.BUILDING_USES and not groups[name])
+                                          or (spec['use'] == 'parking' and not parking[name])):
+                    parent = spec['parent']
+                    style = library.child_style(catalogue, kits[parent])
+                    parent_use = sketch.blocks[parent]['use']
+                    mix = style['mix_by_use']['residential' if parent_use == 'suburb' else parent_use]
+                    choices = {use: count for use, count in mix.items()
+                               if use not in library.BUILDING_USES | {'parking'}}
+                    if not choices:
+                        raise design.DesignError(name, 'contents', 'no fitting use in the measured mix')
+                    fallback = library.weighted(Random(sketch.block_seed(name)), choices)
+                    spec['use'] = generated[name]['use'] = fallback
+                    updated[owner] = replace(updated[owner], surface=replace(updated[owner].surface, use=fallback))
+            plan = replace(plan, blocks=tuple(updated))
+            layout = buildings.Layout(tuple((name, groups.get(name, ())) for name in sorted(sketch.blocks)))
+        elif sketch.child_specs:
+            plan, ground, _, _ = roads.cut_blocks(sketch, ground, None, plan, catalogue, kits, border, None)
     if level == 'full':
         ground = paint.paint(plan, catalogue, ground, roadbed)
     if sketch is not None:
         # Roads and paint see the real backdrop before the frame closes it to movement.
-        frame = terrain.design_frame(sketch, ground, background_count, border)
         ground = frame.close(ground)
         if level == 'full':
             dressed = dressing.expand(sketch, ground, roadbed, layout, catalogue, kits, sage, border, frame,
-                                       assets=assets, native=footprints)
+                                       assets=assets, native=footprints, children=children, parking=parking)
             checks.check_dressing_routes(sketch, ground, roadbed, layout, border, frame,
                                          footprints, dressed.footprints)
             ground, scenery, footprints, slots = dressed.ground, dressed.pieces, dressed.footprints, dressed.slots
-    return MapBuild(plan, ground, roadbed, layout, sketch, frame, scenery, atmosphere, footprints, slots,
-                    level, road_kit is not None, ore, row_blocks)
+    built = MapBuild(plan, ground, roadbed, layout, sketch, frame, scenery, atmosphere, footprints, slots,
+                    level, road_kit is not None, ore, generated)
+    if dump_children is not None:
+        Path(dump_children).write_text(json.dumps(generated, ensure_ascii=False, indent=2) + '\n', encoding='utf8')
+    return built

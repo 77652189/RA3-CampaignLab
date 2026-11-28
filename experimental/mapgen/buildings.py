@@ -1,6 +1,5 @@
 """Lock civilian buildings against v2 design faces and the written height grid."""
 
-from collections import Counter
 from dataclasses import asdict, dataclass, replace
 from itertools import pairwise
 import json
@@ -10,12 +9,13 @@ import random
 import numpy as np
 
 from experimental.mapgen.campaign_writer import rules
-from experimental.mapgen.design import DesignError, point_in_ring, signed_area_twice
-from experimental.mapgen.library import place_recipe, sdk_xml, style_section
-from experimental.mapgen.roads import ROAD_WIDTH
+from experimental.mapgen.design import DesignError, point_in_ring
+from experimental.mapgen.library import BUILDING_USES, child_recipe, sdk_xml
+from experimental.mapgen.roads import frontages
 from experimental.mapgen.terrain import CELL
 
 EPS = 1e-7
+SETBACK = 6
 
 
 def _rotate(x, y, c, s):
@@ -161,32 +161,6 @@ class _Template:
     placement: tuple[Shape, ...]
     collision: tuple[Shape, ...]
 
-    @property
-    def area(self):
-        return sum((4 if s.kind == 'BOX' else math.pi) * s.half_x * s.half_y
-                   for s in self.placement)
-
-
-@dataclass(frozen=True)
-class _Frontage:
-    name: str
-    a: tuple
-    b: tuple
-    half_width: float
-
-    def slots(self, anchor=None):
-        length = math.dist(self.a, self.b)
-        tx, ty = ((b - a) / length for a, b in zip(self.a, self.b))
-        step_count = math.ceil(length / CELL)
-        along = [(i + .5) * length / step_count for i in range(step_count)]
-        if anchor is not None:
-            near = (anchor[0] - self.a[0]) * tx + (anchor[1] - self.a[1]) * ty
-            near = min(length, max(0., near))
-            along = sorted(set([near, *along]), key=lambda t: (abs(t - near), t))
-        for t in along:
-            yield (self.a[0] + t * tx, self.a[1] + t * ty), (-ty, tx)
-
-
 class BuildingPlanner:
     """Expand with a kit per block and measured local front bearings (template to radians).
 
@@ -198,24 +172,20 @@ class BuildingPlanner:
     def __init__(self, design, ground, library, kits, fronts, sage, border, obstacles=()):
         self.design, self.ground, self.library = design, ground, library
         self.kits = kits
-        self.rows = {kit: style_section(library, kit, 'edges')['building_row'] for kit in set(kits.values())}
         self.fronts = {name.casefold(): angle for name, angle in fronts.items()}
         self.sage, self.border, self.obstacles = sage, border, obstacles
         self._sdk = {}
         self._garrisons = {}
         self.rings = {name: tuple((float(x), float(y)) for x, y in ring)
                       for name, ring in design.rings.items()}
-        self.junctions = {tuple(map(float, point)) for point, edges in design.junctions.items() if len(edges) >= 3}
-        self.roads = []
         self.frontages = {name: [] for name in design.blocks}
-        for road, spec in design.roads.items():
-            for edge in design.edges[road]:
-                a, b = tuple(tuple(map(float, p)) for p in edge)
-                half_width = ROAD_WIDTH[spec['width']] / 2
-                self.roads.append(_Frontage(road, a, b, half_width))
-                for block, start, end in zip(design.sides[edge], (a, b), (b, a)):
-                    if block is not None:
-                        self.frontages[block].append(_Frontage(road, start, end, half_width))
+        self.roads = set()
+        for block, front in frontages(design):
+            if block is not None:
+                self.frontages[block].append(front)
+            if front.a < front.b:
+                self.roads.add(front)
+        self.roads = sorted(self.roads, key=lambda f: (f.name, f.a, f.b))
 
     def _document(self, path):
         if path not in self._sdk:
@@ -317,49 +287,38 @@ class BuildingPlanner:
         spread = high - low
         return Foundation(z, low, high), (spread - rules.BUILD_VARIATION, f'foundation relief {spread:.3f}')
 
-    def _fit(self, block, rings, placed, template, frontage, kerb, inward, depth, *, clear_corners=False):
+    def _fit(self, block, rings, template, frontage, kerb, inward, depth, mask=None):
         nx, ny = inward
         angle = (math.atan2(-ny, -nx) - template.front) % math.tau
         angle = round(angle, 12) % math.tau
         placement, collision = (tuple(shape.posed(0., 0., angle) for shape in group)
                                 for group in (template.placement, template.collision))
-        setback = frontage.half_width + self.rows[self.kits[block]]['setback']
+        setback = frontage.half_width + SETBACK
         reach = max(s.support(nx, ny) - s.center[0] * nx - s.center[1] * ny
                     for s in placement + collision)
         offset = setback + reach + depth
         x, y = (round(p + n * offset, 9) for p, n in zip(kerb, inward))
-        corners = tuple(end for end in (frontage.a, frontage.b) if end in self.junctions) if clear_corners else ()
-        return self._place(block, rings, placed, template, frontage.name, x, y, angle, placement, collision,
-                           corners=corners, tangent=(ny, -nx))
+        return self._place(block, rings, template, frontage.name, x, y, angle, placement, collision, mask)
 
-    def _place(self, block, rings, placed, template, street, x, y, angle, placement, collision,
-               *, corners=(), tangent=(0., 0.)):
+    def _place(self, block, rings, template, street, x, y, angle, placement, collision,
+               mask=None, protagonist=True):
         placement, collision = (tuple(replace(s, center=(s.center[0] + x, s.center[1] + y, s.center[2]))
                                       for s in group) for group in (placement, collision))
         shapes = tuple(dict.fromkeys(placement + collision))
-        row = self.rows[self.kits[block]]
+        if mask is not None and not fits(mask, self.border, (x, y), shapes):
+            return None, (CELL, 'outside child block')
         worst = (0., '')
-        tx, ty = tangent
         for s in shapes:
-            # Leave an alley's width across the mouth of a junction. The gap
-            # is for seeing the turn and moving a squad through it, so test the
-            # complete footprint, including wings away from the origin.
-            for a, b in corners:
-                along = abs((s.center[0] - a) * tx + (s.center[1] - b) * ty)
-                worst = max(worst, (ROAD_WIDTH['alley'] / 2 + s.support(tx, ty) - along, 'junction clearance'))
             for index, ring in enumerate(rings):
                 gap = min(s.segment_gap(a, b) for a, b in pairwise(ring))
                 if (point_in_ring(s.center[:2], ring) == 1) != (index == 0) and gap > 0:
                     gap = -gap
-                worst = max(worst, (row['setback'] - gap, 'face setback'))
-            for road in self.roads:
+                worst = max(worst, (SETBACK - gap, 'face setback'))
+            for road in self.roads if rings else ():
                 gap = s.segment_gap(road.a, road.b)
-                worst = max(worst, (road.half_width + row['setback'] - gap, f'road {road.name} setback'))
+                worst = max(worst, (road.half_width + SETBACK - gap, f'road {road.name} setback'))
             for other in self.obstacles:
                 worst = max(worst, (-s.gap(other), 'fixed object footprint'))
-            for building in placed:
-                for other in building.placement + building.collision:
-                    worst = max(worst, (row['gap'] - s.gap(other), f'{building.template} clearance'))
         if worst[0] > EPS:
             return None, worst
         foundation, miss = self._foundation(shapes, x, y)
@@ -367,94 +326,122 @@ class BuildingPlanner:
             return None, miss
         garrisonable = self._garrisonable(block, template)
         blocking = self.library['blocking'].get(template.name.casefold(), {}).get('cls', 'unknown')
-        return Building(template.name, x, y, angle, street, not placed, placement,
+        return Building(template.name, x, y, angle, street, protagonist, placement,
                         collision, foundation, garrisonable, blocking), None
 
-    def lock_block(self, block):
+    def protagonist(self, block):
         spec = self.design.blocks[block]
         request = spec.get('protagonist')
-        kit = self.kits[block]
-        town = place_recipe(self.library, kit, spec['use']).get('building_row')
-        if request is None and (not town or spec.get('kind') == 'water'):
-            return ()
+        if request is None:
+            return None
         frontage = self.frontages[block]
-        if request is not None and spec.get('kind') == 'water':
+        if spec.get('kind') == 'water':
             raise DesignError(block, 'buildings', f'{request!r}: choose a dry block')
-        if not frontage and request is None:
-            return ()
         ring = self.rings[block]
         rings = (ring, *(self.rings[k] for k, v in self.design.blocks.items() if v.get('parent') == block))
         palette = self._palette(block, require_front=bool(frontage))
-        placed = []
-        if request is not None:
-            key = request.strip().casefold()
-            candidates = [t for t in palette if t.name.casefold() == key]
-            if key in {'building', '楼'}:
-                candidates = palette
-            elif key in {'garrison', 'garrisonable', '驻军楼'}:
-                candidates = [t for t in palette if self._garrisonable(block, t)]
-            if not candidates:
-                needed = 'a footprint and measured front' if frontage else 'a footprint'
-                raise DesignError(block, 'buildings', f'{request!r}: no kit candidate with {needed}')
-            anchor = spec['at']
-            if not frontage:
-                misses = []
-                for t in candidates:
-                    b, miss = self._place(block, rings, [], t, '', *anchor, 0., t.placement, t.collision)
-                    if b is not None:
-                        return (b,)
-                    misses.append((*miss, t.name))
-                amount, reason, template = min(misses)
-                raise DesignError(block, 'buildings',
-                                  f'{request!r} at {tuple(anchor)}: {template}, {reason}, {amount:.3f} world units')
+        key = request.strip().casefold()
+        candidates = [t for t in palette if t.name.casefold() == key]
+        if key in {'building', '楼'}:
+            candidates = palette
+        elif key in {'garrison', 'garrisonable', '驻军楼'}:
+            candidates = [t for t in palette if self._garrisonable(block, t)]
+        if not candidates:
+            needed = 'a footprint and measured front' if frontage else 'a footprint'
+            raise DesignError(block, 'buildings', f'{request!r}: no kit candidate with {needed}')
+        anchor = spec['at']
+        tightest = (math.inf, '', '')
+        if not frontage:
+            for t in candidates:
+                b, miss = self._place(block, rings, t, '', *anchor, 0., t.placement, t.collision)
+                if b is not None:
+                    return b
+                tightest = min(tightest, (*miss, t.name))
+        else:
             slots = [(kerb, normal, f) for f in frontage for kerb, normal in f.slots(anchor)]
             slots.sort(key=lambda slot: math.dist(anchor, slot[0]))
             xs, ys = zip(*ring)
             depth_count = math.ceil(math.hypot(max(xs) - min(xs), max(ys) - min(ys)) / CELL)
-            tightest = (math.inf, '', '')
             for step in range(depth_count + 1):
                 for kerb, normal, f in slots:
                     for t in candidates:
-                        b, miss = self._fit(block, rings, [], t, f, kerb, normal, step * CELL)
+                        b, miss = self._fit(block, rings, t, f, kerb, normal, step * CELL)
                         if b is not None:
-                            placed.append(b)
-                            break
+                            return b
                         tightest = min(tightest, (*miss, t.name))
-                    if placed:
-                        break
-                if placed:
-                    break
-            if not placed:
-                amount, reason, template = tightest
-                raise DesignError(block, 'buildings', f'{request!r}: tightest miss {template}, {reason}, {amount:.3f} world units')
-        if town:
-            row = self.rows[kit]
-            rows = [t for t in palette if any(w in t.name.casefold() for w in row['anchor_words'])]
-            coverage = row['coverage'] * (signed_area_twice(ring) - sum(map(signed_area_twice, rings[1:]))) / 2
-            used = Counter(b.template for b in placed)
-            built = sum(t.area for t in palette if used[t.name])
-            for f in frontage:
+        amount, reason, template = tightest
+        raise DesignError(block, 'buildings',
+                          f'{request!r}: tightest miss {template}, {reason}, {amount:.3f} world units')
+
+    def contents(self, block, mask, frontage):
+        use = self.design.blocks[block]['use']
+        if use not in BUILDING_USES:
+            return ()
+        recipe = child_recipe(self.library, self.kits[block], use)
+        names = {name.casefold(): count for name, count in recipe['contents']['buildings'].items()}
+        palette = self._palette(block, require_front=bool(frontage))
+        candidates = [t for t in palette if t.name.casefold() in names]
+        if not candidates:
+            # A kit borrowing the geometry and use mix still uses its local buildings.
+            candidates = palette
+        rng = random.Random(self.design.block_seed(block))
+        candidates.sort(key=lambda t: rng.random() ** (1 / names.get(t.name.casefold(), 1)), reverse=True)
+        if use == 'rowhouse':
+            candidates = [t for t in candidates if self._garrisonable(block, t)]
+        if not candidates or not mask.any():
+            return ()
+
+        if use == 'rowhouse' and frontage:
+            placed = []
+            fixed = self.obstacles
+            for front in frontage:
                 previous = None
-                for kerb, normal in f.slots():
-                    if built >= coverage:
-                        break
-                    # The palette already has a seeded order. Reuse it to break
-                    # ties, while taking turns among the facades that really fit.
-                    for t in sorted(rows, key=lambda t: (t.name == previous, used[t.name])):
-                        if used[t.name] >= row['repeat']:
-                            continue
-                        b, _ = self._fit(block, rings, placed, t, f, kerb, normal, 0., clear_corners=True)
-                        if b is not None:
-                            placed.append(replace(b, protagonist=False))
-                            used[t.name] += 1
-                            previous = t.name
-                            built += t.area
+                for kerb, normal in front.slots():
+                    for template in sorted(candidates, key=lambda t: t.name == previous):
+                        b, _ = self._fit(block, (), template, front, kerb, normal, 0., mask)
+                        if b:
+                            b = replace(b, protagonist=False)
+                            placed.append(b)
+                            previous = template.name
+                            self.obstacles += tuple(replace(s, half_x=s.half_x + SETBACK,
+                                                            half_y=s.half_y + SETBACK)
+                                                    for s in dict.fromkeys(b.placement + b.collision))
                             break
-        return tuple(placed)
+            self.obstacles = fixed
+            return tuple(placed)
 
-    def lock(self):
-        return Layout(tuple((block, self.lock_block(block)) for block in sorted(self.design.blocks)))
+        cells = np.argwhere(mask)
+        center = cells.mean(axis=0)
+        positions = sorted(cells.tolist(), key=lambda p: math.dist(center, p))
+        front = frontage[0] if frontage else None
+        heading = math.atan2(-front.tangent[0], front.tangent[1]) if front else 0.
+        for template in candidates:
+            angle = (heading - template.front) % math.tau
+            placement, collision = (tuple(s.posed(0., 0., angle) for s in group)
+                                    for group in (template.placement, template.collision))
+            for j, i in positions:
+                x, y = (i - self.border) * CELL, (j - self.border) * CELL
+                b, _ = self._place(block, (), template, front.name if front else '', x, y, angle,
+                                   placement, collision, mask, protagonist=False)
+                if b:
+                    return (b,)
+        return ()
 
-    def relock(self, layout, block):
-        buildings = self.lock_block(block)
-        return Layout(tuple((name, buildings if name == block else old) for name, old in layout.blocks))
+
+def fits(mask, border, at, shapes):
+    """Require the block to own every terrain cell touched by an SDK footprint."""
+    i, j = (round(v / CELL) + border for v in at)
+    if not (0 <= j < mask.shape[0] and 0 <= i < mask.shape[1] and mask[j, i]):
+        return False
+    for shape in shapes:
+        x, y = shape.center[:2]
+        rx, ry = shape.support(1, 0), shape.support(0, 1)
+        a, b = (math.ceil((p - r) / CELL - .5) + border for p, r in ((x, rx), (y, ry)))
+        c, d = (math.floor((p + r) / CELL + .5) + border + 1 for p, r in ((x, rx), (y, ry)))
+        if min(a, b) < 0 or c > mask.shape[1] or d > mask.shape[0]:
+            return False
+        yy, xx = np.ogrid[b:d, a:c]
+        if np.any(~mask[b:d, a:c] & shape.contains((xx - border) * CELL, (yy - border) * CELL,
+                                                    pad=CELL / math.sqrt(2))):
+            return False
+    return True

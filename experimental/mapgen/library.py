@@ -45,14 +45,13 @@ def texture_kit(kit):
 
 STYLE_DEFAULTS = {
     'places': {'texture_palette': {'count': 3, 'noise': (12, .18, .82), 'fixed_noise': (22, .28, .72)}} | {
-               use: {'material': material, 'building_row': use in ('oldtown', 'residential', 'suburb')}
+               use: {'material': material}
                for material, uses in {
                    'Road': ('oldtown', 'residential', 'industrial', 'dock', 'square'),
                    'Grass': ('suburb', 'park', 'woodland', 'wildland'), 'Dirt': ('farm', 'canyon'),
                    'Sand': ('water',), 'Snow': ('snow', 'snow_woodland', 'ice'),
                }.items() for use in uses},
-    'edges': {'building_row': {'anchor_words': ('house',), 'repeat': 3, 'coverage': .25, 'setback': 6, 'gap': 6},
-              'shore_surface': {'texture': 'Sand_SantaMonica01', 'material': 'Sand', 'classes': {'Snow': 'Snow'}},
+    'edges': {'shore_surface': {'texture': 'Sand_SantaMonica01', 'material': 'Sand', 'classes': {'Snow': 'Snow'}},
               'cliff_surface': {'material': 'Cliff', 'keep_shoulder': ('Snow',)},
               'ramp_surface': {'material': 'Dirt', 'classes': {'Snow': 'Snow', 'Dirt': 'Rock'},
                                'verge': 'Grass', 'verge_classes': {'Dirt': 'Dirt'}, 'exposed': 'Rock',
@@ -73,6 +72,24 @@ def style_section(library, kit, section):
 def place_recipe(library, kit, use):
     places = style_section(library, kit, 'places')
     return places.get('*', {}) | places.get(use, {})
+
+
+TOWN_USES = frozenset(('oldtown', 'residential', 'suburb'))
+BUILDING_USES = frozenset(('house', 'commercial', 'civic', 'rowhouse'))
+RECIPE_USES = {'rowhouse': 'house', 'reserved': None}
+
+
+def child_style(library, kit):
+    return style_section(library, kit, 'lots') or style_section(library, 'Heidelberg_HB', 'lots')
+
+
+def child_recipe(library, kit, use):
+    return child_style(library, kit).get('types', {}).get(RECIPE_USES.get(use, use), {})
+
+
+def weighted(rng, counts):
+    entries = sorted(counts)
+    return rng.choices(entries, [counts[key] for key in entries])[0]
 
 
 # Placement measurements from the 150 game probe take precedence over medians.

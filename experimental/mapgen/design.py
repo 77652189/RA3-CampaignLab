@@ -273,6 +273,9 @@ class Design:
                 _need(item not in all_ids, item, "id", "ID already used or reserved")
                 all_ids.add(item)
             setattr(self, section, dict(sorted(entries.items())))
+        self.ids = all_ids
+        self.child_specs = {name: self.blocks.pop(name) for name, spec in self.blocks.copy().items()
+                            if isinstance(spec, dict) and spec.keys() & {"ring", "frontage", "size"}}
         self.lines = self._read_lines()
         self.edges = _split_lines(self.lines)
         self.rings, self.sides = self._read_blocks()
@@ -287,6 +290,39 @@ class Design:
         self.via_ids = self.blocks.keys() | self.borders.keys() | self.base_pass.keys()
         self._read_relations()
         self._read_patches()
+        self._read_children()
+
+    def _read_children(self):
+        for name, spec in self.child_specs.items():
+            _fields(spec, name, "parent use", "ring frontage depth point size seed")
+            parent = spec["parent"]
+            _ref(parent, self.blocks, name, "parent")
+            _need(self.medium(parent) == LAND, name, "parent", "child needs a land face")
+            _text(spec["use"], name, "use")
+            _int(spec.get("seed", 0), name, "seed")
+            geometry = spec.keys() - {"parent", "use", "seed"}
+            if geometry == {"ring"}:
+                ring = _line(spec["ring"], name)
+                if ring[0] != ring[-1]:
+                    ring += (ring[0],)
+                edges = _split_lines({name: ring})[name]
+                _need(len(set(ring[:-1])) == len(edges) == len(ring) - 1 and signed_area_twice(ring),
+                      name, "ring", "expected a simple polygon")
+            elif geometry == {"frontage", "depth"}:
+                front = spec["frontage"]
+                _fields(front, name, "road", "from to")
+                _ref(front["road"], self.roads, name, "road")
+                for field in front.keys() - {"road"}:
+                    _number(front[field], name, field)
+                _number(spec["depth"], name, "depth")
+                _need(spec["depth"] > 0, name, "depth", "expected positive depth")
+            elif geometry == {"point", "size"}:
+                _ref(spec["point"], self.points, name, "point")
+                _number(spec["size"], name, "size")
+                _need(spec["size"] > 0 and self.points[spec["point"]]["block"] == parent,
+                      name, "size", "expected positive size around a point in the parent")
+            else:
+                raise DesignError(name, "child", "give a ring, frontage with depth, or point with size")
 
     def _read_lines(self):
         lines = {}

@@ -70,7 +70,7 @@ def slice_inputs(tmp_path):
         'styles': _style()}
     ground = expand(TerrainPlan(), library, 331, 51, 0)
     empty = np.zeros_like(ground.blocked)
-    roads = Roadbed('Town_T', (), (), empty, empty.copy(), empty.copy())
+    roads = Roadbed('Town_T', (), (), empty, empty.copy(), empty.copy(), empty.copy())
     return sketch, ground, roads, layout, library, dict.fromkeys(sketch.blocks, 'Town_T'), tmp_path, 0
 
 

@@ -286,7 +286,7 @@ def test_preview_draws_bridge_deck_at_its_built_width(tmp_path, monkeypatch):
     with Image.open(tmp_path / 'built.png') as image:
         water = image.getpixel((inside - 1, image.height - 1 - 20))
         assert image.getpixel((inside, image.height - 1 - 20)) == water
-    built = replace(built, roadbed=roads.Roadbed('test', (), (bridge,), zero, zero, zero))
+    built = replace(built, roadbed=roads.Roadbed('test', (), (bridge,), zero, zero, zero, zero))
     viewer.write_preview(tmp_path, built, title='With bridge')
     with Image.open(tmp_path / 'built.png') as image:
         assert image.getpixel((inside, image.height - 1 - 20)) == (139, 133, 120)

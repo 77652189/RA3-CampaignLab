@@ -1,14 +1,20 @@
 """Lay a base-state v2 road network on expanded terrain, using retail fittings."""
 
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from itertools import pairwise
 import math
+from random import Random
 
 import numpy as np
+from scipy.ndimage import label
+from skimage.measure import approximate_polygon, find_contours
 
 from experimental.mapgen import design, terrain
 from experimental.mapgen.campaign_writer import BRIDGE_DECK, bridge as bridge_ends, rules
+
+
+from experimental.mapgen.library import TOWN_USES, child_recipe, child_style, weighted
 
 
 PORT_TOLERANCE = 1.0  # Probe 5: matching retail socket centres, in world units.
@@ -66,6 +72,7 @@ class Roadbed:
     paved: np.ndarray
     hidden: np.ndarray
     infill: np.ndarray
+    carriageway: np.ndarray
 
 
 @dataclass(frozen=True)
@@ -209,6 +216,7 @@ class _Layout:
         self.objects = []
         self.bridges = []
         self.paved = np.zeros(x.shape, bool)
+        self.verges = np.zeros(x.shape, bool)
         self.models = np.zeros(x.shape, bool)
         self.infill = np.zeros(x.shape, bool)
         self.model_gaps = np.zeros(x.shape, bool)
@@ -244,7 +252,7 @@ class _Layout:
         for i, (a, b) in enumerate(pairwise(path)):
             if math.dist(a, b) < 1e-6:
                 continue
-            self.paint(_ribbon((a, b), width))
+            self.region(_ribbon((a, b), width), self.verges if hard else self.paved)
             for p, flag in ((a, 2), (b, 4)):
                 self.objects.append(Placement(template, *p, 0, flags=flag | (8 if hard else 0), side='road'))
 
@@ -264,8 +272,11 @@ class _Layout:
         hidden = model[:-1, :-1] & model[1:, :-1] & model[:-1, 1:] & model[1:, 1:]
         hidden &= ~self.model_gaps  # a gap smaller than a quad can have four model-covered corners
         g = self.ground
-        paved = (self.paved | self.models) & ~g.blocked & (g.raw > g.waterline)
-        return Roadbed(self.kit, tuple(self.objects), tuple(self.bridges), paved, hidden, self.infill & paved)
+        dry = ~g.blocked & (g.raw > g.waterline)
+        carriageway = (self.paved | self.models) & dry
+        paved = carriageway | (self.verges & dry)
+        return Roadbed(self.kit, tuple(self.objects), tuple(self.bridges), paved, hidden,
+                       self.infill & paved, carriageway)
 
 
 def _junction_verges(layout, ports, width):
@@ -520,8 +531,7 @@ def unpainted_roads(sketch):
 def expand(sketch, ground, border, kit):
     """Return native object placements and two ground masks for a validated v2 design."""
     if not sketch.roads:
-        empty = np.zeros_like(ground.blocked)
-        return Roadbed(kit, (), (), empty, empty.copy(), empty.copy())
+        return Roadbed(kit, (), (), *(np.zeros_like(ground.blocked) for _ in range(4)))
     if kit not in VERGES:
         first = next(iter(sketch.roads))
         _error(first, sketch.lines[first][0], f'no measured street kit for {kit}')
@@ -628,3 +638,215 @@ def expand(sketch, ground, border, kit):
                 _straight_run(layout, name, a, b, start, end, spec['width'], tool_nodes)
     _frame_streets(sketch, links, layout, border)
     return layout.finish()
+
+
+@dataclass(frozen=True)
+class Frontage:
+    name: str
+    a: tuple
+    b: tuple
+    half_width: float
+
+    @property
+    def tangent(self):
+        return terrain.unit_direction(np.subtract(self.b, self.a))
+
+    def slots(self, anchor=None):
+        length = math.dist(self.a, self.b)
+        tx, ty = self.tangent
+        count = math.ceil(length / terrain.CELL)
+        along = [(i + .5) * length / count for i in range(count)]
+        if anchor is not None:
+            near = np.clip((anchor[0] - self.a[0]) * tx + (anchor[1] - self.a[1]) * ty, 0, length)
+            along = sorted({near, *along}, key=lambda t: (abs(t - near), t))
+        for t in along:
+            yield (self.a[0] + t * tx, self.a[1] + t * ty), (-ty, tx)
+
+
+def frontages(sketch):
+    for road, spec in sketch.roads.items():
+        for edge in sketch.edges[road]:
+            a, b = (tuple(map(float, p)) for p in edge)
+            half = ROAD_WIDTH[spec['width']] / 2
+            for block, start, end in zip(sketch.sides[edge], (a, b), (b, a)):
+                if block is not None:
+                    yield block, Frontage(road, start, end, half)
+
+
+def _frontage_ring(sketch, parent, spec):
+    road = spec['frontage']['road']
+    line = sketch.lines[road]
+    length = sum(math.dist(a, b) for a, b in pairwise(line))
+    start, end = spec['frontage'].get('from', 0), spec['frontage'].get('to', length)
+    if not 0 <= start < end <= length:
+        raise design.DesignError(parent, 'frontage', f'{road}: expected 0 <= from < to <= {length:g}')
+    path = []
+    offset, side = 0., 0
+    for a, b in sketch.edges[road]:
+        span = math.dist(a, b)
+        low, high = max(start - offset, 0), min(end - offset, span)
+        offset += span
+        if low >= high:
+            continue
+        left, right = sketch.sides[a, b]
+        orientation = 1 if left == parent else -1 if right == parent else 0
+        if not orientation:
+            continue
+        points = [tuple(p + (q - p) * t / span for p, q in zip(a, b)) for t in (low, high)]
+        if path and (side != orientation or path[-1] != points[0]):
+            break
+        side = orientation
+        path.extend(points[-1:] if path else points)
+    else:
+        if path:
+            path = path[::side]
+            half = ROAD_WIDTH[sketch.roads[road]['width']] / 2
+            ring = (*_section(path, half), *tuple(_section(path, half + spec['depth']))[::-1])
+            return ring, [Frontage(road, a, b, half) for a, b in pairwise(path)]
+    raise design.DesignError(parent, 'frontage', f'{road}: select a continuous frontage of the parent')
+
+
+def _outlines(mask, x, y):
+    """Trace cell outlines without smoothing across another child's cells."""
+    j, i = np.nonzero(mask)
+    crop = mask[j.min():j.max() + 1, i.min():i.max() + 1]
+    loops = find_contours(np.pad(crop, 1), .5)
+    if len(loops) > 1:
+        # A generated ring has no holes. Split across one and trace each side.
+        split = int(loops[1][:, 0].mean() + j.min())
+        for piece in (mask & (np.arange(len(mask))[:, None] < split),
+                      mask & (np.arange(len(mask))[:, None] >= split)):
+            groups, count = label(piece)
+            for k in range(1, count + 1):
+                yield from _outlines(groups == k, x, y)
+        return
+    origin = np.array([x[j.min(), i.min()], y[j.min(), i.min()]])
+    ring = approximate_polygon(loops[0], .01)[:, ::-1]
+    yield mask, tuple(tuple(map(int, p)) for p in (ring - 1) * terrain.CELL + origin)
+
+
+def cut_blocks(sketch, ground, roadbed, plan, library, kits, border, occupied, clear=None):
+    """Resolve authored child blocks, then give unclaimed town cells to generated children."""
+    owners = ground.owners.copy()
+    blocks = list(plan.blocks)
+    free = (ground.raw > ground.waterline) & ~ground.blocked & ~ground.hidden & ~ground.ramp
+    if roadbed is not None:
+        free &= ~(roadbed.carriageway | roadbed.hidden)
+    y, x = (np.indices(owners.shape) - border) * terrain.CELL
+    fronts = defaultdict(list)
+    for parent, front in frontages(sketch):
+        fronts[parent].append(front)
+        free &= ~terrain.strip_mask(x, y, front.a, front.b, front.half_width)
+    by_name = {b.surface.id: i for i, b in enumerate(blocks) if b.surface is not None}
+    children, generated = {}, {}
+    cell = terrain.CELL
+    open_parents = {sketch.points[r['point']]['block'] for r in sketch.relations.values() if r.get('purpose')}
+    for parent, own in sorted(by_name.items()):
+        authored_specs = {name: spec for name, spec in sketch.child_specs.items() if spec['parent'] == parent}
+        use = sketch.blocks.get(parent, {}).get('use')
+        if not authored_specs and (occupied is None or (use not in TOWN_USES and parent not in open_parents)):
+            continue
+        style = child_style(library, kits[parent])
+        mix = style.get('mix_by_use', {}).get('residential' if use == 'suburb' else use, {})
+        jj, ii = np.nonzero((owners == own) & free)
+        if not len(jj):
+            if authored_specs:
+                raise design.DesignError(parent, 'child', 'parent has no buildable cells')
+            continue
+        window = np.s_[jj.min():jj.max() + 1, ii.min():ii.max() + 1]
+        xx, yy, local = x[window], y[window], owners[window]
+        available = free[window] & (local == own)
+        claimed = np.zeros_like(available)
+
+        def add(name, use, mask, ring, frontage=(), seed=None):
+            j, i = np.argwhere(mask)[0]
+            surface = blocks[own].surface
+            spec = dict(parent=parent, use=use, at=(int(xx[j, i]), int(yy[j, i])),
+                        height=sketch.blocks[parent]['height'], kit=surface.kit)
+            if seed is not None:
+                spec['seed'] = seed
+            sketch.blocks[name], sketch.rings[name] = spec, ring
+            kits[name] = surface.kit
+            children[name] = (len(blocks), frontage)
+            local[mask] = len(blocks)
+            available[mask] = False
+            blocks.append(terrain.Block(ring[:-1], spec['height'], surface=terrain.Surface(
+                name, use, surface.kit, sketch.block_seed(name), surface.ground_texture)))
+
+        for name, spec in authored_specs.items():
+            front = []
+            if 'frontage' in spec:
+                ring, front = _frontage_ring(sketch, parent, spec)
+            elif 'ring' in spec:
+                ring = tuple(map(tuple, spec['ring']))
+                if ring[-1] == ring[0]:
+                    ring = ring[:-1]
+            else:
+                px, py = sketch.points[spec['point']]['at']
+                h = spec['size'] / 2
+                ring = ((px-h, py-h), (px+h, py-h), (px+h, py+h), (px-h, py+h))
+            mask, distance = terrain.polygon_mask(ring, xx, yy, distances=True)
+            interior = mask & (distance > 1e-7)
+            if np.any(interior & claimed):
+                raise design.DesignError(name, 'child', 'overlaps a designed child')
+            mask &= available
+            claimed[:] |= interior & mask
+            if not mask.any():
+                raise design.DesignError(name, 'child', 'no buildable cells in the parent')
+            if spec['use'] != 'reserved' and not child_recipe(library, kits[parent], spec['use']):
+                raise design.DesignError(name, 'use', f"no measured recipe for {spec['use']}")
+            closed = (*ring, ring[0])
+            if not front and spec['use'] == 'rowhouse':
+                if design.signed_area_twice(closed) < 0:
+                    closed = closed[::-1]
+                a, b = max(pairwise(closed), key=lambda edge: math.dist(*edge))
+                front = [Frontage('', a, b, 0.)]
+            add(name, spec['use'], mask, closed, front, spec.get('seed'))
+
+        def cut(mask, kind, front=()):
+            groups, count = label(mask)
+            for k in range(1, count + 1):
+                for part, ring in _outlines(groups == k, xx, yy):
+                    name = f'{parent}-cut-{len(generated) + 1}'
+                    while name in sketch.ids:
+                        name += '-next'
+                    add(name, kind, part, ring, front)
+                    generated[name] = dict(parent=parent, use=kind, ring=ring[:-1])
+
+        if clear is not None and parent in open_parents:
+            cut(clear[window] & available, 'reserved')
+        if occupied is None or not mix or use not in TOWN_USES:
+            continue
+        available &= ~occupied[window]
+        rng = Random(sketch.block_seed(parent))
+        types = style['types']
+
+        for front in fronts[parent]:
+            along, across = terrain.strip_coordinates(xx, yy, front.a, front.tangent)
+            depth = across - front.half_width
+            length = math.dist(front.a, front.b)
+            pos = 0.
+            while pos < length:
+                near = available & (along >= pos) & (along < length) & (depth >= 0)
+                if not near.any():
+                    break
+                gap = float(depth[near].min())
+                pos = max(pos, float(along[near & (depth <= gap + cell)].min()) - cell / 2)
+                kind = weighted(rng, mix)
+                d0, d1 = types[kind]['depth']
+                reach = max(cell, min(d1, float(depth[near].max()) - gap + cell))
+                run = rng.uniform(min(d0, reach), reach)
+                w0, w1 = types[kind]['frontage']
+                span = max(cell, min(w1, length - pos, run))
+                width = rng.uniform(min(span, max(cell, w0)), span)
+                patch = near & (along < pos + width) & (depth < gap + run)
+                if patch.sum() >= 36:  # Minimum core in the lot miner's specifications.
+                    cut(patch, kind, (front,))
+                pos += width
+        while available.any():
+            j, i = np.argwhere(available)[0]
+            kind = weighted(rng, mix)
+            lo, hi = types[kind]['depth']
+            size = max(cell, rng.uniform(lo, hi))
+            cut(available & (abs(xx - xx[j, i]) < size) & (yy - yy[j, i] < size), kind)
+    return replace(plan, blocks=tuple(blocks)), replace(ground, owners=owners), children, generated

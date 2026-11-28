@@ -77,7 +77,7 @@ def test_library_groups_inherits_and_reports_missing_sources(tmp_path, monkeypat
     assert [t["id"] for t in data["texture_kits"]["First"]["Grass"]] == ["Grass"]
     assert data["setpieces"]["groups"][0]["source"] == "work/mapgen_probe/setpieces.json"
     assert library.place_recipe(data, "First_AA", "oldtown") == {
-        "material": "Road", "building_row": True, "street": True,
+        "material": "Road", "street": True,
     }
 
     write(work / "logs/e266_prop_blocking.json", json.dumps([

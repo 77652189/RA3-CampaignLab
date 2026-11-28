@@ -7,7 +7,7 @@ import numpy as np
 from scipy.ndimage import label as connected_components
 
 from experimental.mapgen.campaign_writer import labpaths, noise_field, rules
-from experimental.mapgen.library import place_recipe, style_section, texture_kit
+from experimental.mapgen.library import child_recipe, place_recipe, style_section, texture_kit, weighted
 from experimental.mapgen.terrain import Blend
 
 
@@ -75,6 +75,14 @@ def paint(plan, library, ground, roadbed=None):
             if surface.kit not in library.get('kits', {}) or kit not in kits:
                 raise ValueError(f'block {label}: missing kit {surface.kit} (terrain kit {kit})')
             recipe = place_recipe(library, key, surface.use)
+            mined = child_recipe(library, key, surface.use)
+            if mined:
+                textures[mask] = _named(catalogue, label, weighted(Random(surface.seed), mined['textures']))
+                fixed.update(set(textures[mask]))
+                continue
+            if surface.use == 'reserved':
+                textures[mask] = _named(catalogue, label, surface.ground_texture or plan.ground)
+                continue
             if 'material' not in recipe:
                 raise ValueError(f'block {label}: unknown use {surface.use}')
             kind = recipe['material']
