@@ -134,8 +134,9 @@ def test_a_worktree_finds_the_main_checkouts_locks(tmp_path):
     assert slots.lab(str(main)) == str(lab_dir)        # the main checkout: its .git is a folder
 
 
-def test_the_users_red_alert_2_keeps_the_bench_out(bench):
-    bench[500] = 'gamemd.exe'           # 2026-11-09: Yuri's Revenge up, every bench start a DirectX error box
+@pytest.mark.parametrize('game', ['gamemd.exe', 'DNF.exe'])   # 11-09 Yuri's Revenge, 11-27 DNF: every start a DirectX box
+def test_the_users_other_game_keeps_the_bench_out(bench, game):
+    bench[500] = game
     assert slots.foreign_games() == {500}
     assert slots.take_waiting('a', wait=0) is None
     del bench[500]

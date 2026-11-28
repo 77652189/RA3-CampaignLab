@@ -50,8 +50,9 @@ SLOTS = int(os.environ.get('RA3_BENCH_SLOTS', '2'))
 WAIT = float(os.environ.get('RA3_BENCH_WAIT') or 600)     # seconds take_waiting queues for a slot
 INSTANCE_MUTEX = '41DAF790-16F5-4881-8754-59FD8CF3B8D2'
 GAME = re.compile(r'^(ra3_1\.\d+\.game|ra3\.exe|ra3ep1.*\.exe)$', re.I)
-# the user's other full-screen games (Red Alert 2 / Yuri's Revenge): never ours, they keep the bench out like a user RA3
-USER_GAME = re.compile(r'^(gamemd\.exe|game\.exe|ra2\.exe|ra2md\.exe|yuri\.exe)$', re.I)
+# the user's other full-screen games (Red Alert 2 / Yuri's Revenge; DNF: 2026-11-27 up 20:15-21:05, every bench start
+# from 20:25 a DirectX box, CreateDevice D3DERR_DEVICELOST): never ours, they keep the bench out like a user RA3
+USER_GAME = re.compile(r'^(gamemd\.exe|game\.exe|ra2\.exe|ra2md\.exe|yuri\.exe|dnf\.exe)$', re.I)
 
 
 def lock_path(i):
