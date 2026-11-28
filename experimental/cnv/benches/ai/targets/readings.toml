@@ -277,17 +277,12 @@ bench_id = "engine_aiprio"
 id = "two_enemies_in_one_tier_go_for_the_far_plant_first"
 scene = {build = "aipriodef", check = "a", until = 70.0}
 bench = "aipriodef (SET_ALL 20): 到远厂 2 @ s25, 4 s26-s44; 到近厂 only from s55 (RAMPAGE after the plant fell)"
-proves = "simai enemy priority: two enemies in one tier -- which the game takes first"
+proves = """\
+simai enemy priority: two enemies in one tier -- the Distance pick scores the running nearest once per enemy player, \
+an empty one too: the container's Player_2 (no objects, Soviet_1's enemy) sits between Player_1 and Soviet_4, so \
+the player's far plant 2 : Soviet_4's turret 1 (bench 11-28 tgt: lines; sim.Sim.enemies_of)"""
 let = {far = "first('到远厂')", near = "first('到近厂')"}
 expect = "far is not None and (near is None or far < near)"
-mismatch = """\
-bench aipriodef: two enemies in one tier, the game went for the farther plant (the player's, s25); the simulator \
-takes the nearest (Soviet_4's, s14). Bench 11-28 (tgt: lines, aipriodef and aitargetnear with ra3ext): the game \
-scans the player's structures first, then Soviet_4's, and takes the far plant although Soviet_4's south turret is \
-nearer (aitargetnear, the player owning all six: that turret) and the far plant's object id is the largest -- as \
-read (each enemy scanned scores the running nearest, a tie to the lowest id) the turret would win 1:1. INFERRED: the \
-game's enemy list holds players with nothing on the map between the two (scoring the far plant) that the \
-simulator's does not; which ones NOT READ"""
 
 [[reading]]
 bench_id = "engine_aiprio"

@@ -827,8 +827,9 @@ class Brain:
     def foes(self):
         """The players this one takes as enemies now (Sim.enemy), in the player list's order (target_player walks it
         from the back)."""
-        w = self.world
-        return tuple(p for p in w.players.values() if p != self.player and w.enemy(self.player, p))
+        w = self.world      # then the container's objectless players (an AI's enemy list holds them too)
+        return tuple(p for p in dict.fromkeys((*w.players.values(), *simworld.OBJECTLESS))
+                     if p != self.player and w.enemy(self.player, p))
 
     def look(self, frame):
         """The view's things (living bodies, including garrisonable scenery, but not other scenery or slaves; the whole map,

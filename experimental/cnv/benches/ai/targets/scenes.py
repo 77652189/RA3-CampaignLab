@@ -819,7 +819,7 @@ def aiprio_bench():
     at the start (Soviet_4 has no script library, its AI asleep); the far plant and the yard stay the player's.
       aipriodef  the wake's SET_ALL_ENEMY_PLAYERS_PRIORITIES 20 only (the control). Bench 11-10: the far plant first (s25),
                  the near one only by RAMPAGE (s55) -- Soviet_4 is in the tier (bench 11-28: its structures scanned
-                 after the player's); why the far plant wins: readings.toml mismatch
+                 after the player's); the far plant wins on the empty Player_2's vote (readings.toml)
       aiprio1    no SET_ALL; Soviet_4 30, Player_1 10: the script's put does not ask the enemy list (read) -> tiers by
                  score, the top one alone (HighestPriorityEnemyPlayersOnly) -> s4's near plant
       aiprio0    SET_ALL 20, then Player_1 0: 0 takes the player out -> Soviet_4 alone (bench 11-10: the near plant)

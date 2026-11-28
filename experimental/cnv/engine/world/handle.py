@@ -8,6 +8,10 @@ touching the subsystems.) The minimal world for rule tests is simsmall.small_wor
 """
 
 CIV = 'PlyrCivilian'   # the neutral side: owns the map's scenery and civilians; pays and is paid nothing
+# The container's players on no map's PLAYERS (plan.py hands those out): Player_2, no objects, Player_1's ally with
+# the same enemies (all six Soviets). An AI's enemy list holds it all the same: one vote in the Distance pick (bench
+# 11-28 aipriodef, the far plant 2:1; work/re b1128_tierorder.md). StartingUnits (Soviet_4's enemy) not here.
+OBJECTLESS = ('Player_2',)
 GRID = 20.0            # routing cells (world units): the ground's grid (sim.Ground) and the orders' arrival slack
 DT = 0.5               # seconds a tick (simloop.DT, sim.DT)
 

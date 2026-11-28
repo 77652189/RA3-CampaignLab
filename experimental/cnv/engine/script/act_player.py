@@ -10,6 +10,7 @@ import engine.data.units as simunits
 import engine.objects.modifier as simmodifier
 from engine.script.common import hand_over, players_of
 from engine.world.handle import GAP_ACTION
+import engine.world.handle as simworld
 
 # the skirmish AI's script switches, kept per player for simai (work/re l4_aiswitches.md; docs/engine/aiswitches.md)
 AI_SWITCHES = ('SKIRMISH_AI_USE_REPAIRS', 'SKIRMISH_AI_USE_REBUILD_SYSTEM')
@@ -151,7 +152,7 @@ def _priority(sim, player, *calls):
 def skirmish_ai_set_all_enemy_players_priorities(sim, name, a, script):
     # (player, n): every enemy ('*') at n -- the enemies when the action runs (the model's contract: the call fills
     # the table; review vv: a player turned enemy after it, or back to neutral, in the same frame changes nothing)
-    foes = tuple(sorted(p for p in sim.players.values() if p != a[0] and sim.enemy(a[0], p)))
+    foes = tuple(sorted(p for p in {*sim.players.values(), *simworld.OBJECTLESS} if p != a[0] and sim.enemy(a[0], p)))
     _priority(sim, a[0], ('*', int(a[1]), foes))
 
 

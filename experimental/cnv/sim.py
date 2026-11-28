@@ -1275,9 +1275,9 @@ class Sim:
             return self.relations[(a, b)] == 'Enemy'
         # the container (Heidelberg, maps/island.py) has Soviet_1..6 all in Player_1's playerEnemies, and they fire
         # unprompted, woken or not (bench 11-09 engine_scripts9b rel 丁: Soviet_4's tank, no AI script, shoots at s1)
-        players = set(self.players.values())
+        a, b = (self.human if p in simworld.OBJECTLESS and not self.retail else p for p in (a, b))   # as the human
         return {a, b} == {self.human, self.foe} or (a != b and CIV not in (a, b) and self.human in (a, b)
-                                                   and (a in self.ai or b in self.ai or {a, b} <= players))
+                                                   and (a in self.ai or b in self.ai or {a, b} <= set(self.players.values())))
 
     def hostile(self, a, t):
         """Body a takes body t as an enemy: the team overrides first, then the players (Generals Team::getRelationship:
