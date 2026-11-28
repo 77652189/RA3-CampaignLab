@@ -1,6 +1,8 @@
 """Map generator. Each module may import only from earlier layers:
 
-    library design campaign_writer
+    library
+    retail
+    design campaign_writer lot_miner
     terrain
     roads
     buildings

@@ -101,6 +101,17 @@
 - 节点的 `group.id` 可选库里同 ID 的成套件，`sprigs` 的第三个偏移量可写物件相对节点的朝向角度。`first_fit` 可沿备选偏移尝试成组动作，放成功即停。
 - 边带可用 `cycle` 给出各站循环使用的节点，起相位由块种子决定，`first` 仍可指定首站。`road_surface.ramp_infill` 用指定贴图处理坡面上无模型遮盖的道路补片。
 
+### 地段
+
+`work/mapgen_probe/lots.json` 沿用装扮表的 `<套件>.lots` 层级。`library.py` 把这一节并入 `styles`。一个套件下有三项。
+
+- `types` 按地段类型索引。`house` 住宅门前、`commercial` 商用前场、`civic` 地标院落、`parking` 停车、`garden` 种植园地、`lawn` 疏植草坪、`plaza` 铺装小场、`yard` 硬地边带、`quay` 滨水边地、`open` 土质空地及外围余面。`samples` 是样本数，`frontage` 和 `depth` 是世界单位的最小和最大实测值，临街长度为零表示内段。`textures` 以每段的主要底图计次数。
+- 每类地段的 `edges.street`、`edges.lot_to_lot` 分别列临街和地段相接的处理。各项给 `treatment`、`template` 和 `count`。处理包括 `kerb`、`fence`、`wall`、`hedge`、`plant-row`、`parking-deck`、`parking-lines` 和 `open`。边上有实测件或道路工具线时按实例计。一段地的一类边未见处理时记一次 `open`，此时 `template` 为 `null`。
+- `contents.buildings` 和 `contents.scattered_props` 按模板计实例。`set_pieces` 是候选组合，有 `anchor`、`count` 和一份实测 `relative_transforms`（伴随件的 `template`、`dx`、`dy`、`dz`、`angle_deg`）。地标或街具 60 单位内至少有两件伴随物才记作候选，同锚点和同伴随模板组合计次数。`reserved_empty` 数的是内部无内容、占地、停车面或内部围挡的样本。该样本计数可给设计要求的留空地段提供依据。
+- `mix_by_use` 按街区用途列地段类型及次数。`evidence` 按原版图列样本代号、源包及包内路径、解压后的地图 SHA-256 和街区读数。每街区有连通面编号、用途、净格数、楼占格数、每类段数，以及距物件和围挡指定净距后的最大单片空地格数。一格为 10×10 世界单位。
+
+从仓库根运行 `python -X utf8 -m experimental.mapgen.lot_miner <规格.json> [<另一规格.json>]` 重写该表。每份规格包含 `kit`、`min_lot_cells`、`open_clearance`、`parking_models` 和 `maps`。停车模型值用 `null` 表示整片车位，混合模型用 `[轴, 偏移, 方向]` 记模型局部坐标里的车道半平面（轴为 0 或 1，方向为 1 或 −1）。每张图给 `map`（证据代号）、`archive`、`inner`、`exclude`（取样排除的街区编号）、`default_use` 和 `uses`（用途到街区编号列表的覆盖）。一次重建传入该表需要的所有规格。
+
 ## 过口与状态
 
 - 从渔屋一侧上到山径，在界的 `segments` 里写 `"serviceRamp": {"from": "fishingHouses", "to": "hillPath", "pass": ["foot","vehicle","amphibian"]}`。连线与界的唯一交点定开口，有高差时从低到高，选一段高度一致的直边。宽度可写在过口或整界上；同高陆口默认用街宽。成图的陆口供所有地面单位通过，引擎不支持仅步兵通行的过口。

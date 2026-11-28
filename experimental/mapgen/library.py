@@ -200,6 +200,34 @@ def _geometry(obj, source, objects, issues):
             "footprint": placement or shapes}
 
 
+def _sdk_objects(sage, paths, issues):
+    for path in sorted(paths):
+        relative = path.relative_to(sage)
+        source = f"sdk/SageXML/{relative.as_posix()}"
+        root = _read(path, source, read_xml, issues)
+        if root is not None:
+            for obj in root.iter("GameObject"):
+                yield relative, source, obj
+
+
+def sdk_objects(sage):
+    """GameObject definitions for retail readers, indexed by case-insensitive ID."""
+    objects = defaultdict(list)
+    for _, source, obj in _sdk_objects(sage, sage.rglob('*.xml'), set()):
+        objects[obj.attrib['id'].casefold()].append((source, obj))
+    return objects
+
+
+def sdk_footprint(objects, template):
+    definitions = objects.get(template.casefold(), ())
+    if definitions:
+        source, obj = definitions[0]
+        geometry = _geometry(obj, source, objects, set())
+        if geometry is not None:
+            return tuple(geometry['footprint'])
+    return ()
+
+
 def _civilian(sage, issues):
     civilian = sage / "Civilian"
     places = {path.name for path in civilian.glob("*_*") if path.is_dir()}
@@ -210,19 +238,12 @@ def _civilian(sage, issues):
     objects, members = defaultdict(list), []
     paths = (path for folder in ("Civilian", "BaseObjects", "EP1/BaseObjects")
              for path in (sage / folder).rglob("*.xml"))
-    for path in sorted(paths):
-        relative = path.relative_to(sage)
-        source = f"sdk/SageXML/{relative.as_posix()}"
-        root = _read(path, source, read_xml, issues)
-        if root is None:
-            continue
-        for obj in root.iter("GameObject"):
-            ident = obj.attrib["id"]
-            objects[ident.casefold()].append((source, obj))
-            if len(relative.parts) >= 4:
-                section, place, folder = relative.parts[:3]
-                if section == "Civilian" and place in kits and folder in CATEGORIES:
-                    members.append((place, CATEGORIES[folder], source, obj))
+    for relative, source, obj in _sdk_objects(sage, paths, issues):
+        objects[obj.attrib['id'].casefold()].append((source, obj))
+        if len(relative.parts) >= 4:
+            section, place, folder = relative.parts[:3]
+            if section == "Civilian" and place in kits and folder in CATEGORIES:
+                members.append((place, CATEGORIES[folder], source, obj))
 
     for place, category, source, obj in members:
         entry = {"template": obj.attrib["id"], "source": source, "evidence": "inferred"}
@@ -376,6 +397,11 @@ def build_library(sage, work):
     blocking, source = probe("logs/e266_prop_blocking.json")
     blocking = _blocking(blocking, source, issues) if blocking is not None else {}
     styles = probe("mapgen_probe/dressing.json")[0] or {}
+    lots_path = "mapgen_probe/lots.json"
+    if (work / lots_path).is_file():
+        lots, _ = probe(lots_path)
+        for kit, style in (lots or {}).items():
+            styles.setdefault(kit, {})['lots'] = style['lots']
     corner_path = "mapgen_probe/cliff_joints.json"
     if (work / corner_path).is_file():
         profiles, source = probe(corner_path)
