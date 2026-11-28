@@ -1297,6 +1297,21 @@ expect = ["a == b", "a[at]['建筑码'] == 100 and 10 <= a[at]['其他X'] <= 11 
 
 [[reading]]
 bench_id = "engine_aiskirm"
+id = "a_refinerys_reserved_box_keeps_the_ais_barracks_off_its_front_spot"
+item = "物体模块 Behaviors/StructurePlacementBehavior"
+scenes = {a = {build = "aiskrs1", check = "rpb", until = 40.0}, b = {build = "aiskrs0", check = "rpb", until = 40.0}}
+bench = """\
+aiskrs1 / aiskrs0 rpb (both PASS, 11-27): an s1 refinery copy 140 beside the barracks' FRONT spot, facing it; with \
+the module the first barracks s19 at strips x14 y14, without it (only the include removed) at x10 y17 as acbr0"""
+proves = """\
+StructurePlacementBehavior: the reserved box (30 x 45, 90 ahead of a standing refinery) refuses the AI's placement \
+as the player's (work/re/a415_for_b.md), so the barracks takes a later try. Not the spot it takes: the simulator's \
+round footprints (40 + 40 + GAP) refuse the bench's x14 y14 beside the refinery and put it at x10 y21"""
+let = {at = "first('其他X', rows=a)", bt = "first('其他X', rows=b)"}
+expect = ["b[bt]['建筑码'] == 100 and 10 <= b[bt]['其他X'] <= 11 and b[bt]['其他Y'] == 17", "a[at]['建筑码'] == 100 and not (10 <= a[at]['其他X'] <= 11 and a[at]['其他Y'] == 17)"]
+
+[[reading]]
+bench_id = "engine_aiskirm"
 id = "turned_east_nodes_give_one_refinery_each_and_no_third"
 scene = {build = "aiskirmr", check = "rpx", until = 160.0}
 bench = "aiskirmr rpx (B190): 矿场X / 矿场Y 17 / 15 at s49, 36 / 32 at s68 (second +19 / +17), the same to s264"

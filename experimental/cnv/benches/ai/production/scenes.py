@@ -1940,6 +1940,9 @@ def aiskirm_bench():
         # CanBuildInAlliedBuildRadii false / true under a friendly yard (check rpb): l4_allied_radii H1 / H2
         'acbr0': lambda: mission('CampAIAcbr0', allied=False),
         'acbr1': lambda: mission('CampAIAcbr1', allied=True),
+        # StructurePlacementBehavior's reserved box over the barracks' spot / the copy without it (check rpb)
+        'aiskrs1': lambda: mission('CampAISkRs1', reserve=True),
+        'aiskrs0': lambda: mission('CampAISkRs0', reserve=False),
         'aiskad': lambda: mission('CampAISkAD', aidata=AIDATA_RUNS['aiskad']),      # check a: AIData canary
         'aiskfon': lambda: mission('CampAISkFOn', aidata=AIDATA_RUNS['aiskfon']),   # check fm: UseFormations true
         'aiskfof': lambda: mission('CampAISkFOff', aidata=AIDATA_RUNS['aiskfof']),  # check fm: false

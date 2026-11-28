@@ -1724,6 +1724,54 @@ class Brain:
         return (f.x, f.y)
 
     # ---- the yard (Sim.production.due's rule, for structures)
+    def taken(self, bodies=None, nodes=True):
+        """What a new structure's spot keeps off: every standing structure's placement round (Sim.blocks place; the
+        ore nodes' too unless nodes=False) and, as (x, y, angle, half major, half minor), the reserved box of each
+        with a StructurePlacementBehavior (A415 read, work/re/a415_for_b.md: the RestrictedAreaShape is drawn into
+        the placement grid at the host's position and facing when it enters the world, and the AI's placement
+        check reads that grid as the player's does; retail refineries: 30 x 45, 90 ahead). Placement only (walking
+        through it INFERRED free); any Type taken as BOX (retail has only BOX)."""
+        out = []
+        for b in self.world.living() if bodies is None else bodies:
+            if 'STRUCTURE' not in b.kinds or not nodes and 'orenode' in b.template.lower():
+                continue
+            t = self.world.blocks(b, place=True)
+            if t and len(t) == 3:
+                out.append(t)
+            q = self._reserved(b.template)
+            if q:
+                hx, hy, ox, oy = q
+                c, s = math.cos(b.angle), math.sin(b.angle)
+                out.append((b.x + ox * c - oy * s, b.y + ox * s + oy * c, b.angle, hx, hy))
+        return out
+
+    @staticmethod
+    def clear(x, y, r, taken):
+        """A footprint round r at (x, y) is GAP off every round of `taken` (INFERRED) and out of every box."""
+        for t in taken:
+            if len(t) == 3:
+                if math.hypot(x - t[0], y - t[1]) < r + t[2] + GAP:
+                    return False
+                continue
+            dx, dy, c, s = x - t[0], y - t[1], math.cos(t[2]), math.sin(t[2])
+            if math.hypot(max(abs(dx * c + dy * s) - t[3], 0.0), max(abs(dy * c - dx * s) - t[4], 0.0)) < r:
+                return False
+        return True
+
+    def _reserved(self, template):
+        """A template's StructurePlacementBehavior RestrictedAreaShape: (half major, half minor, Offset x, Offset y),
+        None = no such module. Read off the merged template (simunits: the include resolved, the mission's own
+        copies known), not the model's library, which has neither."""
+        memo = self.__dict__.setdefault('_reserved_boxes', {})
+        if template not in memo:
+            blocks = simunits.module_blocks(template, 'StructurePlacementBehavior', self.world.own)
+            s = ET.fromstring(f'<m>{blocks[0][1]}</m>').find('RestrictedAreaShape') if blocks else None
+            off = s.find('Offset') if s is not None else None
+            off = off.attrib if off is not None else {}
+            memo[template] = None if s is None else (float(s.get('MajorRadius', 0)), float(s.get('MinorRadius', 0)),
+                                                     float(off.get('x', 0)), float(off.get('y', 0)))
+        return memo[template]
+
     def spot(self, yard, template):
         """Where a structure goes: the first free point on the rings round the yard (INFERRED)."""
         import platprops
@@ -1732,13 +1780,13 @@ class Brain:
         xs = [b.x for b in world.living()] or [yard.x]
         ys = [b.y for b in world.living()] or [yard.y]
         away = math.atan2(yard.y - (min(ys) + max(ys)) / 2, yard.x - (min(xs) + max(xs)) / 2)
-        taken = [t for t in (world.blocks(b, place=True) for b in world.living() if 'STRUCTURE' in b.kinds) if t and len(t) == 3]
+        taken = self.taken()
         for ring in RING:
             n = max(8, int(2 * math.pi * ring / (2 * r + GAP)))
             for k in range(n):
                 a = away + 2 * math.pi * k / n
                 x, y = yard.x + ring * math.cos(a), yard.y + ring * math.sin(a)
-                if all(math.hypot(x - tx, y - ty) >= r + tr + GAP for tx, ty, tr in taken) and self.allied_ok(x, y):
+                if self.clear(x, y, r, taken) and self.allied_ok(x, y):
                     return x, y
         return yard.x + RING[-1], yard.y
 
@@ -1778,7 +1826,7 @@ class Brain:
         facing = math.atan2((y0 + y1) / 2 - yard.y, (x0 + x1) / 2 - yard.x)
         r = platprops.radius(template) if template in platprops.CATALOG else 40.0
         mine = [b for b in world.living() if b.owner == self.player and 'STRUCTURE' in b.kinds]
-        taken = [q for q in (world.blocks(b, place=True) for b in world.living() if 'STRUCTURE' in b.kinds) if q and len(q) == 3]
+        taken = self.taken()
         block = self.placer(df)
         rng = self.place_rng
         comp = float(df.personality_attr(self.ai, 'BaseCompactness', df.COMPACTNESS))
@@ -1797,7 +1845,7 @@ class Brain:
                 cx, cy = cx + far * math.cos(angle), cy + far * math.sin(angle)
             c = min(mine, key=lambda b: math.hypot(b.x - cx, b.y - cy), default=yard)
             for x, y in block.tower_spots(self.ai, (c.x, c.y), angle, centre_location=where == 'CENTER', rng=rng):
-                if all(math.hypot(x - tx, y - ty) >= r + tr + GAP for tx, ty, tr in taken) and self.allied_ok(x, y):
+                if self.clear(x, y, r, taken) and self.allied_ok(x, y):
                     return x, y
         return None
 
@@ -1812,11 +1860,11 @@ class Brain:
         if df is None:
             return None
         r = platprops.radius(template) if template in platprops.CATALOG else 40.0
-        taken = [t for t in (world.blocks(b, place=True) for b in world.living() if 'STRUCTURE' in b.kinds) if t and len(t) == 3]
+        taken = self.taken()
         angle = df.SPREAD_STEP * self.tower_rng.randint(0, 9)
         block = self.placer(df)
         for x, y in block.tower_spots(self.ai, (yard.x, yard.y), angle, rng=self.tower_rng):
-            if all(math.hypot(x - tx, y - ty) >= r + tr + GAP for tx, ty, tr in taken) and self.allied_ok(x, y):
+            if self.clear(x, y, r, taken) and self.allied_ok(x, y):
                 return x, y
         return None
 
@@ -1854,8 +1902,7 @@ class Brain:
         mine = [b for b in bodies if b.owner == self.player and 'REFINERY' in b.kinds]
         if not self.open_nodes(reach, bodies):
             return None
-        taken = [t for t in (world.blocks(b, place=True) for b in bodies if 'STRUCTURE' in b.kinds and b not in nodes)
-                 if t and len(t) == 3]
+        taken = self.taken(bodies, nodes=False)
         memo = self.__dict__.setdefault('_refinery_spots', {})
         mk = (template, tuple(taken), tuple((y.x, y.y) for y in yards))
         if mk not in memo:
@@ -1884,15 +1931,13 @@ class Brain:
         import platprops
         world = self.world
         r = platprops.radius(template) if template in platprops.CATALOG else 40.0
-        taken = [q for q in (world.blocks(b, place=True) for b in world.living() if 'STRUCTURE' in b.kinds or b in nodes)
-                 if q and len(q) == 3]
+        taken = self.taken()
         n = min(nodes, key=lambda n: math.hypot(n.x - yard.x, n.y - yard.y))
         a, step = math.atan2(n.y - yard.y, n.x - yard.x), df.SPREAD_STEP
         rr = df.TOWER_LIST_R
         for k in (0, 1, -1, 2, -2):
             x, y = yard.x + rr * math.cos(a + k * step), yard.y + rr * math.sin(a + k * step)
-            if self.open_at(x, y) and all(math.hypot(x - tx, y - ty) >= r + tr + GAP
-                                                     for tx, ty, tr in taken):
+            if self.open_at(x, y) and self.clear(x, y, r, taken):
                 return x, y
         return None
 
@@ -2040,7 +2085,7 @@ class Brain:
         def fits(x, y, n):                          # the footprint inside the active border (INFERRED)
             if not (x0 + reach <= x <= x1 - reach and y0 + reach <= y <= y1 - reach
                     and self.open_at(x, y)
-                    and all(math.hypot(x - tx, y - ty) >= r + tr + GAP for tx, ty, tr in taken)
+                    and self.clear(x, y, r, taken)
                     and self.allied_ok(x, y)):
                 return False
             face = math.atan2(n.y - y, n.x - x)     # the candidate faces its node (FACING_TOWARDS; INFERRED)

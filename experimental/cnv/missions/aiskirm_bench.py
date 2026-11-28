@@ -577,6 +577,25 @@ def inert_xml(fields=INERT, pid=INERT_PID):
 ACBR_AT = (-495.0, -495.0)
 FRIEND = (2, 0.0, 'Friend')
 
+# aiskrs1 / aiskrs0 (check rpb, B 11-27, work/re/a415_for_b.md): an s1 refinery copy 140 to the side of the barracks'
+# FRONT spot (acbr0 rpb: s49 strips x10 y17, ~(3614,3243) = 284 at -146 deg from the yard), facing it, so its
+# reserved box (30 x 45, 90 ahead) covers the spot and its own 60 x 45 base stands ~35 clear of the barracks' 45 x 45;
+# rs0's copy has the StructurePlacementBehavior include removed (only that differs)
+RSV_ID, RSV_AT, RSV_FACE = 'CNVAIRsvRef', (-158.5, -273.6), 2.157
+RSV_INCLUDE = r'<xi:include\s+href="DATA:Includes/GenericRefineryStructurePlacementBehavior.xml"\s*/>'
+
+
+def reserve_refinery(keep):
+    """The retail AlliedRefinery as RSV_ID; keep=False drops its StructurePlacementBehavior include."""
+    import re
+    from checks.engine_modulebatch import native
+    u = native('AlliedRefinery', 'Structures', RSV_ID)
+    u.xml = re.sub(r'="=([0-9.]+s)"', r'="\1"', u.xml)    # native()'s '=4s' expressions would not parse
+    if not keep:
+        u.xml, n = re.subn(RSV_INCLUDE, '', u.xml)
+        assert n == 1
+    return u
+
 
 SIDE_PID = 'CNVSideX'                 # aisksd1 / aisksd2 (check sd): work/re d123_side.md 3, S1 / S2
 SIDE_FACTION = 'PlayerTemplate:Japan'   # s1's faction: neither CNVSideX's own Side (Soviet) nor what it may inherit
@@ -631,7 +650,7 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
             buffer=None, new=None, army=None, two=None, observe=False, cap=None, block=None, off=False,
             ptype=None, mintime=None, aidata=None, dear=None, dear_cost=DEAR_COST, power_more=None, mt_secs=300.0,
             carrier=None, unitcap=None, inert=False, power_adv=None, side=None, inert2=False, flip=False, defpref=None,
-            allied=None, wake='xfer', armydef=None):
+            allied=None, wake='xfer', armydef=None, reserve=None):
     base = resources.measured(niagara)
     m = Mission(name=name, map=ai_map(flipped(base) if flip else base, lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
@@ -700,6 +719,11 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
                          f'AIPersonalityDefinition:{pid}'))
         m.put('AlliedConstructionYard', 'east base', ACBR_AT[0], ACBR_AT[1], angle=0.7854,
               name='UNIT - CNV AI Ally Yard', role='ally yard')
+    if reserve is not None:              # aiskrs1 / aiskrs0 (check rpb): s1's refinery copy by the barracks' spot
+        m.facts['reserved box'] = int(reserve)
+        m.units.append(reserve_refinery(reserve))
+        m.put(RSV_ID, 'east base', RSV_AT[0], RSV_AT[1], side='s1', angle=RSV_FACE, name='UNIT - CNV AI Rsv Refinery',
+              role='ai reserve refinery')
     if buffer is not None:               # aiskpw0 / aiskpw3 (check x): DesiredExcessPowerBuffer = buffer
         m.facts['power buffer'] = buffer
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{POWER_PID}'
