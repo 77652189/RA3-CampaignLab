@@ -26,7 +26,7 @@ def test_load_a1_like_sketch(tmp_path, example):
     }
     assert design.reachable("west", "square", "vehicle")
     assert not design.reachable("west", "square", "vehicle", without="main")
-    assert design.reachable("spawn", "goal", "foot", state="blocked")
+    assert not design.reachable("spawn", "goal", "foot", state="blocked")
 
 
 def test_nested_blocks_leave_parent_ground(sketch):

@@ -17,7 +17,7 @@
   },
   "borders": {
     "map_edge": {"line": [[0,0],[200,0],[200,200],[0,200],[0,0]]},
-    "west_scarp": {"line": [[0,100],[100,100]], "pass": [], "closed_reason": "连续岩壁",
+    "west_scarp": {"line": [[0,100],[100,100]], "closed_reason": "连续岩壁",
                    "segments": {"sealed": {"span": [20,90], "pass": []}}},
     "east_scarp": {"line": [[100,100],[200,100]],
                    "segments": {"hairpin": {"span": [20,80], "pass": ["foot","vehicle","amphibian"]}}}
