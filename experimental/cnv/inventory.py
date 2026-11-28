@@ -345,7 +345,7 @@ NOTES = {
     (MODULE, 'Behaviors/WallBuilderBehavior'): (GUESSED, '部分：engine_wallinit:a/b预摆与脚本具名生成均为10/11/10，仅StartInSecondaryModel初始化默认WALL_SEGMENT；其他生成入口INFERRED，建墙/连接/段数上限/生死联动及自定义配置仍gap；见 checks/engine_wallinit.readings.toml、work/re/e_wallbuilder_e58.md'),
     (MODULE, 'Behaviors/GateOpenAndCloseBehavior'): (TODO, 'E190原版门/删模块初始化台被SDK Behaviors拒绝该模块且缺模型资源；原生地图摆放同样强制编译失败。改用engine_gate_e:a运行时同动作创建两门与电厂哨兵，一局PASS，f180=180/0/0/1（完成/Romania门/Sanitarium门/哨兵存活）。读数在benches/map/fixtures/readings.toml#engine_gate_e：帧数与哨兵相符，模拟器两门均1对台0记mismatch（两门模板不在SageXML物体索引里）；不登记模块效果覆盖。缺templateResolved/createAccepted/rejectReason，倾向模板在当前运行环境不可用（INFERRED）；开闭/通行/复位均gap，同输入暂停，重开需可创建宿主及合法开关入口，见work/re/e190_gate.md'),
     (MODULE, 'Behaviors/SlavedUpdate'): (GUESSED, '模拟器记录生成归属并通知生成模块子体死亡；E294 原版吸取无人机在 LeashRange 300/3000 两组都到达终点，回放均留在起点（checks/engine_leechdrone.readings.toml），跟随派发及牵引边界仍 gap，见 work/re/e294_slaved_follow.md'),
-    (MODULE, 'Behaviors/AttachUpdate'): (GUESSED, '部分：engine_attach a验证瞬移/跟随/父子状态；engine_attach_parent a验证简单模块脚本杀父后子活/清理链接，engine_attach_nocoll n验证AttachedObjectStatus不给NO_COLLISIONS；子死、单端删除已量（engine_attach_child/_delete、parent_delete）；原版模块死亡前无稳定链接，不推广死亡规则；恐怖机器人父车UNDERGOING_REPAIR即死、自身铁幕豁免（父车铁幕不豁免）已量（engine_attachterror f/g，A420，死亡精确帧INFERRED）；吸血/解除/自主扫描仍gap'),
+    (MODULE, 'Behaviors/AttachUpdate'): (GUESSED, '部分：engine_attach a验证瞬移/跟随/父子状态；engine_attach_parent a验证简单模块脚本杀父后子活/清理链接，engine_attach_nocoll n验证AttachedObjectStatus不给NO_COLLISIONS；子死、单端删除已量（engine_attach_child/_delete、parent_delete）；原版模块死亡前无稳定链接，不推广死亡规则；恐怖机器人、谭雅C4按整块拆为单独项（A422）；剩忍者（JapanScoutInfantry）等，吸血/解除/自主扫描仍gap'),
     (NUGGET, 'ActivateLaserNugget'): (NA, '纯表现：Lifetime/LaserId/HitGroundFX/OverShootDistance驱动LaserState/LaserDraw；engine_laser pair实测2/90/2/90，无附加伤害或首发延迟，test_simbench_c重放'),
     (MODULE, 'Behaviors/LaserState'): (NA, '纯表现：LaserId关联光束，起止粒子/骨骼/EndOffset与ObjectStatusValidation只控制光束表现；LaserStateModule.xsd无伤害字段；engine_laser pair匹配LaserDraw/State 201，伤害由独立DamageNugget给出，test_simbench_c重放2/90/2/90'),
     (MODULE, 'Behaviors/ConvergingLaserState'): (NA, '纯表现：LaserState 加四束汇聚，原版两处（雅典娜、锤子坦克吸来的雅典娜炮）'
@@ -570,6 +570,18 @@ def module_items():
                                   template_ids=share['template_ids'],
                                   why=f'完整配置：engine_engineer {checks}；精确进入帧仍INFERRED', eg=example))
             v = dict(v, examples=['TH_TombBuilding02'])
+        if (group, mtype) == ('Behaviors', 'AttachUpdate'):   # the retail blocks engine/modules/attach.py models whole
+            import contain_audit
+            for shape, label, why, example in (
+                    ('TERROR', '恐怖机器人', '整块 TERROR：engine_attachterror a/f/g（附着、父车被别人杀子随死、父车修理中子死'
+                     '除非子铁幕）；自己吃死父车（INTERNAL_DESTRUCTION）后子活着脱离没量（台上靶 10 万血）、弹跳、'
+                     '父车无人驾驶脱离（9 关没有来源）仍gap', 'SovietScoutVehicle'),
+                    ('C4', '谭雅C4', '整块 C4：engine_attachc4 a/b', 'AlliedCommandoTech1')):
+                share = contain_audit.attach_share(shape, with_templates=True)
+                v = dict(v, campaign=v['campaign'] - share['campaign'], templates=v['templates'] - share['templates'])
+                items.append(dict(part=MODULE, name='Behaviors/AttachUpdate:' + label, uses=share['campaign'],
+                                  all=share['templates'], state=GUESSED, template_ids=share['template_ids'], why=why,
+                                  eg=example))
         if (group, mtype) == ('Behaviors', 'InfiltratorContain'):
             import contain_audit
             share = contain_audit.infiltrator_energy_share(with_templates=True)

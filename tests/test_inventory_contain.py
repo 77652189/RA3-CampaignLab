@@ -419,3 +419,19 @@ def test_infiltrator_kill_complete_configuration_partition(monkeypatch):
                     element.set(field, value)
                 module['xml'] = retailmodules.ET.tostring(element, encoding='unicode')
         assert contain_audit.infiltrator_kill_share() == {'campaign': 0, 'templates': 0}, field
+
+
+def test_attach_split_takes_only_the_whole_modelled_blocks(monkeypatch):
+    """A422: the Terror Drone's and Tanya's AttachUpdate items are the blocks engine/modules/attach.py compares whole."""
+    if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
+        pytest.skip('needs SDK and retail placement cache')
+    rows = [r for r in _module_rows() if r['name'].split(':')[0] == 'Behaviors/AttachUpdate']
+    assert {r['name']: r['uses'] for r in rows} == {'Behaviors/AttachUpdate:恐怖机器人': 1,
+                                                    'Behaviors/AttachUpdate:谭雅C4': 1, 'Behaviors/AttachUpdate': 1}
+    assert sum(r['all'] for r in rows) == retailmodules.module_census()['Behaviors', 'AttachUpdate']['templates']
+    raw = contain_audit.engineer_audit.audit('AttachUpdate')
+    monkeypatch.setattr(contain_audit.engineer_audit, 'audit', lambda kind: raw)
+    for row in raw['rows']:
+        for module in row['modules']:
+            module['xml'] = module['xml'].replace('CloseEnoughRange="', 'CloseEnoughRange="9')
+    assert contain_audit.attach_share('TERROR') == contain_audit.attach_share('C4') == {'campaign': 0, 'templates': 0}

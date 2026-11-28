@@ -207,6 +207,27 @@ def infiltrator_reset_share(with_templates=False):
     return share
 
 
+def attach_share(shape, with_templates=False):
+    """Templates whose one AttachUpdate is engine/modules/attach.py's whole retail block `shape` ('TERROR', 'C4'),
+    compared as the simulator does (its _native: Flags a set, C4's ForbiddenParentStatus free)."""
+    from engine.modules import attach
+    want, kids, keep = dict(TERROR=(attach.TERROR, attach.TERROR_KIDS, ()),
+                            C4=(attach.C4, attach.C4_KIDS, ('ForbiddenParentStatus',)))[shape]
+
+    def native(xml):
+        el = rm.ET.fromstring(xml)
+        for e in el.iter():
+            e.tag = rm._tag(e)
+        head = ' '.join(f'{k}="{v}"' for k, v in el.attrib.items())
+        return attach._native(head, ''.join(rm.ET.tostring(c, encoding='unicode') for c in el), want, kids, keep)
+    rows = [r for r in engineer_audit.audit('AttachUpdate')['rows']
+            if len(r['modules']) == 1 and native(r['modules'][0]['xml']) is not None]
+    share = dict(campaign=sum(bool(r['maps']) for r in rows), templates=len(rows))
+    if with_templates:
+        share['template_ids'] = [r['template'] for r in rows]
+    return share
+
+
 def audit():
     result = {}
     for kind in ('EngineerContain', 'InfiltratorContain'):
