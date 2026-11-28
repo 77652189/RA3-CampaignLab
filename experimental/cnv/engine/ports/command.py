@@ -778,12 +778,13 @@ class Commands:
         return (True, '') if sent and all(sent) else (False, f'进不去 {cmd.target}')    # building was a success)
 
     def _place(self, cmd):
-        """A structure set down at `pos` (`('name', n)`, `('team', t)`): INFERRED -- in the game a dozer / the yard
+        """A structure set down at `pos` (`('name', n)`, `('team', t)`, `('angle', radians)`): INFERRED -- in the game a dozer / the yard
         builds it there; the skirmish AI's yard job sets it down whole the frame it is done, as before (AI line / step
         G to measure). The giver keeps its own books (made, trace, its note, the free unit)."""
         w = self._w
         b = w.add(cmd.arg('name'), cmd.template, cmd.player, cmd.pos[0], cmd.pos[1],
                   by='skirmish AI' if cmd.by.startswith('ai') else cmd.by, at=w.t, team=cmd.arg('team', ''))
+        b.angle = float(cmd.arg('angle', b.angle))      # ('angle', radians): the facing it is set down with
         if w.blocks(b):
             w.reblock()
         w.change()

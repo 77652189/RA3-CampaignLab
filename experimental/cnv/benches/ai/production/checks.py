@@ -2905,7 +2905,7 @@ def engine_aiskirm():
               'acbr0': {'rpb': rpb, 'rpx': rpx}, 'acbr1': {'rpb': rpb, 'rpx': rpx},   # B213 CanBuildInAlliedBuildRadii
               'aiskapo': {'rpx': rpx}, 'aiskapa': {'rpx': rpx}, 'aiskaps': {'rpx': rpx},   # a415_for_b.md 2-3
               'aiskrs1': {'rpb': rpb}, 'aiskrs0': {'rpb': rpb},   # StructurePlacementBehavior (a415_for_b.md)
-              'aiskirmr': {'rpx': rpx},
+              'aiskirmr': {'rpx': rpx}, 'aiskirmrc': {'rpx': rpx}, 'aiskin0c': {'rpx': rpx},
               'aiskst40': {'rpx': rpx}, 'aiskst20': {'rpx': rpx}, 'aiskpnw': {'rpx': rpx}, 'aiskpnp': {'rpx': rpx},   # B192: StartDistanceDelta -40 / -20
               'aiskins': {'ib': ib},
               'aiskmtp': {'mt': mt},

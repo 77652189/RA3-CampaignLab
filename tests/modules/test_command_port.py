@@ -688,9 +688,10 @@ def test_the_ais_orders_give_what_its_calls_gave():
                                       args=(('goal_only', True),))) == (True, '')
     direct.bodies['b'].goal = direct.bodies['foe']
     cmd = Command('place', 'ai:Player_1', player='Player_1', template=APOC, pos=(700.0, 500.0),
-                  args=(('name', '#ai 3 x'), ('team', '')))
+                  args=(('name', '#ai 3 x'), ('team', ''), ('angle', 0.75)))
     assert port_world.commands.do(cmd) == (True, '')
     made = direct.add('#ai 3 x', APOC, 'Player_1', 700.0, 500.0, by='skirmish AI', at=direct.t, team='')
+    made.angle = 0.75
     if direct.blocks(made):
         direct.reblock()
     direct.change()

@@ -192,6 +192,17 @@ def f32(x):
     return struct.unpack('f', struct.pack('f', x))[0]
 
 
+def node_facing(bodies, x, y):
+    """The facing (radians) the AI sets a refinery down with at (x, y): toward the ore node nearest it, in 45-degree
+    steps; None = no node. Bench aiskirm / aiskin0c / aiskirmrc (the team trail's tstate hd, B 11-27): six refineries,
+    searched spots and fallen-back ones, each its nearest node's direction to the step (140 -> 135, -133 -> -135, 34 ->
+    45, -31 -> -45; facing the yard would give 180 / 90 / 90 on the last three). The step INFERRED: every AI structure there
+    stands at a multiple of 45."""
+    n = min((b for b in bodies if 'orenode' in b.template.lower()), default=None,
+            key=lambda b: math.hypot(b.x - x, b.y - y))
+    return None if n is None else round(math.atan2(n.y - y, n.x - x) / (math.pi / 4)) * math.pi / 4
+
+
 def side_index(side):
     try:
         return int(side.lstrip('ps'))
@@ -1777,8 +1788,9 @@ class Brain:
         import platprops
         world = self.world
         r = platprops.radius(template) if template in platprops.CATALOG else 40.0
-        xs = [b.x for b in world.living()] or [yard.x]
-        ys = [b.y for b in world.living()] or [yard.y]
+        alive = world.living()
+        xs = [b.x for b in alive] or [yard.x]
+        ys = [b.y for b in alive] or [yard.y]
         away = math.atan2(yard.y - (min(ys) + max(ys)) / 2, yard.x - (min(xs) + max(xs)) / 2)
         taken = self.taken()
         for ring in RING:
@@ -2158,8 +2170,10 @@ class Brain:
             spot = self.general_spot(yard, template)
         x, y = spot or self.spot(yard, template)
         name = simworld.free_name(world, '#ai', template)
+        a = node_facing(world.living(), x, y) if 'REFINERY' in self.host.kinds(template) else None
+        turn = (('angle', a),) if a is not None else ()
         self.commands.do(Command('place', f'ai:{self.player}', player=self.player, template=template,
-                                       pos=(float(x), float(y)), args=(('name', name), ('team', yard.team))))
+                                       pos=(float(x), float(y)), args=(('name', name), ('team', yard.team)) + turn))
         placed = world.bodies.get(name)         # set down whole by the command, now (CommandPort._place)
         if placed is not None:
             self.made[placed.serial] = frame

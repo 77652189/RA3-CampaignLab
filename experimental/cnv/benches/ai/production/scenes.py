@@ -1877,6 +1877,9 @@ def aiskirm_bench():
         'aiskin1': lambda: mission('CampAISkIn1', inert2='start'),   # check rp: StartDistanceDelta 1000 only
         'aiskin0': lambda: mission('CampAISkIn0', inert2='ticks'),   # check rp: ...IncreaseTicksBeforeGivingUp 0 only
         'aiskirmr': lambda: mission('CampAISkIrmR', flip=True),   # check rpx: aiskirm, east nodes facing pi (F2)
+        # the same two with the team trail (ra3ext tstate hd): the facing of the refineries the AI puts down
+        'aiskirmrc': lambda: mission('CampAISkIrR', flip=True, observe=True),
+        'aiskin0c': lambda: mission('CampAISkIn0', inert2='ticks', observe=True),
         'aiskin0r': lambda: mission('CampAISkIn0R', inert2='ticks', flip=True),   # rpx / rpb: aiskin0 the same (F1)
         # rpx (B192, D138 1): StartDistanceDelta -40 / -20 (retail -30) -- where the ring 4 / ring 5 line moves.
         # bench 2026-11-14 (both PASS): -40 first s49 x27 y10 (node A ring 6 or 7 at k -2), second +28 +11;
