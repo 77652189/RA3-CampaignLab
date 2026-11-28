@@ -55,6 +55,29 @@ def test_a_level_personality_lists_our_units_in_a_build_state_of_its_own():
     assert enemy_ai.new_units_state('x', None) == '' and 'BuildState' not in enemy_ai.personality('y', '盟军')
 
 
+def test_a_level_personality_runs_no_emergency_and_its_level_reads_none_of_their_data():
+    """enemy_ai blanks the four emergency gates (retail campaign enemies, SDK AIP_T06_Coop.xml) over the co-op base's
+    (ConyardInDanger from MEDIUM): the engine model reads them "", and inventory_ai.level_scope drops what only those
+    emergencies read (MCVTemplate, PrimaryResourceThingToBuild, ConyardInDanger's gate and three values)."""
+    import xml.etree.ElementTree as ET
+    mods = {}
+    for n in ('enemy_ai', 'inventory_ai'):
+        spec = importlib.util.spec_from_file_location(n, ROOT / 'experimental' / 'cnv' / f'{n}.py')
+        mods[n] = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mods[n])
+    enemy_ai, inv = mods['enemy_ai'], mods['inventory_ai']
+    xml = enemy_ai.personality('CNVTestOff', '苏联')
+    data = simai.model()['data'].AIData()
+    data.add_text(xml.split('\n', 1)[1])
+    attrs = data.personality('CNVTestOff').attrs
+    gates = [f'EmergencyManagerHandle{k}AtDifficulty' for k in ('NoIncome', 'NoConyard', 'UnderAttack', 'ConyardInDanger')]
+    assert [attrs[g] for g in gates] == [''] * 4
+    index = inv.assets()
+    el = ET.fromstring(xml.encode('utf-8')).find('{uri:ea.com:eala:asset}AIPersonalityDefinition')
+    assert inv.gated_off(el, index) == {n for ns in inv.GATED.values() for n in ns}
+    assert inv.gated_off(index['SovietCoopBaseSkirmishPersonality'], index) == set()
+
+
 # the war factory (B round 132): an empty IFV held its passenger guns (slots 3-7 of its WeaponSetUpdate, one
 # <Weapon Upgrade="Uprade_IFV_*"> line each: a 750-dps pistol, a 484-dps rifle ...), so the AI's expected efficiency
 # put it at 7.6 vs conscripts (a Riptide 1.37) and the war factory built IFVs only, no Riptide. simunits.weapon_sets

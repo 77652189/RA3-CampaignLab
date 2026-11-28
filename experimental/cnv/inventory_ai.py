@@ -1029,6 +1029,24 @@ def level_ai(levels=LEVELS):
     return out
 
 
+# What only an emergency reads (b1126_armydef reader table, D126), by the personality gate that turns it on: a level
+# whose personality leaves the gate "" (enemy_ai.NO_EMERGENCIES) never reads them. ConyardInDanger's gate counts too:
+# an empty gate is what retail campaign enemies run, so a level that blanks it uses no part of that emergency.
+GATED = {'NoConyard': ['阵营/ArmyDefinition.MCVTemplate'],
+         'NoIncome': ['阵营/ArmyDefinition.PrimaryResourceThingToBuild'],
+         'ConyardInDanger': ['人格/AIPersonalityDefinition.' + k for k in (
+             'EmergencyManagerHandleConyardInDangerAtDifficulty', 'ConyardInDangerEmergencyUnderAttackTime',
+             'ConyardInDangerEmergencyHealthPercent', 'ConyardInDangerEmergencyEngineerDistance')]}
+
+
+def gated_off(personality, index):
+    """The GATED items a personality (element) never reads: its gate, the child's over its parents', is ""."""
+    chain, _ = _effective(personality, index)
+    gate = lambda k: next((c.get(f'EmergencyManagerHandle{k}AtDifficulty') for c in chain  # noqa: E731
+                           if c.get(f'EmergencyManagerHandle{k}AtDifficulty') is not None), None)
+    return {n for k, names in GATED.items() if gate(k) == '' for n in names}
+
+
 def level_scope(levels=LEVELS):
     """{(part, name): set of levels}: the AI items (part AI) the levels' personalities reach, plus the script actions
     and conditions (inventory parts 脚本动作 / 脚本条件) their scripts aim at the AI player."""
@@ -1039,7 +1057,8 @@ def level_scope(levels=LEVELS):
         root = ET.fromstring(xml.encode('utf-8'))
         mine = [el for el in root if el.get('id')]
         army = [el for el in index.values() if _local(el.tag) == 'ArmyDefinition' and el.get('Side') == faction]
-        for name in reached(mine + army + glob, index):
+        off = set().union(*(gated_off(el, index) for el in mine if _local(el.tag) == 'AIPersonalityDefinition'))
+        for name in set(reached(mine + army + glob, index)) - off:
             scope[(PART, name)].add(lv)
         for what, _ in used:
             scope[('?', what)].add(lv)

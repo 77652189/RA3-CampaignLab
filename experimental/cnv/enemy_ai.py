@@ -52,6 +52,14 @@ def new_units_state(pid, new_units):
                       '    </Heuristic>', *entries, '  </AIBuildStateDefinition>'])
 
 
+# No emergency manager (sell when broke, rebuild the conyard, engineers to a conyard in danger, call for help):
+# retail campaign enemies blank all of them (SDK AIP_T06_Coop.xml), their armies come from the script, and no
+# level of ours needs an enemy to rebuild its base. The co-op skirmish base turns them on (ConyardInDanger from
+# MEDIUM). Remove an item to give the enemy that emergency back.
+NO_EMERGENCIES = ''.join(f' EmergencyManagerHandle{k}AtDifficulty=""'
+                         for k in ('NoIncome', 'NoConyard', 'UnderAttack', 'ConyardInDanger'))
+
+
 def personality(pid, faction, style='平衡', prefer=None, new_units=None):
     """The personality's XML: id pid, the faction's co-op skirmish base, the style's moves and states, prefer
     {template: factor} (UnitModifier, attacking and defending -- it does not change what is built: bench
@@ -78,7 +86,7 @@ def personality(pid, faction, style='平衡', prefer=None, new_units=None):
         *[f'    <Include type="all" source="DATA:CNVUnits/Data/{u}.xml" />' for u in (new_units or {})],
         '  </Includes>',
         *([state] if state else []),
-        f'  <AIPersonalityDefinition id="{pid}" PersonalityType="{pid}" inheritFrom="{base}">',
+        f'  <AIPersonalityDefinition id="{pid}" PersonalityType="{pid}" inheritFrom="{base}"{NO_EMERGENCIES}>',
         *body,
         '  </AIPersonalityDefinition>',
         '</AssetDeclaration>', ''])
