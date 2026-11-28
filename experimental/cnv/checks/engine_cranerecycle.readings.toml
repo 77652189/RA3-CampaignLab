@@ -10,6 +10,17 @@ and (rows[-1]['Frame'], rows[-1]['Alive'], rows[-1]['Approach'], rows[-1]['Walle
 """
 
 [[reading]]
+id = "a_damaged_hammer_still_refunds_750_at_its_own_crane"
+scene = {build = "engine_cranerecycle", check = "b", until = 15.5}
+bench = "E317 CampRecycleB_mcp_1127_220539: Alive / Health / Wallet f43–81 3/50/0, f88 3/54/0, f95–225 2/54/750"
+proves = "The same-owner Hammer starts the enter order at 50% health and still refunds 750. Health holds the last live sample. The increase to 54% on approach was observed; the exact repair and entry timing are outside this refund reading."
+expect = """
+(any(30 <= r['Frame'] < 45 and (r['Alive'], r['Health'], r['Wallet']) == (3, 50, 0) for r in rows)
+and (rows[-1]['Frame'], rows[-1]['Alive'], rows[-1]['Wallet']) == (225, 2, 750)
+and 0 < rows[-1]['Health'] < 100)
+"""
+
+[[reading]]
 id = "a_named_enter_order_at_an_allied_crane_credits_the_hammer_owner"
 scene = {build = "engine_cranerecycleally", check = "a", until = 15.5}
 bench = "E309 CampRecycleAlA_mcp_1127_154021: Frame / State / Wallet / Ally Wallet f45–68 70/0/0, f76–90 75/0/0, f98–225 25/1500/0"

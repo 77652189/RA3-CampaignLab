@@ -1,7 +1,8 @@
 """Soviet Crane with and without SlaughterHordeContain.
 
 A named enter order recycles each 1000-credit Hammer for 750 credits to the
-tank owner at its own or a friendly retail crane. With one-way friendship and
+tank owner at its own or a friendly retail crane. A Hammer damaged to 50%
+before the order also returns 750. With one-way friendship and
 neutrality, the crane owner's relationship controls entry. The module-off
 control stays outside the approach area. Exact entry reach and timing are inferred.
 """
@@ -12,7 +13,7 @@ FRIEND = (2, 0.0, 'Friend')
 NEUTRAL = (1, 0.0, 'Neutral')
 
 
-def check(m, allied=False, *, one_way=False):
+def check(m, allied=False, *, one_way=False, damaged=False):
     t = Test()
     player, frame, alive, approach, wallet = m.player('p1'), 'Frame', 'Alive', 'Approach', 'Wallet'
     t.counters = [(key, key) for key in (frame, alive, approach, wallet)]
@@ -58,6 +59,15 @@ def check(m, allied=False, *, one_way=False):
                    [('INCREMENT_COUNTER', bit, approach)]),
         ])
     t.scripts.append(Script('Test - enter', [('COUNTER', frame, 2, 45)], orders))
+    if damaged:
+        tank = m.role('tank on').name
+        health = 'Health'
+        t.counters[2] = (health, health)
+        t.scripts.extend([
+            Script('Test - damage', [('COUNTER', frame, 2, 20)], [('NAMED_DAMAGE', tank, 275)]),
+            Script('Test - health', [('NAMED_NOT_DESTROYED', tank)],
+                   [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', tank, health)], once=False),
+        ])
     t.expect = [(frame, 0, 'ever==', 225)]
     if one_way:
         t.expect += [('State', 0, 'ever==', 1005), (wallet, 0, 'ever==', 1500),
@@ -67,11 +77,13 @@ def check(m, allied=False, *, one_way=False):
                      (other_wallet, 0, '==', 0)]
     else:
         t.expect += [(alive, 0, 'ever==', 2), (wallet, 0, 'ever==', 750)]
+    if damaged:
+        t.expect += [(health, 0, 'ever==', 50)]
     t.bench = [('bench_watch', dict(seconds=37, every=.5, sheet=False, lines=4))]
     return t
 
 
-CHECKS = {'engine_cranerecycle': {'a': check},
+CHECKS = {'engine_cranerecycle': {'a': check, 'b': lambda m: check(m, damaged=True)},
           'engine_cranerecycleally': {
               'a': lambda m: check(m, allied=True),
               'c': lambda m: check(m, allied=True, one_way=True),
