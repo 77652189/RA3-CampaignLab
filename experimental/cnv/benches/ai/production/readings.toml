@@ -1297,6 +1297,34 @@ expect = ["a == b", "a[at]['建筑码'] == 100 and 10 <= a[at]['其他X'] <= 11 
 
 [[reading]]
 bench_id = "engine_aiskirm"
+id = "the_nodes_suggested_offset_moves_no_ai_refinery"
+item = "物体模块 Behaviors/AssistedPlacementInfoBehavior"
+scenes = {s = {build = "aiskirm", check = "rpx", until = 160.0}, o = {build = "aiskapo", check = "rpx", until = 160.0}, p = {build = "aiskaps", check = "rpx", until = 160.0}}
+bench = """\
+B 11-27 rpx aiskapo (OreNode recompiled, SuggestedOffset x 300) / aiskaps (180, 0 -> 208, -139: node A's default \
+spot S on the very spot stock takes) beside aiskirm: all three 26 / 9 at s49, 54 / 20 at s69, no third to s251"""
+proves = """\
+the ore node's SuggestedOffset does not steer the AI's refinery search on the bench: D138's pre-check (a refinery \
+spot fails within reach of a node's default spot S) predicted aiskapo one ring out and aiskaps off node A; neither \
+moved (work/re/b1127_assistplace.md)"""
+let = {steps = "lambda rows: (lambda xs: [v for i, v in enumerate(xs) if not i or v != xs[i - 1]])([(r['矿场X'], r['矿场Y']) for r in rows])", ks = "steps(s)"}
+expect = ["steps(o) == ks", "steps(p) == ks", "len(ks) >= 3"]
+
+[[reading]]
+bench_id = "engine_aiskirm"
+id = "the_refinerys_placement_hint_turned_away_moves_no_ai_refinery"
+scenes = {o = {build = "aiskapo", check = "rpx", until = 160.0}, a = {build = "aiskapa", check = "rpx", until = 160.0}}
+bench = """\
+B 11-27 rpx aiskapa (aiskapo + AlliedRefinery's PlacementHint FACING_AWAY) beside aiskapo: both 26 / 9 at s49, \
+54 / 20 at s69, no third to s252"""
+proves = """\
+AssistedPlacementBehavior's facing bit does not steer the AI's refinery search on the bench (D138 predicted S's \
+passage point out, the first refinery right ahead of node A); the player's snapping half is E169's"""
+let = {steps = "lambda rows: (lambda xs: [v for i, v in enumerate(xs) if not i or v != xs[i - 1]])([(r['矿场X'], r['矿场Y']) for r in rows])"}
+expect = ["steps(a) == steps(o)", "len(steps(o)) >= 3"]
+
+[[reading]]
+bench_id = "engine_aiskirm"
 id = "a_refinerys_reserved_box_keeps_the_ais_barracks_off_its_front_spot"
 item = "物体模块 Behaviors/StructurePlacementBehavior"
 scenes = {a = {build = "aiskrs1", check = "rpb", until = 40.0}, b = {build = "aiskrs0", check = "rpb", until = 40.0}}

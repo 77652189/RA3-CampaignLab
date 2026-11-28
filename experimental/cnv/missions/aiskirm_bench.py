@@ -597,7 +597,35 @@ def reserve_refinery(keep):
     return u
 
 
-SIDE_PID = 'CNVSideX'                 # aisksd1 / aisksd2 (check sd): work/re d123_side.md 3, S1 / S2
+# aiskapo / aiskapa (check rpx, B 11-27, work/re/a415_for_b.md 2-3): the retail OreNode recompiled with its
+# AssistedPlacementInfoBehavior SuggestedOffset x ASSIST_OFFSET (moves every node's default spot S, so the pre-check's
+# blocks), aiskapa with AlliedRefinery's PlacementHint FACING_AWAY on top (turns S, so its passage point P goes out)
+# aiskaps: S put on the very spot stock aiskirm's first refinery takes (node A ring ~250 at -33.75 deg, B188 x26 y9),
+# which the pre-check must then refuse
+ASSIST_OFFSET = {'offset': (300.0, 0.0), 'away': (300.0, 0.0), 'side': (208.0, -139.0)}
+HINT_INCLUDE = r'<xi:include\s+href="DATA:Includes/GenericRefineryPlacementHint.xml"\s*/>'
+
+
+def assist_units(assist):
+    """[OreNode with SuggestedOffset ASSIST_OFFSET[assist]] (+ AlliedRefinery with its hint FACING_AWAY if 'away')."""
+    import re
+    path = os.path.join(labpaths.SDK3, 'SageXML', '{}', 'Structures', '{}.xml')
+    with open(path.format('Neutral', 'OreNode'), encoding='utf-8-sig') as f:
+        (x, y), away = ASSIST_OFFSET[assist], assist == 'away'
+        node, n = re.subn(r'x = "180.0"(\s*)y = "0.0"', rf'x = "{x}"\1y = "{y}"', f.read())
+    assert n == 1
+    units = [Unit('OreNode', node)]
+    if away:
+        with open(path.format('Allied', 'AlliedRefinery'), encoding='utf-8-sig') as f:
+            xml, n = re.subn(HINT_INCLUDE, '''<AssistedPlacementBehavior id="ModuleTag_AsssitedPlacementBehavior"
+                PlacementHint="FACING_AWAY ALLOW_SHROUDED" SnappingDistance="50">
+                <RequirementObjectFilter Rule="ANY" Include="ORE_NODE"/></AssistedPlacementBehavior>''', f.read())
+        assert n == 1
+        units.append(Unit('AlliedRefinery', xml))
+    return units
+
+
+SIDE_PID = 'CNVSideX'              # aisksd1 / aisksd2 (check sd): work/re d123_side.md 3, S1 / S2
 SIDE_FACTION = 'PlayerTemplate:Japan'   # s1's faction: neither CNVSideX's own Side (Soviet) nor what it may inherit
 SIDE_JAPAN = ('1JapanBalanced', '2JapanAmbushDivision', '3JapanFleetCommand', '2JapanMechaWarfare')
 
@@ -650,7 +678,7 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
             buffer=None, new=None, army=None, two=None, observe=False, cap=None, block=None, off=False,
             ptype=None, mintime=None, aidata=None, dear=None, dear_cost=DEAR_COST, power_more=None, mt_secs=300.0,
             carrier=None, unitcap=None, inert=False, power_adv=None, side=None, inert2=False, flip=False, defpref=None,
-            allied=None, wake='xfer', armydef=None, reserve=None):
+            allied=None, wake='xfer', armydef=None, reserve=None, assist=None):
     base = resources.measured(niagara)
     m = Mission(name=name, map=ai_map(flipped(base) if flip else base, lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
@@ -724,6 +752,10 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
         m.units.append(reserve_refinery(reserve))
         m.put(RSV_ID, 'east base', RSV_AT[0], RSV_AT[1], side='s1', angle=RSV_FACE, name='UNIT - CNV AI Rsv Refinery',
               role='ai reserve refinery')
+    if assist is not None:               # aiskapo / aiskapa (check rpx): the node's offset / + the refinery's hint
+        (m.facts['node offset x'], m.facts['node offset y']), m.facts['hint away'] = ASSIST_OFFSET[assist], int(
+            assist == 'away')
+        m.units += assist_units(assist)
     if buffer is not None:               # aiskpw0 / aiskpw3 (check x): DesiredExcessPowerBuffer = buffer
         m.facts['power buffer'] = buffer
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{POWER_PID}'

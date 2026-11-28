@@ -1943,6 +1943,10 @@ def aiskirm_bench():
         # StructurePlacementBehavior's reserved box over the barracks' spot / the copy without it (check rpb)
         'aiskrs1': lambda: mission('CampAISkRs1', reserve=True),
         'aiskrs0': lambda: mission('CampAISkRs0', reserve=False),
+        # the ore node's SuggestedOffset 300 / + the refinery's PlacementHint FACING_AWAY (check rpx)
+        'aiskapo': lambda: mission('CampAISkApO', assist='offset'),
+        'aiskapa': lambda: mission('CampAISkApA', assist='away'),
+        'aiskaps': lambda: mission('CampAISkApS', assist='side'),   # S on stock's first refinery spot
         'aiskad': lambda: mission('CampAISkAD', aidata=AIDATA_RUNS['aiskad']),      # check a: AIData canary
         'aiskfon': lambda: mission('CampAISkFOn', aidata=AIDATA_RUNS['aiskfon']),   # check fm: UseFormations true
         'aiskfof': lambda: mission('CampAISkFOff', aidata=AIDATA_RUNS['aiskfof']),  # check fm: false
