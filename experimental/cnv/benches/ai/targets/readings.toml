@@ -293,6 +293,28 @@ proves = "simai enemy priority: a priority 0 after SET_ALL takes that enemy out 
 let = {near = "first('到近厂')"}
 expect = "near is not None and abs(near - 15) <= 2 and first('到远厂') is None"
 
+# The personality's own enemy sort, the owners swapped (aisort*: the far plant Soviet_4's, the near one the player's).
+
+[[reading]]
+bench_id = "engine_aiprio"
+id = "a_personality_sort_alone_builds_no_enemy_table"
+scene = {build = "aisortp", check = "a", until = 70.0}
+bench = "aisortp (no script priority, MEDIUM NearestFirst_AllowTies): 步兵在家 4 s1-s75 -- aisortf (Flat) the same"
+proves = "simai enemy sort: with no script priority the personality (re-sorting every 15 s) puts no enemy in the table"
+expect = "all(r['步兵在家'] == 4 and r['到近厂'] == 0 and r['到远厂'] == 0 for r in rows)"
+mismatch = """\
+bench aisortp / aisortf: no script priority, nobody leaves in 75 s; the simulator takes no table as every enemy in \
+one tier and sends the team to the near plant"""
+
+[[reading]]
+bench_id = "engine_aiprio"
+id = "set_all_priorities_turn_the_personality_sort_off"
+scene = {build = "aisorts", check = "a", until = 70.0}
+bench = "aisorts (SET_ALL 20, NearestFirst_AllowTies): 到近厂 2 @ s14, 4 s15-s21, 3 to s26 (the run's end), never 到远厂"
+proves = "simai enemy sort: the wake's SET_ALL fixes the table, the personality's sort is not run (our levels' wake)"
+let = {near = "first('到近厂')", far = "first('到远厂')"}
+expect = "near is not None and abs(near - 14) <= 2 and (far is None or near < far)"
+
 # Bench readings of benches/ai/targets/checks.py#engine_aistate (format: experimental/cnv/readings.py; runner: tests/conformance).
 # SearchRange is only the tech heuristic's -- distance stops no team (bench 2026-11-07).
 

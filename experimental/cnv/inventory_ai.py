@@ -1038,6 +1038,12 @@ def gated_off(personality, index):
     return {n for k, names in GATED.items() if gate(k) == '' for n in names}
 
 
+# What a script action aimed at the AI player turns off for the rest of the game (plan.py's wake sends SET_ALL with
+# MAKE_BASE): the fixed enemy table stops the personality's periodic enemy sort (bench aisorts against aisortp).
+SCRIPT_GATED = {'SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES': ['人格/AIPersonalityDefinition.' + k for k in (
+    'EnemyResortingTime', *(f'EnemySorting{d}Difficulty' for d in ('Easy', 'Medium', 'Hard', 'Brutal')))]}
+
+
 def level_scope(levels=LEVELS):
     """{(part, name): set of levels}: the AI items (part AI) the levels' personalities reach, plus the script actions
     and conditions (inventory parts 脚本动作 / 脚本条件) their scripts aim at the AI player."""
@@ -1048,7 +1054,8 @@ def level_scope(levels=LEVELS):
         root = ET.fromstring(xml.encode('utf-8'))
         mine = [el for el in root if el.get('id')]
         army = [el for el in index.values() if _local(el.tag) == 'ArmyDefinition' and el.get('Side') == faction]
-        off = set().union(*(gated_off(el, index) for el in mine if _local(el.tag) == 'AIPersonalityDefinition'))
+        off = set().union(*(gated_off(el, index) for el in mine if _local(el.tag) == 'AIPersonalityDefinition'),
+                          *(SCRIPT_GATED.get(what, ()) for what, _ in used))
         for name in set(reached(mine + army + glob, index)) - off:
             scope[(PART, name)].add(lv)
         for what, _ in used:

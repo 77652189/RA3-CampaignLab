@@ -430,6 +430,8 @@ def test_the_ai_level_scope_page_is_generated_from_the_items(tmp_path, monkeypat
     # docs/engine/inventory-levels.md: what our 9 levels' enemy AI uses ("AI done" point 1), generated on demand with
     # python -I -X utf8 experimental/cnv/inventory_ai.py levels --write; its rows carry the inventory's states
     xs, scope = items(), inventory_ai.level_scope()
+    # the wake's SET_ALL (plan.py) turns the personality's enemy sort off: its items are none of the levels'
+    assert not {(inventory_ai.PART, n) for ns in inventory_ai.SCRIPT_GATED.values() for n in ns} & set(scope)
     want = inventory_ai.render_levels(xs, scope)
     state = {(i['part'], i['name']): i['state'] for i in xs}
     rows = page_rows(want)

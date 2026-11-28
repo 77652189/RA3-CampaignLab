@@ -596,6 +596,12 @@ def engine_aiprio():
                  leaves) was wrong: Soviet_4 was in SET_ALL's table, Player_1 0 left it alone in the top tier.
       aipriorm   CampAIPrioRmA_mcp_1111_000210: 步兵在家 4 s1-s75, nobody anywhere -- the table was empty when the script
                  changed it: an entry not named is not there (Player_1 out too).
+    Bench 2026-11-28 (aisort*, the owners swapped: the near plant the player's, the far one Soviet_4's):
+      aisortf    步兵在家 4 s1-s75: no script priority, nobody leaves -- the personality builds no table (resort 15 s)
+      aisortp    the same with MEDIUM NearestFirst_AllowTies: the sort alone builds no table either
+      aisorts    PASS: 到近厂 2 @ s14, 4 s15-s21, never 到远厂 -- with SET_ALL the nearer Soviet_4 got no tier above
+                 (the program: a script priority turns the re-sort off). With aipriodef: in one tier the player's
+                 plant first, near or far (by player order? NOT READ). Soviet_4's base = its one plant (INFERRED).
     """
     from checks.engine_aiprio import PICK, a
 

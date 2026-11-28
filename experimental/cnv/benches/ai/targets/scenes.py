@@ -824,6 +824,13 @@ def aiprio_bench():
       aiprio0    SET_ALL 20, then Player_1 0: 0 takes the player out -> Soviet_4 alone (bench 11-10: the near plant)
       aipriorm   no SET_ALL; Soviet_4 0 alone: is there a table for the script to change (the personality's, built
                  when the AI runs -> the far plant) or none yet (-> nobody leaves)? Bench 11-10: nobody left
+    The personality's own enemy sort (EnemySorting<difficulty>; the bench plays MEDIUM, BasePersonality's Flat), the
+    owners swapped: the near plant and its turrets the player's, the far plant alone Soviet_4's (base ~1010 off, the
+    player's yard ~2700):
+      aisortf    no script priority, Flat (control). Bench 11-28: nobody left (aipriorm: no table)
+      aisortp    no script priority, MEDIUM NearestFirst_AllowTies. Bench 11-28: nobody left -- the sort builds no table
+      aisorts    aisortp with the wake's SET_ALL 20 (our levels' wake, plan.py): the table fixed, the sort off -> one
+                 tier. Bench 11-28: the near plant (the player's) first, never the far
     Facts: wake at.
     """
     import dataclasses
@@ -833,13 +840,19 @@ def aiprio_bench():
     SET_ALL = 'SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES'
     SET_ONE = 'SKIRMISH_AI_SET_ENEMY_PLAYER_PRIORITY'
     REL = (0, 0.0, 'Enemy')
+    NEAR = ('near plant', 'near turret 1', 'near turret 2')
+    FAR = ('far plant',)
 
 
-    def mission(name, prio=(), keep_all=True):
-        """aitargetnear with the near plant's group Soviet_4's; prio: (side, n) set one by one after the wake's switches."""
+    def mission(name, prio=(), keep_all=True, roles=NEAR, sort=None):
+        """aitargetnear with the roles Soviet_4's; prio: (side, n) set one by one after the wake's switches; sort: the
+        personality's EnemySortingMediumDifficulty."""
         m = at.mission(name, 'ClosestStructureHeuristic', 'SimpleAttack')
+        if sort:
+            head = f'PersonalityType="{at.PID}"'
+            m.assets = [(f, x.replace(head, f'{head} EnemySortingMediumDifficulty="{sort}"'), i) for f, x, i in m.assets]
         s1, s4 = m.player('s1'), m.player('s4')
-        for role in ('near plant', 'near turret 1', 'near turret 2'):
+        for role in roles:
             m.cast[role] = dataclasses.replace(m.cast[role], side='s4')
             m.find(m.cast[role].name).side = 's4'
         start = next(s for s in m.scripts if s.name == 'CNV AI - Start')
@@ -855,6 +868,9 @@ def aiprio_bench():
         'aiprio1': lambda: mission('CampAIPrio1', (('s4', 30), ('p1', 10)), keep_all=False),
         'aiprio0': lambda: mission('CampAIPrio0', (('p1', 0),)),
         'aipriorm': lambda: mission('CampAIPrioRm', (('s4', 0),), keep_all=False),
+        'aisortf': lambda: mission('CampAISortF', keep_all=False, roles=FAR),
+        'aisortp': lambda: mission('CampAISortP', keep_all=False, roles=FAR, sort='NearestFirst_AllowTies'),
+        'aisorts': lambda: mission('CampAISortS', roles=FAR, sort='NearestFirst_AllowTies'),
     }
     return dict(MISSION=MISSION)
 

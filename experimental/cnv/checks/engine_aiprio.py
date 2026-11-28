@@ -4,7 +4,8 @@ at = engine_aitarget()["shared"]
 from parts import Script, Test, counted, square
 
 AFTER = 60.0
-PICK = {'aipriodef': '到远厂', 'aiprio1': '到近厂', 'aiprio0': '到近厂', 'aipriorm': None}
+PICK = {'aipriodef': '到远厂', 'aiprio1': '到近厂', 'aiprio0': '到近厂', 'aipriorm': None,
+        'aisortf': None, 'aisortp': None, 'aisorts': '到近厂'}     # aisort*: the far plant is Soviet_4's
 
 
 def a(m, build):
