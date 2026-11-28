@@ -36,7 +36,6 @@ expect = [
     "plateau",
     "{(r['步兵在家'], r['步兵数']) for r in plateau} == {(0, 0)}",
 ]
-mismatch = "Red since it came in (3b217cdf): the simulator's last infantryman dies at s39-40, retail's are all dead by s37, so the s39 window opens on one alive. The AlphaStrike firing chronology (as the reading above) is unresolved."
 
 [[reading]]
 bench_id = "engine_aialphaclose"
