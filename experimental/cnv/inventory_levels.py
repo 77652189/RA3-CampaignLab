@@ -42,6 +42,17 @@ INERT = {
     (MODULE, 'Behaviors/PrematureDischargeSpecialPower'): (('a4',), 'AI 盖的高级防御塔落在不跑微操的默认队伍，脚本不按、'
                                                            '玩家占不了（INFERRED，同上第 2 节）'),
 }
+# our own features (retail never uses them, so the inventory has no item): (part, name) -> (state, why). Each one a level
+# reaches is a 0-use row of the page (one not listed: 未做); a held reading's `item` makes it 已对拍 (apply_declared).
+OWN = {
+    (MODULE, 'Behaviors/TeleportSpecialAbilityUpdate'): (TODO, '自由号跳跃（units/liberty.py）：模拟器没有这个模块，A 接'
+                                                         '（总控 11-27）'),
+    (ACTION, 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT:SpecialPower_CNV_ChronoDeck'): (TODO, '脚本让自由号跳：模拟器只记进时间线'),
+    (MODULE, 'Behaviors/TeleportToCasterSpecialPower'): (TODO, '信标拉回（units/beacon.py）：模拟器只走技能冷却，不拉人'),
+    (ACTION, 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT:SpecialPower_CNV_IceEngineer_Freeze'): (GUESSED, '冰冻工程师走去造墙'
+                                                                                          '（act_ability.script_cast）'),
+    (ACTION, 'UNIT_CHANGE_OBJECT_STATUS:IMMOBILE'): (GUESSED, '状态位模拟器认（命令不动 IMMOBILE 的），没有自己的读数'),
+}
 
 
 # ---- the object and weapon tables, with the words each one's data holds
@@ -274,22 +285,22 @@ def expand_forms(items, scope):
     return expanded, split
 
 
-def render(items, scope, missing):
+def render(items, scope, missing, declared=None):
     # Field-form partitions carry exact retail weapon membership. Attribute each
     # reached weapon once; unknown/custom weapons conservatively keep the TODO base.
     scope, split = expand_forms(items, scope)
+    import inventory
     by = {(i['part'], i['name']): i for i in items}
-    rows, unknown = [], []
+    # All retail forms can be measured while a custom weapon is not: keep its TODO row (no retail uses to the total)
+    by.update({(NUGGET, n): dict(part=NUGGET, name=n, uses=0, state=TODO, why='未覆盖的自制或未知武器写法；原版字段分片'
+                                 '另行登记') for p, n in scope if p == NUGGET and n in split and (p, n) not in by})
+    own = {k: dict(part=k[0], name=k[1], uses=0, state=st, why=f'自制，原版不用；{why}') for k in scope if k not in by
+           for st, why in [OWN.get(k, (TODO, '没登记（inventory_levels.OWN）'))]}
+    inventory.apply_declared(list(own.values()), declared, notes={})
+    by.update(own)
+    rows = []
     for (part, name), lvs in scope.items():
-        it = by.get((part, name))
-        if it is None and part == NUGGET and name in split:
-            # All retail forms can be measured while a custom weapon is not.
-            # Keep its TODO row; it adds no retail uses to the weighted total.
-            it = dict(part=part, name=name, uses=0, state=TODO,
-                      why='未覆盖的自制或未知武器写法；原版字段分片另行登记')
-        if it is None:
-            unknown.append((part, name, sorted(lvs)))
-            continue
+        it = by[(part, name)]
         eg = sorted({e for v in lvs.values() for e in v})
         rows.append((it, sorted(lvs, key=LEVELS.index), eg))
     order = {TODO: 0, GUESSED: 1, BENCHED: 3, NA: 4}
@@ -306,7 +317,7 @@ def render(items, scope, missing):
              '效果。没跟：模块点名的别的物体（多是能变成 / 能装的东西：多功能步兵车的乘客、锤子坦克吸来的车）、物体生成表'
              '（死亡碎片、OCL 技能）和命令表（工厂能造什么）。AI 部分（引擎 B）在 '
              '[inventory-levels.md](inventory-levels.md)。状态和原版用量取自 [inventory.md](inventory.md)。'
-             '停止条件①：下表全部已对拍。', '',
+             '自制技能（原版不用、清单没有）按 0 用量列进来，状态登记在 `inventory_levels.OWN`。停止条件①：下表全部已对拍。', '',
              f'**已对拍 {done} / {len(live)}**（不涉及的不算）。', '',
              '| 部分 | 已对拍 | 推断 | 未做 | 不涉及 |', '|---|---|---|---|---|']
     lines += [f'| {p} | {count[(p, BENCHED)]} | {count[(p, GUESSED)]} | {count[(p, TODO)]} | '
@@ -318,9 +329,6 @@ def render(items, scope, missing):
                   + '；'.join(f'{lv} ' + '、'.join(f'`{t}`' for t in ts) for lv, ts in gone.items()) + '。']
     lines += ['', '摆了、但在这几关里不会动的（不算）：'
               + '；'.join(f'`{n}` {" ".join(lvs)}：{why}' for (_, n), (lvs, why) in INERT.items()) + '。']
-    if unknown:
-        lines += ['', '编出的脚本里有、清单里没有的名字（不算）：'
-                  + '、'.join(f'`{n}`' for _, n, _ in sorted(unknown)) + '。']
     lines += ['', '| 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |', '|---|---|---|---|---|---|']
     for it, lvs, eg in rows:
         why = it['why'] + (f'；例：{", ".join(eg[:2])}' if eg else '')

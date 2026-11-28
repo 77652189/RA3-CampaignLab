@@ -223,8 +223,9 @@ def test_the_items_readings_declare_exist_and_the_held_ones_are_benched_citing_t
     """A reading's `item` (readings.py) names an inventory item that exists -- every one reported, mismatch-marked
     readings too -- and each one a held reading declares is 已对拍 with that reading in its why."""
     rows = {(i['part'], i['name']): i for i in items()}
+    import inventory_levels                         # our own features: 9-level rows only (inventory_levels.OWN)
     problems = [f'{src}: no item {k[0]} {k[1]}' for k, src in inventory.declared_items(held_only=False).items()
-                if k not in rows]
+                if k not in rows and k not in inventory_levels.OWN]
     problems += [f'{k}: {rows[k]["state"]} {rows[k]["why"][:80]}' for k, src in inventory.declared_items().items()
                  if k in rows and (rows[k]['state'] != inventory.BENCHED or src not in rows[k]['why'])
                  and k not in inventory.BENCHED_TESTS]

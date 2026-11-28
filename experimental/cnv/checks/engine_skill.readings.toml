@@ -10,6 +10,7 @@ bench = "C1 / C2 / C3 82002 / 82003 / 82003 (bench 2026-11-07 engine_skill a)"
 proves = """sim.Sim.act NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT: every core comes and stands its 82 frames; the frame it comes \
 within 2 of the bench's (the simulator has every in-range core 1 frame after its order; the bench 2-3 frames), the \
 walked D within 4 (as R5)."""
+item = "脚本动作 NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT:SpecialPower_CNV_IceEngineer_Freeze"
 let = {want = "[82002, 82003, 82003]"}
 expect = "all(g // 1000 == w // 1000 and abs(g % 1000 - w % 1000) <= (4 if w % 1000 > 50 else 2) for g, w in zip(vals(rows)[-1], want))"
 

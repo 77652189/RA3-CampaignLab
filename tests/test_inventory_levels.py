@@ -46,6 +46,15 @@ def test_a_module_nothing_moves_in_a_level_leaves_that_levels_scope(monkeypatch)
     assert list(inventory_levels.level_scope(['a3', 'a4'])[0][key]) == ['a3']
 
 
+def test_our_own_feature_a_level_reaches_is_a_gap_row_a_reading_can_close():
+    L = inventory_levels
+    ice, jump = [(L.ACTION, f'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT:SpecialPower_CNV_{p}') for p in ('IceEngineer_Freeze',
+                                                                                                     'ChronoDeck')]
+    page = L.render([], {ice: {'a4': set()}, jump: {'a7': set()}}, {}, declared={ice: 'checks/x.readings.toml::r'})
+    assert f'| 已对拍 | 脚本动作 | `{ice[1]}` | 0 | a4 | checks/x.readings.toml::r |' in page
+    assert f'| 未做 | 脚本动作 | `{jump[1]}` | 0 | a7 |' in page and '**已对拍 1 / 2**' in page
+
+
 def test_an_objects_words_naming_another_object_are_not_followed():
     objs = {'tank': ('Tank', {'Behaviors': [('WeaponSetUpdate', 'w', {'gun', 'truck'}, ())]}, None),
             'truck': ('Truck', {}, None), 'shell': ('Shell', {}, None)}
