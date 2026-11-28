@@ -77,3 +77,44 @@ bench = "CampProtofxFl 1124 at 09dd1a3a: 帧数 血400 血800 血1400 -- 100 99 
 proves = "SQUADRON's guns (StrafeAreaUpdate, the planes born 3000 out toward the Japanese yard, work/re a353_strafe.md A357): the foes on the target-yard line 800 out grazed by f6, 400 out at f48, 1400 out never -- neither 'born 3000 out' (1400 first) nor 'born 1500 out' (1400 at once) as the planes' flight"
 expect = ["min(v[2] for v in vals(rows) if 0 < v[0] <= 10) == 99", "min(v[1] for v in vals(rows) if 0 < v[0] <= 40) == 100", "min(v[1] for v in vals(rows) if 0 < v[0] <= 60) == 99", "min(v[3] for v in vals(rows)) == 100"]
 mismatch = "sim 100 100 100 throughout (the guns not simulated); bench 800 at 99 by f6, 400 from f48, 1400 100"
+
+# A433 (11-28, for the Soviet line's "cold-war relics in the sky"): may a script drop these on a spot for any player, again
+# and again, and do they hurt the caster's own side? Bench 11-28 work/bench_results/engine_protofx__<os oz or oc ms m3>.json.
+[[reading]]
+id = "protofx_os_orbital_rank1_hits_the_casters_own_tank"
+item = "脚本动作 PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT"
+scene = {build = "engine_protofx", check = "os", until = 20}
+bench = "os (p1 casts rank 1 on its own tanks): 帧数 血0 血150 -- 100 100 till f67, 15 100 from f73 to the end"
+proves = "sim PROTOCOL_HITS land on friend and foe alike (XML ALLIES ENEMIES NEUTRALS): the caster's own tank at the centre hit, 150 whole"
+expect = ["min(v[1] for v in vals(rows) if 0 < v[0] <= 60) == 100", "min(v[1] for v in vals(rows)) <= 20", "all(v[2] == 100 for v in vals(rows) if v[0] > 0)"]
+
+[[reading]]
+id = "protofx_oz_orbital_cast_by_a_player_with_nothing_hits_its_own"
+item = "脚本动作 PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT"
+scene = {build = "engine_protofx", check = "oz", until = 20}
+bench = "oz (s1 -- no construction yard, no protocol bought, no AI -- casts rank 1 on its own base defenses): 血0 血150 血250 血350 100 x4 to s9, 54 at s9, 11 from s10 to s49, the rest 100"
+proves = "a script casts a protocol for any player, a yard or not, and its debris hits that player's own; sim casts for the player's book alike"
+expect = ["min(v[0] for v in vals(rows)) <= 60", "tuple(vals(rows)[-1][1:]) == (100, 100, 100)"]
+
+[[reading]]
+id = "protofx_or_orbital_recast_is_cast_but_misses"
+scenes = {r = {build = "engine_protofx", check = "or", until = 40}, c = {build = "engine_protofx", check = "oc", until = 40}}
+bench = "or / oc (rank 1 again 300 frames on; oc zeroes the countdown first): 血0 血150 血250 施放数 -- 54 at s9, 11 from s10, 施放数 1 -> 2 at s24, yet 11 100 100 to s49 in both"
+proves = "a script's second cast inside the 180 s reload is cast (PLAYER_TRIGGERED_SPECIAL_POWER twice, no ready check: work/re l2_specialpower 4.2), zeroed countdown or not; where its debris lands not known (the centre's 11 % not hit again)"
+expect = ["all(vals(s)[-1][3] == 2 for s in (r, c))", "all(vals(s)[-1][0] == [v[0] for v in vals(s) if v[3] == 1][-1] > 0 for s in (r, c))"]
+
+[[reading]]
+id = "protofx_m3_magnetic_satellite_lifts_an_enemy_tank_away"
+item = "脚本动作 PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT"
+scene = {build = "engine_protofx", check = "m3", until = 15}
+bench = "m3 (p1's SpecialPowerMagneticSatelliteLvl3 on s1's tank): 帧数 血0 吸起 活着 -- 吸起 0 to f15, 1 from f22; 活着 1 to ~f37, 0 from f44; 血0 100 throughout (the counter keeps its last value once the tank is gone)"
+proves = "the satellite (SuckUpObjectsUpdate, CampaignOverrides) lifts a vehicle in its radius ~1 s after the cast and it is gone ~3 s after"
+expect = ["any(v[2] == 1 for v in vals(rows) if 0 < v[0] <= 25)", "all(v[3] == 0 for v in vals(rows) if v[0] >= 50)"]
+mismatch = "sim 吸起 0, 活着 1 throughout (the magnetic satellite not modelled, work/re A318); bench lifted from f22, gone by f44"
+
+[[reading]]
+id = "protofx_ms_magnetic_satellite_spares_the_casters_own"
+scene = {build = "engine_protofx", check = "ms", until = 30}
+bench = "ms (p1's level 3 on its own tank): 帧数 血0 吸起 活着 -- 100 0 1 from the cast to the end (f~660)"
+proves = "the campaign's satellite takes ENEMIES NEUTRAL only (CampaignOverrides): the caster's own vehicle never lifted (sim: none ever)"
+expect = "all(tuple(v[1:]) == (100, 0, 1) for v in vals(rows) if v[0] > 0)"
