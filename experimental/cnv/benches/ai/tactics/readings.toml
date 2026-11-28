@@ -1802,14 +1802,14 @@ bench_id = "engine_aimicro"
 id = "gather_bonus_runs_out_after_its_keep_time"
 scene = {build = "aigathk1", check = "a", until = 50, teams = true}
 bench = """\
-aigathk1 (aigathb3 with MinTimeToKeepTempVisionRangeBonus 1s; bench 11-25, run CampGathKeep1A): f352 5, f376 2, f424 5, \
+aigathk1 (aigathb3 with MinTimeToKeepTempVisionRangeBonus 1s; runs CampGathKeep1A on 11-25 and 11-27): f352 5, f376 2, f424 5, \
 f488 2 as aigathb3; the near two dead at f576 -> 8 (aigathb3: 5), 5 only at f664 ~400 off the far conscript, the \
-move to (3464.8,3221.5) -- as aigathb1: the bonus raised in state 5 is gone ~90 frames after the team left 5"""
+move to (3464.8,3221.5), as in aigathb1. INFERRED from state and destination: the bonus is gone by f576."""
 proves = "simai micro state: the temporary vision bonus is dropped once MinTimeToKeepTempVisionRangeBonus has passed"
 item = "AI 微操/AIMicroManagerData.MinTimeToKeepTempVisionRangeBonus"
 let = {near = "lambda r: min(((m['pos'][0] - 3150.0) ** 2 + (m['pos'][1] - 3300.0) ** 2) ** 0.5 for m in r['members'] if m['alive'])", live = "[r for r in teams() if r['updated'] and any(m['alive'] for m in r['members'])]", got = "[i for i, r in enumerate(live) if 'UNIT - CNV AM Far Conscript' in r['hostiles'] and near(r) > 600]"}
-expect = ["bool(got)", "any('UNIT - CNV AM Far Conscript' not in r['hostiles'] and near(r) > 600 for r in live[got[0]:])"]
-mismatch = "E286: once the far conscript is listed over 600 away, the simulator keeps it in hostiles in all 12 such updates; bench drops it about 90 frames after leaving state 5 (work/re/handoff-e-archive.md E286)."
+expect = ["bool(got)",
+          "any(r['run'] == live[i]['run'] and 'UNIT - CNV AM Far Conscript' not in r['hostiles'] and near(r) > 600 for i in got for r in live[i + 1:])"]
 
 [[reading]]
 bench_id = "engine_airetreat"
