@@ -109,6 +109,16 @@ proves = "IgnoreForbiddenParentStatusStatus UNDER_IRON_CURTAIN is read on the dr
 expect = "vals(rows)[-1] == [163, 163, 109, 109]"
 
 [[reading]]
+bench_id = "engine_attachterror"
+id = "native_terror_eats_its_parent_and_takes_the_next_car"
+scene = {build = "engine_attachterror", check = "h", until = 42, shot_clock = true}
+bench = "CampAttTerrorH_mcp_1127_202740: at the 40 s sample 70320 / 10320 / 10516 / 10182 (A423; 550-health Hammers, ordered at 6 s; sim 70317 / 10317 / 10511 / 10183)"
+proves = "the retail Terror Drone eats a full-health Hammer to death itself (frame 320 from the order; INTERNAL_DESTRUCTION is its own death type, so DIE_WHEN_PARENT_DIES_FROM_NOT_ME spares it: Sim.attachment_tick's last_by), lives with ATTACHED / ENCLOSED cleared, and as an idle unit takes a car 60 away 14 frames later; without the AttachNugget it never hurts the parent"
+item = "物体模块 Behaviors/AttachUpdate:恐怖机器人"
+let = {late = "next(v for v in vals(rows) if v[1] >= 10000)"}
+expect = ["abs(late[1] - 10320) <= 4", "late[0] - late[1] == 60000", "10500 <= late[2] < 20000", "8 <= (late[2] - late[3]) - (late[1] - 10000) <= 20"]
+
+[[reading]]
 bench_id = "engine_attachc4"
 id = "native_c4_attaches_marks_and_a_forbidden_parent_takes_the_mark_alone"
 scene = {build = "engine_attachc4", check = "a", until = 24, shot_clock = true}

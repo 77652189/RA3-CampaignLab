@@ -37,8 +37,8 @@ REPAIR_KIDS = [('ObjectFilter', dict(Rule='ANY', Include='VEHICLE AIRCRAFT HUGE_
                                      StatusBitFlagsExclude='NOT_IN_WORLD', Relationship='ALLIES'), 0)]
 # the retail Terror Drone's block (SovietScoutVehicle; engine_attachterror a): attaches like the simple shape and its
 # child dies with a parent killed by another (a script's NAMED_KILL) and with a parent UNDERGOING_REPAIR unless the
-# child itself is UNDER_IRON_CURTAIN (engine_attachterror f / g; the parent's curtain does not spare it). Bounce, unmanned
-# detach and the parent's own INTERNAL_DESTRUCTION are not modelled (the rule's flags keep them; INFERRED / gap)
+# child itself is UNDER_IRON_CURTAIN (engine_attachterror f / g; the parent's curtain does not spare it); a parent it eats
+# itself (INTERNAL_DESTRUCTION) frees it to take the next car (h). Bounce and unmanned detach are not modelled (gap)
 TERROR = dict(ParentStatus='VEHICLE_ATTACHED BOOBY_TRAPPED', CloseEnoughRange='5', Range='10',
               AttachedObjectStatus='IGNORE_AI_COMMAND ENCLOSED NON_AUTOACQUIRABLE UNATTACKABLE',
               AttachedModelConditions='HIDDEN', Flags=frozenset(

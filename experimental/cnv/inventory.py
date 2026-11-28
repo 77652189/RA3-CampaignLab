@@ -574,7 +574,7 @@ def module_items():
             import contain_audit
             for shape, label, why, example in (
                     ('TERROR', '恐怖机器人', '整块 TERROR：engine_attachterror a/f/g（附着、父车被别人杀子随死、父车修理中子死'
-                     '除非子铁幕）；自己吃死父车（INTERNAL_DESTRUCTION）后子活着脱离没量（台上靶 10 万血）、弹跳、'
+                     '除非子铁幕）、h（自己吃死父车后子活着脱离、再附下一辆）；弹跳、'
                      '父车无人驾驶脱离（9 关没有来源）仍gap', 'SovietScoutVehicle'),
                     ('C4', '谭雅C4', '整块 C4：engine_attachc4 a/b', 'AlliedCommandoTech1')):
                 share = contain_audit.attach_share(shape, with_templates=True)

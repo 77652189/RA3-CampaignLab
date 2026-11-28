@@ -830,11 +830,46 @@ def engine_attachterror():
             return t
         return check
 
+    def eaten(m):
+        """A423: the drone eats a retail-health parent (the Hammer's 550) itself. Counters, frames from the 6 s order:
+        base / high / order -- frames the parent lives + at 40 s child alive 10000 / ATTACHED 20000 / ENCLOSED 40000
+        (order: no AttachNugget, the control); next -- frames a second idle car 60 beside the base parent is
+        VEHICLE_ATTACHED + 10000 if it lives at 40 s (does the freed drone take the next one)."""
+        m.units = [target(u.id, health=550) if u.id.startswith('CNV_AttTerrorParent') else u for u in m.units]
+        m.put('CNV_AttTerrorParentBase', 'base gun', 60, 120, side='s1', angle=4.7124, name='Terror base next')
+        t = Test()
+        start = [('MAP_REVEAL_ALL_PERM', m.player('p1')), ('UNIT_CHANGE_OBJECT_STATUS', 'Terror base next', 'NO_ATTACK', 1)]
+        for phase, at in (('Fire', 6.), ('Late', 40.)):
+            start.append(('SET_MILLISECOND_TIMER', 'AttTerror '+phase, at))
+        fire = []
+        for lane in LANES[:3]:
+            child, parent = ['Terror '+lane+' '+role for role in ('child', 'parent')]
+            c = 'CNV_AttTerror_'+lane
+            t.counters.append((c, lane+' terror packed'))
+            start.extend(('UNIT_CHANGE_OBJECT_STATUS', who, 'NO_ATTACK', 1) for who in (child, parent))
+            fire.extend((('UNIT_CHANGE_OBJECT_STATUS', child, 'NO_ATTACK', 0), ('NAMED_ATTACK_NAMED', child, parent)))
+            t.scripts.append(Script('Test - lives '+lane, [('TIMER_EXPIRED', 'AttTerror Fire'), ('NAMED_NOT_DESTROYED', parent)],
+                                    [('INCREMENT_COUNTER', 1, c)], once=False))
+            for weight, bit in ((10000, None), (20000, 'ATTACHED'), (40000, 'ENCLOSED')):
+                t.scripts.append(Script(f'Test - late {lane} {weight}',
+                    [('TIMER_EXPIRED', 'AttTerror Late'), ('NAMED_NOT_DESTROYED', child)]
+                    + ([('UNIT_HAS_OBJECT_STATUS', child, status(bit))] if bit else []), [('INCREMENT_COUNTER', weight, c)]))
+        t.counters.append(('CNV_AttTerror_next', 'next car packed'))
+        t.scripts.append(Script('Test - next held', [('NAMED_NOT_DESTROYED', 'Terror base next'),
+                                ('UNIT_HAS_OBJECT_STATUS', 'Terror base next', status('VEHICLE_ATTACHED'))],
+                                [('INCREMENT_COUNTER', 1, 'CNV_AttTerror_next')], once=False))
+        t.scripts.append(Script('Test - next late', [('TIMER_EXPIRED', 'AttTerror Late'),
+                                ('NAMED_NOT_DESTROYED', 'Terror base next')], [('INCREMENT_COUNTER', 10000, 'CNV_AttTerror_next')]))
+        t.scripts.insert(0, Script('Test - start', [], start))
+        t.scripts.append(Script('Test - fire', [('TIMER_EXPIRED', 'AttTerror Fire')], fire))
+        t.bench = [('bench_watch', dict(seconds=44., every=.5, sheet=False, lines=4))]
+        return t
+
     REPAIR, CURTAIN = (16, 'parent', 'UNDERGOING_REPAIR'), (15, 'parent', 'UNDER_IRON_CURTAIN')
     MISSION = {'engine_attachterror': mission}
     CHECKS = {'engine_attachterror': {'a': check,
         'f': forbidden({'base': (REPAIR,), 'high': (CURTAIN, REPAIR), 'order': (REPAIR,)}),
-        'g': forbidden({'base': ((15, 'child', 'UNDER_IRON_CURTAIN'), REPAIR), 'high': (CURTAIN,)})}}
+        'g': forbidden({'base': ((15, 'child', 'UNDER_IRON_CURTAIN'), REPAIR), 'high': (CURTAIN,)}), 'h': eaten}}
     return dict(MISSION=MISSION, CHECKS=CHECKS)
 
 
