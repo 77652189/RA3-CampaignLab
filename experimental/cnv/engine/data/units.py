@@ -278,7 +278,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v55.json')    # v55: CanFireWhileMoving (A405); v54: direct DeathType (E280); v53: King Oni's arc shocks (A393); v52: PsyonicBlast's infantry shock (A391); v51: inherited armour (A387 h); v50: the dog's pounce (A386); v49: the SPN's StatusBitFlagsExclude (A374); v48: the shotgun's self-centred arc shock (A363); v47: the grapple nugget (E226); v46: the lift's retail filter; v45: the link guns' ally filter; v44: + taper (DamageDealtAtSelfPosition); v43: weapons from the data port (W1), the cache keeps `sets`; v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v56.json')    # v56: the Molotov's contained nugget (WindowBlastFX is art, A432); v55: CanFireWhileMoving (A405); v54: direct DeathType (E280); v53: King Oni's arc shocks (A393); v52: PsyonicBlast's infantry shock (A391); v51: inherited armour (A387 h); v50: the dog's pounce (A386); v49: the SPN's StatusBitFlagsExclude (A374); v48: the shotgun's self-centred arc shock (A363); v47: the grapple nugget (E226); v46: the lift's retail filter; v45: the link guns' ally filter; v44: + taper (DamageDealtAtSelfPosition); v43: weapons from the data port (W1), the cache keeps `sets`; v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
 ARMOR_DEFAULT = 100.0           # a damage type an armour does not name: taken in full (a guess)
@@ -702,7 +702,8 @@ def _weapons(texts, base_table=None):
                 if (len(filters) != 1 or re.sub(r'<DamageObjectFilter\b[^>]*/>', '', inner).strip()
                         or _attr(filters[0][0], 'Rule', 'NONE') != 'NONE'
                         or set(re.findall(r'(\w+)\s*=', filters[0][0])) - {'Rule', 'Include', 'Exclude'}
-                        or set(re.findall(r'(\w+)\s*=', h)) - {'id', 'Damage', 'DamageType', 'DeathType', 'MaxUnitsToDamage', 'Radius', 'DelayTimeSeconds'}
+                        or set(re.findall(r'(\w+)\s*=', h)) - {'id', 'Damage', 'DamageType', 'DeathType', 'MaxUnitsToDamage', 'Radius', 'DelayTimeSeconds',
+                                                       'WindowBlastFX'}
                         or _num(_attr(h, 'Radius', '0'), float('nan')) != 0
                         or any(war) or _secs(_attr(h, 'DelayTimeSeconds', '0s'))):
                     unsupported.append('DamageContainedNugget')
@@ -846,7 +847,8 @@ def _resolve(w, weapons):
                 strip_max_health=w.get('strip_max_health', weapons.get(w.get('warhead'), {}).get('strip_max_health', [])),
                 emp_seconds=w.get('emp_seconds', weapons.get(w.get('warhead'), {}).get('emp_seconds', [])),
                 leech_percent=w.get('leech_percent', 0.0), leech_health=w.get('leech_health', 0.0),
-                sweep=w.get('sweep'), ring=w.get('ring'), contained=w.get('contained', []), dot=w.get('dot', []),
+                sweep=w.get('sweep'), ring=w.get('ring'), dot=w.get('dot', []),
+                contained=w.get('contained', weapons.get(w.get('warhead'), {}).get('contained', [])),
                 special_powers=w.get('special_powers', weapons.get(w.get('warhead'), {}).get('special_powers', [])),
                 attach=w.get('attach', weapons.get(w.get('warhead'), {}).get('attach', [])),
                 lift=w.get('lift', weapons.get(w.get('warhead'), {}).get('lift', [])),

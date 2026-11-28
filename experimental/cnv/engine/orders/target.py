@@ -15,7 +15,9 @@ def takes_by_itself(a, t, q):
     engine_a1coil d: s1's idle tesla coil takes the player's plants, NOT_ + AUTO_ACQUIRABLE_BY_AI too; engine_invuln: the
     player's sentry gun leaves the enemy's bunker alone; other immobile shooters INFERRED), `t` a base defence (FS_BASE_DEFENSE;
     a garrisoned building that can fire is the other exception, not modelled) or `a`'s side is run by the skirmish AI
-    (`q.ai`, woken: it keeps Generals' computer exception, INFERRED -- the bench's s1 had no AI; tests/test_simai).
+    (`q.ai`, woken: it keeps Generals' computer exception, INFERRED -- the bench's s1 had no AI; tests/test_simai),
+    or `a` is ANTI_GARRISON (the conscript's Molotov toggled) and `t` holds passengers (A432, engine_a1hold mol order:
+    idle, it burns the house out; whether an untoggled one takes it the bench cannot tell, its AK harms nobody).
     Bench 2026-11-08 engine_seal: the player's idle peacekeeper leaves the enemy's bunkers alone (erow), the enemy's
     (a computer player's) idle and attack-moving past leaves the player's bunker and plant alone (ebld / ebldam) --
     RA3 drops that exception. An order naming the target (`a.goal`) is not filtered here."""
@@ -30,7 +32,8 @@ def takes_by_itself(a, t, q):
         return False
     if 'STRUCTURE' in t.kinds and not a.ai_acquire:
         return ('ATTACK_BUILDINGS' in a.acquire or 'FS_BASE_DEFENSE' in t.kinds or post
-                or a.owner in getattr(q, 'ai', ()))
+                or a.owner in getattr(q, 'ai', ())
+                or 'ANTI_GARRISON' in a.status and 'CONTAINER_OCCUPIED' in t.status)
     return True
 
 

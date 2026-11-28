@@ -14,8 +14,7 @@ expect = [
 
 [[reading]]
 id = "a1hold_a_toggled_conscript_burns_a_garrison_out_one_by_one_and_an_untoggled_one_never"
-scenes = {m = {build = "engine_a1hold", check = "mol", until = 30}, a = {build = "engine_a1hold", check = "ai", until = 30}}
+scenes = {m = {build = "engine_a1hold", check = "mol", until = 30, shot_clock = true}, a = {build = "engine_a1hold", check = "ai", until = 30, shot_clock = true}}
 bench = "bench 11-28 屋内 存活 切换 归属 (digits base high order removed switch, ones first) from s19: mol 33030 33030 101 11010, ai 3330 3330 10001 1110; a death about every 6 s"
 proves = "SovietAntiInfantryInfantry Molotov (DamageContainedNugget MaxUnitsToDamage 1): toggled, ordered or idle, it kills a garrison inside one at a time and the empty house goes back to the civilians; untoggled (the AK47) it harms no passenger and Soviet_1's AI does not toggle it"
 expect = "[[r[25][k] for k in ('屋内', '存活', '切换', '归属')] for r in (m, a)] == [[33030, 33030, 101, 11010], [3330, 3330, 10001, 1110]]"
-mismatch = "sim: no passenger burned (mol 33333 33333 101 11111, ai 33333 33333 10001 11111); bench as above"

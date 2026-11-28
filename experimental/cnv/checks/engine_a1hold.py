@@ -140,7 +140,8 @@ MISSION = {'engine_a1hold': mission}
 # (ordered or not, s1's or s2's) burns its house's three out one at a time, a death about every 6 s (3 x 50), all dead
 # inside by ~16 s after the order, the house the civilians' then; 屋内 drops ~2 s before 存活 (the dying body). No
 # untoggled one does (the AK47 only; s1's AI toggles nobody in 45 s): mol 33030 33030 101 11010, ai 03330 03330 10001
-# 01110 from s19. Toggled and idle (mol order) attacks the house by itself. The simulator burns nobody (33333).
+# 01110 from s19. Toggled and idle (mol order) attacks the house by itself. The simulator agrees on the shot clock
+# (A432: the warhead's contained nugget reaches the weapon; an ANTI_GARRISON shooter takes an occupied house idle).
 AI = {'base': (True, True), 'high': (False, True), 'order': (False, True), 'removed': (False, True),
       'switch': (True, True)}
 CHECKS = {'engine_a1hold': {'pts': pts_test, 'mol': mol_test, 'ai': lambda m: mol_test(m, AI)}}
