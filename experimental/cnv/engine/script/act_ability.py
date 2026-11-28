@@ -252,14 +252,15 @@ def script_cast(sim, name, a, unit=None):
             _land(sim, sim.frame_now(), q, hits, b.owner, b)
         curtain_host = True
         if a[1] == 'SpecialPowerIronCurtain' and b and b.alive:
-            module = simunits.ocl_power(b.template, a[1], sim.own)
-            curtain_host = bool(module and simunits.iron_curtain_ocl(module['OCL'], sim.own) and
+            own = sim.own
+            module = simunits.ocl_power(b.template, a[1], own)
+            curtain_host = bool(module and simunits.iron_curtain_ocl(module['OCL'], own) and
                                 module['CreateLocation'] == 'CREATE_AT_LOCATION' and
                                 module['CanAffectObjectFilter'] ==
                                 'SovietIronCurtainSpecialPowerObjectFilter')
             empty_dispatch = bool(module and
-                                  (simunits.empty_ocl(module['OCL'], sim.own) or
-                                   simunits.iron_curtain_ocl(module['OCL'], sim.own, zero_count=True)) and
+                                  (simunits.empty_ocl(module['OCL'], own) or
+                                   simunits.iron_curtain_ocl(module['OCL'], own, zero_count=True)) and
                                   module['CreateLocation'] == 'CREATE_AT_LOCATION' and
                                   module['CanAffectObjectFilter'] ==
                                   'SovietIronCurtainSpecialPowerObjectFilter')
@@ -309,7 +310,7 @@ def _teleport(sim, b, power, p):
     for m in stores:
         m.store(p)
     for m in carries:
-        m.begin(p)
+        m.begin(p, texts=tuple((sim.own or {}).values()))
     return bool(stores or carries)
 
 

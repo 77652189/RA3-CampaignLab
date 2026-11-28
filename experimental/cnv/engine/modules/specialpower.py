@@ -31,6 +31,7 @@ RETURN = 'ReturnToProducerSpecialPower'             # its own class below (Retur
 DOMINATE = 'DominateEnemySpecialPower'              # its own class below (DominateEnemy: whom a cast takes)
 STORE = 'StoreObjectsSpecialPower'                  # its own class below (StoreObjects: who the teleport takes)
 OCL = 'OCLSpecialPower'                             # its own class below (OCLRun: a bombing run's delay and drop)
+PULL = 'TeleportToCasterSpecialPower'               # its own class below (PullToCaster: the beacon pull)
 FALL = 6    # frames from the bomber over its target to the bomb's hit (A375 INFERRED: engine_oclmon_n 93 / 94 from GO)
 
 
@@ -55,7 +56,7 @@ class SpecialPowerData(module.ModuleData):
                    link=templates.attr(head, 'TeleportLinkID') or templates.attr(head, 'StoreObjectsLinkID'))
 
 
-@factory.module(*(t for t in TAGS if t not in (ASSIGN, RECALL, RETURN, DOMINATE, STORE, OCL)))
+@factory.module(*(t for t in TAGS if t not in (ASSIGN, RECALL, RETURN, DOMINATE, STORE, OCL, PULL)))
 class SpecialPower(module.Module, interfaces.SpecialPower, interfaces.Create):
     """Data and a reload frame; no update of its own (a reload is over once the frame passes it)."""
     DATA = SpecialPowerData
@@ -198,11 +199,17 @@ def asset_filter(name, texts):
     """The ObjectFilterAsset `name` of the mission's own XML texts as store() takes it: (Include, Exclude kinds,
     StatusBitFlagsExclude, (IncludeThing, ExcludeThing templates lower case), Relationship); None: not there or not
     Rule ANY. Relationship read as its owner's own only (INFERRED: SAME_PLAYER ALLIES, another allied player not taken)."""
+    return _filter_in(texts, 'ObjectFilterAsset', name, 'Filter')
+
+
+def _filter_in(texts, tag, name, inner_tag):
+    """The filter `inner_tag` of the block <tag id=name> as asset_filter gives it (also a SpecialPowerTemplate's own
+    ObjectFilter: the beacon pull)."""
     for text in texts:
-        for head, inner in templates.blocks(text, 'ObjectFilterAsset'):
+        for head, inner in templates.blocks(text, tag):
             if templates.attr(head, 'id') != name:
                 continue
-            fh, fi = next(iter(templates.blocks(inner, 'Filter')), ('', ''))
+            fh, fi = next(iter(templates.blocks(inner, inner_tag)), ('', ''))
             if (templates.attr(fh, 'Rule') or 'ANY') != 'ANY':
                 return None
             return (frozenset(templates.words(fh, 'Include')), frozenset(templates.words(fh, 'Exclude')),
@@ -210,6 +217,14 @@ def asset_filter(name, texts):
                     tuple(frozenset(x.strip().lower() for x in re.findall(rf'<{k}>([^<]+)</{k}>', fi))
                           for k in ('IncludeThing', 'ExcludeThing')), templates.attr(fh, 'Relationship'))
     return None
+
+
+def _takes(spec, me, t):
+    """t passes spec (asset_filter's), me the caster: not me, its kinds or templates, its status, its owner."""
+    inc, exc, bits, things, rel = spec
+    return (t is not me and t.alive and (t.kinds & inc or t.template.lower() in things[0]) and not t.kinds & exc
+            and t.template.lower() not in things[1] and not module.status_now(t) & bits
+            and (rel is None or t.owner == me.owner))
 
 
 @factory.module(STORE)
@@ -236,11 +251,8 @@ class StoreObjects(SpecialPower, interfaces.Store):
         if spec is None and d.filter != CHRONO[0]:
             self.world.gap('StoreObjectsSpecialPower', d.filter or '', '只认原版时空传送的对象过滤器：没带走谁')
             return
-        inc, exc, bits, things, rel = spec or (CHRONO[1], CHRONO[2], CHRONO[3], (frozenset(), frozenset()), None)
-        self.carried = tuple(t for t in self.world.living() if t is not me and t.alive
-                             and (t.kinds & inc or t.template.lower() in things[0]) and not t.kinds & exc
-                             and t.template.lower() not in things[1] and not module.status_now(t) & bits
-                             and (rel is None or t.owner == me.owner)
+        spec = spec or (CHRONO[1], CHRONO[2], CHRONO[3], (frozenset(), frozenset()), None)
+        self.carried = tuple(t for t in self.world.living() if _takes(spec, me, t)
                              and math.hypot(t.x - point[0], t.y - point[1]) <= d.radius)
 
     def stored(self):
@@ -248,6 +260,55 @@ class StoreObjects(SpecialPower, interfaces.Store):
 
     def clear(self):
         self.stored_at, self.carried = None, ()
+
+
+class PullData(SpecialPowerData):
+    def __init__(self, power=None, unpack=0, radius=0.0, near=0.0):
+        super().__init__(power)
+        self.unpack, self.radius, self.near = unpack, radius, near     # UnpackTime (frames), Radius, MinDestinationRadius
+
+    @classmethod
+    def read(cls, head, inner):
+        return cls(templates.attr(head, 'SpecialPowerTemplate'),
+                   int(FPS * templates.secs(templates.attr(head, 'UnpackTime') or '0s') + 0.5),
+                   templates.num(templates.attr(head, 'Radius')), templates.num(templates.attr(head, 'MinDestinationRadius')))
+
+
+@factory.module(PULL)
+class PullToCaster(SpecialPower, interfaces.Teleport, interfaces.Update):
+    """TeleportToCasterSpecialPower (A428, checks/engine_bcnpull.readings.toml; read in the program): the beacon pull. UnpackTime frames after the cast (rounded, the base unpack) the things
+    of its power's own ObjectFilter within Radius of the point are put round the caster: the i-th of n at angle
+    2 pi i / n, MinDestinationRadius out, facing out. Not modelled: the search for a free spot out to
+    MaxDestinationRadius (INFERRED: the first one is free), the scan order, KillObjectsIfPlacedInBadSpot, the FX."""
+    DATA = PullData
+    PHASE = 'seq'
+    STATE = ('ready', 'first', 'made', 'end', 'due', 'spec')
+    end = None          # the point; None: idle
+    due = 0             # the frame they land
+    spec = None         # its power's filter (asset_filter's), read at the cast
+
+    def begin(self, point, lag=0, texts=()):
+        """lag 0 (engine_bcnpull a / b: in at his side from the 9th frame of the script's cast -- the Liberty's own
+        jump, the same base unpack, a frame later: INFERRED the script's frame not counted here)."""
+        self.spec = _filter_in(texts, 'SpecialPowerTemplate', self.data.power, 'ObjectFilter') or self.spec
+        self.end, self.due = point, self.world.frame + self.data.unpack + lag
+        self.world.wake(self, self.due)
+
+    def update(self, frame):
+        if self.end is None:
+            return interfaces.SLEEP
+        if frame < self.due:
+            return self.due - frame
+        me, d, (px, py) = self.thing, self.data, self.end
+        self.end = None
+        if self.spec is None:
+            self.world.gap(PULL, d.power or '', '技能模板里没有对象过滤器：没拉人')
+            return interfaces.SLEEP
+        pulled = [t for t in self.world.living() if _takes(self.spec, me, t) and math.hypot(t.x - px, t.y - py) <= d.radius]
+        for i, t in enumerate(pulled):
+            a = 2 * math.pi * i / len(pulled)
+            t.x, t.y, t.angle = me.x + d.near * math.cos(a), me.y + d.near * math.sin(a), a
+        return interfaces.SLEEP
 
 
 class ReturnData(SpecialPowerData):

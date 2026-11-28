@@ -67,7 +67,7 @@ class Teleport(module.Module, interfaces.Update, interfaces.Teleport):
     def power(self):
         return self.data.power
 
-    def begin(self, point, lag=LAG):
+    def begin(self, point, lag=LAG, texts=()):
         """lag 0: a weapon's cast inside a frame's update (the Liberty's deck send: the crew a frame after it lands)."""
         b, d = self.thing, self.data
         link = next((m.data.link for m in b.find(interfaces.SpecialPower) if m.power() == d.power and m.data.link),
@@ -153,7 +153,7 @@ class TeleportAbility(module.Module, interfaces.Update, interfaces.Teleport):
     def power(self):
         return self.data.power
 
-    def begin(self, point, lag=LAG):
+    def begin(self, point, lag=LAG, texts=()):
         b, d = self.thing, self.data
         if d.source:
             self.world.fire(b, d.source, at=(b.x, b.y))

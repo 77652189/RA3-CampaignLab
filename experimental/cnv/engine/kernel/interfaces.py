@@ -717,13 +717,14 @@ class Store(Interface):
 
 
 class Teleport(Interface):
-    """TeleportStoredObjectsUpdate: the power it serves and the second step's cast (begin: the landing point)."""
+    """TeleportStoredObjectsUpdate: the power it serves and the second step's cast (begin: the landing point; texts:
+    the mission's own XML, where the beacon pull reads its filter)."""
     __slots__ = ()
 
     def power(self):
         raise NotImplementedError
 
-    def begin(self, point):
+    def begin(self, point, lag=1, texts=()):
         raise NotImplementedError
 
 

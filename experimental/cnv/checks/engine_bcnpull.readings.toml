@@ -1,0 +1,18 @@
+# Bench readings of checks/engine_bcnpull.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A428 (bench 11-27): the beacon trooper's pull cast by script ('Test Go', SpecialPower_CNV_BcnPull_Pull). Rows count
+# frames from Go: 帧数; 第二行 = G1 in Near + 1000 x G2; 第三行 = the Peacekeeper + 1000 x the Soviet_1 Guardian;
+# 第四行 = the own Guardian 200 off the point + 1000 x the trooper in his start square.
+# Not a reading yet: b (G1 alone) is in Near from the 9th frame but in none of the four 50-boxes on the axes 40..140 off
+# him (s1: 29 0 0 21000) -- where it lands is unread; the simulator puts it 40 east (into E).
+
+[[reading]]
+id = "a_own_ones_in_the_radius_land_at_his_side_from_the_9th_frame_the_foe_and_the_far_one_stay"
+scene = {build = "engine_bcnpull", check = "a", until = 4}
+item = ["物体模块 Behaviors/TeleportToCasterSpecialPower"]
+bench = "CampBcnPull a (run_queue 11-27): s1: 29 21021 21 29000 | s2: 42 34034 34 42000 | s3: 58 50050 50 58000"
+proves = """TeleportToCasterSpecialPower: the two own Guardians and the own Peacekeeper within Radius 150 of the point \
+are at his side from the 9th frame of the cast (UnpackTime 0.5 s = 8 frames); the Soviet_1 Guardian in the radius \
+(not SAME_PLAYER ALLIES) and the own one 200 off never; he does not move"""
+let = {at = "lambda f: next(r for r in rows if r.get('帧数', 0) >= f)"}
+expect = ["at(25)['第二行'] == 1001 * (at(25)['帧数'] - 8)", "at(25)['第三行'] == at(25)['帧数'] - 8",
+          "at(25)['第四行'] == 1000 * at(25)['帧数']"]

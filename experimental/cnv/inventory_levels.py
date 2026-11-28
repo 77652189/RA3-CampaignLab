@@ -47,7 +47,7 @@ INERT = {
 OWN = {
     (MODULE, 'Behaviors/TeleportSpecialAbilityUpdate'): (TODO, '自由号跳跃（engine/modules/teleport.py，engine_libjump）'),
     (ACTION, 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT:SpecialPower_CNV_ChronoDeck'): (TODO, '脚本让自由号跳（engine_libjump）'),
-    (MODULE, 'Behaviors/TeleportToCasterSpecialPower'): (TODO, '信标拉回（units/beacon.py）：模拟器只走技能冷却，不拉人'),
+    (MODULE, 'Behaviors/TeleportToCasterSpecialPower'): (TODO, '信标拉回（specialpower.PullToCaster，engine_bcnpull）'),
     (ACTION, 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT:SpecialPower_CNV_IceEngineer_Freeze'): (GUESSED, '冰冻工程师走去造墙'
                                                                                           '（act_ability.script_cast）'),
     (ACTION, 'UNIT_CHANGE_OBJECT_STATUS:IMMOBILE'): (GUESSED, '状态位模拟器认（命令不动 IMMOBILE 的），没有自己的读数'),
