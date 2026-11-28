@@ -233,14 +233,15 @@ class Garrisons:
         return False                        # one of them dead: not sent (the port answers so: review 11-19 k #4)
 
     def recycle_refund(self, u, g):
-        """E308/E309: the named enter order for a retail Hammer and a friendly Soviet Crane."""
+        """E308/E309/E316: the named enter order for a retail Hammer at a Soviet Crane."""
         if (u.template != 'SovietAntiVehicleVehicleTech1' or g.template != 'SovietCrane'
                 or 'AIRBORNE_TARGET' in (set(u.status) | u.script_status)):
             return None
-        # Only the mutual alliance was measured. One-way relations are still a gap.
-        if u.owner != g.owner and not all(
-                self.relation(pair) == 'Friend'
-                for pair in ((g.owner, u.owner), (u.owner, g.owner))):
+        # The crane owner's Friend permits entry even when the Hammer's owner is Neutral.
+        # Enemy and implicit relationships were not measured.
+        if u.owner != g.owner and (
+                self.relation((g.owner, u.owner)) != 'Friend'
+                or self.relation((u.owner, g.owner)) not in ('Friend', 'Neutral')):
             return None
 
         def read(xml):

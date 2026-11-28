@@ -19,3 +19,14 @@ expect = """
 and any(76 <= r['Frame'] <= 90 and (r['State'], r['Wallet'], r['Ally Wallet']) == (75, 0, 0) for r in rows)
 and (rows[-1]['Frame'], rows[-1]['State'], rows[-1]['Wallet'], rows[-1]['Ally Wallet']) == (225, 25, 1500, 0))
 """
+
+[[reading]]
+id = "a_one_way_friendship_permits_recycling_from_the_crane_owners_side"
+scene = {build = "engine_cranerecycleally", check = "c", until = 15.5}
+bench = "E316 CampRecycleAlC_mcp_1127_211448: Frame / State / Wallet / Ally Wallet f45–68 1500/0/0, f75–90 1505/0/0, f98–225 1005/1500/0"
+proves = "With p1 Neutral toward s2 and s2 Friend toward p1, the p1 Hammer enters the s2 crane and the s2 Hammer stays outside the p1 crane's approach area. The same-owner Hammer enters and the module-off Hammer survives. State is 100 times the survival bits plus the latched approach bits (same owner 1, module off 2, friendly crane 4, neutral crane 8)."
+expect = """
+(any(45 <= r['Frame'] <= 68 and (r['State'], r['Wallet'], r['Ally Wallet']) == (1500, 0, 0) for r in rows)
+and any(75 <= r['Frame'] <= 90 and (r['State'], r['Wallet'], r['Ally Wallet']) == (1505, 0, 0) for r in rows)
+and (rows[-1]['Frame'], rows[-1]['State'], rows[-1]['Wallet'], rows[-1]['Ally Wallet']) == (225, 1005, 1500, 0))
+"""
