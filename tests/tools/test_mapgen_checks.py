@@ -480,10 +480,28 @@ def test_route_cannot_fit_a_single_fine_row():
 
 
 def test_unexpanded_state_is_pending_even_if_base_has_room():
-    data = _split_design(height=3)
+    data = _split_design(height=3, passage={'pass': ['foot', 'vehicle', 'amphibian']})
     data['points'] = {'pad': {'block': 'north', 'at': [500, 600]}}
-    data['states'] = {'later': {'playable': ['north']}}
+    data['states'] = {'later': {'pass': {'wall': []}}}
     data['relations'] = {'baseRoom': {'type': '放得下', 'point': 'pad', 'side': 80},
                          'laterRoom': {'type': '放得下', 'point': 'pad', 'side': 80, 'state': 'later'}}
     answers = _expanded(Design(data)).check_relations()
     assert [answer.status for answer in answers.values()] == ['pass', 'pending']
+
+
+def test_playable_state_checks_the_exported_border_and_its_margin():
+    data = _split_design(height=3)
+    data['borders']['wall']['line'] = [[300, 0], [300, 800]]
+    data['blocks']['south']['at'] = [150, 200]
+    data['states'] = {'opening': {'playable': ['south']}, 'expanded': {}}
+    data['points'] = {'start': {'block': 'south', 'at': [150, 200]},
+                      'margin': {'block': 'north', 'at': [650, 200]},
+                      'goal': {'block': 'north', 'at': [900, 200]}}
+    route = {'type': '通不通', 'from': 'start', 'who': 'vehicle'}
+    data['relations'] = {
+        'walkMargin': dict(route, to='margin', state='opening'),
+        'closed': dict(route, to='goal', state='opening', reachable=False),
+        'open': dict(route, to='goal', state='expanded'),
+    }
+    answers = _expanded(Design(data)).check_relations()
+    assert {name: a.status for name, a in answers.items()} == dict.fromkeys(data['relations'], 'pass')

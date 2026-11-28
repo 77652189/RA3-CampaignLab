@@ -1,7 +1,6 @@
 """Write a design's native maps and its generated CNV map module."""
 
 from dataclasses import asdict
-from math import ceil, floor
 from pathlib import Path
 from pprint import pformat
 import struct
@@ -103,37 +102,24 @@ class CampaignMap:
         return props
 
 
-def _borders(built, padding, cell, margin):
+def _borders(built, padding):
     """Use the terrain's base frame and enclose each state's selected faces."""
-    from experimental.mapgen.design import DesignError
+    from experimental.mapgen.terrain import CELL
 
     sketch = built.sketch
-    native = built.frame.map_borders(padding)
-    whole, base = native[0], native[-1]
+    whole = built.frame.map_borders(padding)[0]
     borders = {'<whole map>': whole}
     states = {}
-    for state, selected in sketch.playable.items():
-        if selected == sketch.playable['base']:
-            rect = base
-        else:
-            if not selected:
-                raise DesignError(state, 'playable', 'a native map border needs at least one playable block')
-            x, y = zip(*(point for block in selected for point in sketch.rings[block]))
-            rect = (max(base[0], floor((min(x) - margin) / cell)),
-                    max(base[1], floor((min(y) - margin) / cell)),
-                    min(base[2], ceil((max(x) + margin) / cell)),
-                    min(base[3], ceil((max(y) + margin) / cell)))
-            if rect[0] >= rect[2] or rect[1] >= rect[3]:
-                raise DesignError(state, 'playable', 'selected blocks leave no border inside the map')
+    for state in sketch.playable:
+        rect = built.frame.state_view(sketch, state, padding)
         if rect not in borders.values():
             borders[state] = rect
         states[state] = list(borders.values()).index(rect)
-    return {name: tuple(v * cell for v in rect) for name, rect in borders.items()}, states
+    return {name: tuple(v * CELL for v in rect) for name, rect in borders.items()}, states
 
 
 def _interface(built, padding):
     from experimental.mapgen.design import DesignError
-    from experimental.mapgen.terrain import CELL, FRAME_MARGIN
 
     sketch = built.sketch
     if sketch is None:
@@ -147,7 +133,7 @@ def _interface(built, padding):
     if 'Player_1_Start' in starts:
         for slot in ('InitialCameraPosition', 'Player_2_Start'):
             starts.setdefault(slot, starts['Player_1_Start'])
-    borders, states = _borders(built, padding, CELL, FRAME_MARGIN)
+    borders, states = _borders(built, padding)
 
     houses = dict(built.layout.blocks)
     named = {}

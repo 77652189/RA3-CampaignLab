@@ -377,10 +377,10 @@ def test_winter_apron_keeps_the_adjacent_surface():
 def test_mixed_frame_continues_both_sides_of_the_coast():
     sketch = Design({
         'version': 2,
-        'blocks': {'land': {'height': 3, 'at': [600, 720], 'use': 'farm'},
+        'blocks': {'land': {'height': 4, 'at': [600, 720], 'use': 'farm'},
                    'sea': {'height': 3, 'at': [600, 400], 'use': 'water', 'kind': 'water'}},
         'borders': {'frame': {'line': [[200, 200], [1200, 200], [1200, 900], [200, 900], [200, 200]]},
-                    'coast': {'line': [[200, 550], [1200, 550]]}},
+                    'coast': {'line': [[200, 550], [1200, 550]], 'pass': ['amphibian']}},
     })
     size = (191, 161, 30)
     plan = terrain.frame_apron(sketch, from_design(sketch, TerrainPlan(), 'Cape_Cod_CC'), size)
@@ -390,6 +390,8 @@ def test_mixed_frame_continues_both_sides_of_the_coast():
     assert ground.raw[outside_sea] == 130 * terrain_rules.RAW_PER_WORLD
     assert ground.waterline[outside_sea] == 200 * terrain_rules.RAW_PER_WORLD
     assert plan.blocks[ground.owners[outside_land]].surface.id == 'land'
+    assert ground.raw[85, 180] == 280 * terrain_rules.RAW_PER_WORLD  # coast beyond the camera margin
+    assert ground.raw[84, 180] == round(276 * terrain_rules.RAW_PER_WORLD)
     frame = terrain.design_frame(sketch, ground, len(plan.blocks) - plan.design_land_count, size[2])
     assert not frame.mask[outside_sea] and not frame.mask[outside_land]
 

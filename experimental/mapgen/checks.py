@@ -43,12 +43,17 @@ class Answer:
 
 
 class _Grid:
-    def __init__(self, sketch, ground, roadbed, layout, border, frame, footprints):
-        self.sketch, self.border, self.frame = sketch, border, frame
+    def __init__(self, sketch, ground, roadbed, layout, border, frame, footprints, state='base'):
+        self.sketch, self.border = sketch, border
         self.ground, self.roadbed = ground, roadbed
         self.z = ground.raw / rules.RAW_PER_WORLD
         self.x = (np.arange(self.z.shape[1])[None, :] - border) * CELL
         self.y = (np.arange(self.z.shape[0])[:, None] - border) * CELL
+        west, south, east, north = frame.state_view(sketch, state, border)
+        left, bottom, right, top = frame.bounds
+        self.bounds = max(west, left), max(south, bottom), min(east, right), min(north, top)
+        x0, y0, x1, y1 = (v * CELL for v in self.bounds)
+        self.active = frame.mask & (x0 <= self.x) & (self.x <= x1) & (y0 <= self.y) & (self.y <= y1)
         self.buildings = dict(layout.blocks)
         buildings = tuple(b for group in self.buildings.values() for b in group)
         self.occupants = (*buildings, *footprints)
@@ -59,9 +64,9 @@ class _Grid:
         self.deck = np.zeros(self.z.shape, bool)
         for bridge in roadbed.bridges if roadbed is not None else ():
             self.deck |= bridge.mask(self.x, self.y)
-        self.deck &= frame.mask
+        self.deck &= self.active
         # Fold the 10-unit terrain samples, then use the SDK object shapes on the routing lattice.
-        land, swim, ship, deck = (self.fold(mask & frame.mask).all(axis=(1, 3))
+        land, swim, ship, deck = (self.fold(mask & self.active).all(axis=(1, 3))
                                   for mask in (land, ~ground.blocked, deep_water, self.deck))
         step = ROUTE_STRIDE
         x, y = self.x[:, :land.shape[1] * step:step], self.y[:land.shape[0] * step:step, :]
@@ -125,9 +130,9 @@ class _Grid:
         return tuple(round(v / CELL) + self.border for v in reversed(p))
 
     def inside(self, p):
-        x0, y0, x1, y1 = self.frame.bounds
+        x0, y0, x1, y1 = self.bounds
         return (x0 * CELL <= p[0] <= x1 * CELL and y0 * CELL <= p[1] <= y1 * CELL
-                and self.frame.mask[self.cell(p)])
+                and self.active[self.cell(p)])
 
     def route_cell(self, p):
         return tuple(floor((v / CELL + self.border) / ROUTE_STRIDE) for v in reversed(p))
@@ -198,7 +203,7 @@ class _Grid:
         # This finds a bottleneck on the best available channel, even when a
         # straight line between the sites crosses a headland.
         start, end = map(self.cell, points)
-        swimming = (depth >= 0) & ~self.ground.blocked & self.frame.mask
+        swimming = (depth >= 0) & ~self.ground.blocked & self.active
         if 'without' in rel:
             swimming &= ~self.area(rel['without'])
         thresholds = np.unique(depth[swimming & (depth < SHIP_DEPTH * rules.RAW_PER_WORLD)])
@@ -430,7 +435,7 @@ def _requires_layout(grid, rel, dependencies):
 
 
 def _unexpanded(sketch, state):
-    return any(table[state] != table['base'] for table in (sketch.state_pass, sketch.state_heights, sketch.playable))
+    return any(table[state] != table['base'] for table in (sketch.state_pass, sketch.state_heights))
 
 
 def check_dressing_routes(sketch, ground, roadbed, layout, border, frame, before, after):
@@ -443,9 +448,14 @@ def check_dressing_routes(sketch, ground, roadbed, layout, border, frame, before
             routes[name] = rel
     if not routes:
         return
-    grids = tuple(_Grid(sketch, ground, roadbed, layout, border, frame, occupied) for occupied in (before, after))
+    grids = {}
     for name, rel in routes.items():
-        old, new = (_route_values(grid, rel, distances=True) for grid in grids)
+        state = rel.get('state', 'base')
+        key = frame.state_view(sketch, state, border)
+        if key not in grids:
+            grids[key] = tuple(_Grid(sketch, ground, roadbed, layout, border, frame, occupied, state)
+                               for occupied in (before, after))
+        old, new = (_route_values(grid, rel, distances=True) for grid in grids[key])
         if not np.allclose(old, new, rtol=0, atol=1e-9):
             raise DesignError(name, 'dressing', f'scenery changes lane {name}')
 
@@ -455,18 +465,22 @@ def evaluate(sketch, ground, roadbed, layout, border, frame, footprints=(), *, s
     """Answer named orders and check open routes on the exported geometry."""
     if not sketch.relations:
         return {}
-    grid = _Grid(sketch, ground, roadbed, layout, border, frame, footprints)
     dependencies = _layout_dependencies(sketch, has_road_kit) if sketch_only else None
-    answers = {}
+    answers, grids = {}, {}
     for name, relation in sketch.relations.items():
         state = relation.get('state', 'base')
         held = sketch.order_held(state, relation.get('order'))
-        pending = ''
+        pending, grid = '', None
         if not held:
             if _unexpanded(sketch, state):
-                pending = f'先把 {state} 的过口、水位或可玩区变动展开成可检查的地图。'
-            elif dependencies is not None:
-                pending = _requires_layout(grid, relation, dependencies)
+                pending = f'先把 {state} 的过口或水位变动展开成可检查的地图。'
+            else:
+                key = frame.state_view(sketch, state, border)
+                if key not in grids:
+                    grids[key] = _Grid(sketch, ground, roadbed, layout, border, frame, footprints, state)
+                grid = grids[key]
+                if dependencies is not None:
+                    pending = _requires_layout(grid, relation, dependencies)
         ok, sentence, places, decision = _answer(None if pending else grid, relation, held)
         if state != 'base':
             sentence = f'{state} 状态下，{sentence}'

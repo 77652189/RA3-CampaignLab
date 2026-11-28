@@ -163,6 +163,23 @@ class DesignFrame:
         view = (max(0, x0 - pad), max(0, y0 - pad), min(whole[2], x1 + pad), min(whole[3], y1 + pad))
         return [whole] if view == whole else [whole, view]
 
+    def state_view(self, sketch, state, padding):
+        """The native, camera-padded rectangle for the selected faces, in cells."""
+        base = self.map_borders(padding)[-1]
+        selected = sketch.playable[state]
+        if selected == sketch.playable['base']:
+            return base
+        if not selected:
+            raise DesignError(state, 'playable', 'a native map border needs at least one playable block')
+        x, y = zip(*(point for block in selected for point in sketch.rings[block]))
+        rect = (max(base[0], math.floor((min(x) - FRAME_MARGIN) / CELL)),
+                max(base[1], math.floor((min(y) - FRAME_MARGIN) / CELL)),
+                min(base[2], math.ceil((max(x) + FRAME_MARGIN) / CELL)),
+                min(base[3], math.ceil((max(y) + FRAME_MARGIN) / CELL)))
+        if rect[0] >= rect[2] or rect[1] >= rect[3]:
+            raise DesignError(state, 'playable', 'selected blocks leave no border inside the map')
+        return rect
+
 
 def design_frame(sketch, ground, background_count, border):
     """The union of design faces, clipped to the map's playable cells."""
@@ -215,6 +232,11 @@ def frame_apron(sketch, plan, size):
     far = ((w - 2 * pad) * CELL, (h - 2 * pad) * CELL)
     outside = tuple((max(0., a - FRAME_MARGIN), min(cap, b + FRAME_MARGIN))
                     for a, b, cap in zip(lo, hi, far))
+    # An open basin runs past the raster. Its adjacent dry grade must reach the
+    # raster edge too, or the backdrop creates a step on the extended shore.
+    raster = tuple((-pad * CELL, cap + (pad - 1) * CELL) for cap in far)
+    open_shore = any(sketch.medium(face) != LAND for _, _, face in rim) and plan.design_water is None
+    land_limits = raster if open_shore else outside
 
     def extend(p, limits=outside):
         return tuple(float(a if v == first else b if v == last else v)
@@ -232,7 +254,7 @@ def frame_apron(sketch, plan, size):
             continue
         normal = rim_axis(a, b)
         a, b = tuple(map(float, a)), tuple(map(float, b))
-        aa, bb = extend(a), extend(b)
+        aa, bb = extend(a, land_limits), extend(b, land_limits)
         if aa[normal] != a[normal]:
             apron.append(Block((a, b, bb, aa), sketch.blocks[face]['height'], surface=surfaces[face]))
     cliffs = []
