@@ -14,7 +14,6 @@ from experimental.mapgen.buildings import Footprint, Layout, Shape
 from experimental.mapgen.checks import draw_failures
 from experimental.mapgen.campaign_writer import rules
 from experimental.mapgen.design import Design
-from experimental.mapgen.dressing import Assets, footpath_flanks
 from experimental.mapgen.export import export
 from experimental.mappage import viewer
 from test_mapgen_terrain import _container
@@ -191,50 +190,6 @@ def test_only_way_up_is_checked_on_the_built_grid():
     bypass = terrain.Ramp((40, 110), (0, 1), 1, 40)
     assert answers(replace(plan, ramps=(*plan.ramps, bypass)))['climb'].status == 'fail'
 
-def test_named_footpath_lays_real_flanks_at_its_crossing(tmp_path):
-    sketch = Design({
-        'version': 2,
-        'blocks': {
-            'valley': {'height': 3, 'use': 'canyon', 'at': [150, 80]},
-            'rim': {'height': 4, 'use': 'canyon', 'at': [150, 330]},
-        },
-        'borders': {
-            'frame': {'line': [[0, 0], [360, 0], [360, 400], [0, 400], [0, 0]]},
-            'wall': {'line': [[0, 200], [360, 200]], 'segments': {
-                'path': {'from': 'houses', 'to': 'hillPath', 'footpath': 'T_Rock'},
-            }},
-        },
-        'points': {'houses': {'block': 'valley', 'at': [160, 80]},
-                   'hillPath': {'block': 'rim', 'at': [220, 320]}},
-        'relations': {
-            'foot': {'type': '通不通', 'from': 'houses', 'to': 'hillPath',
-                     'who': 'foot', 'only_via': 'wall.path'},
-            'tank': {'type': '通不通', 'from': 'houses', 'to': 'hillPath',
-                     'who': 'vehicle', 'reachable': False},
-        },
-    })
-    plan = terrain.from_design(sketch, terrain.TerrainPlan(), 'test')
-    # Halfway between the named sites in Y gives the cut at X=190.
-    assert sketch.check_relations() == {'foot': 'pass', 'tank': 'pass'}
-    assert plan.ramps[0].low == (190, 110)
-    shape = {'Type': 'BOX', 'MajorRadius': 18.75, 'MinorRadius': 9.}
-    library = {'kits': {'test': {'props': [{'template': 'T_Rock', 'geometry': {'shapes': [shape]}}],
-                                 'buildings': [], 'destructibles': []}},
-               'blocking': {'t_rock': {'cls': 'rockbig'}}}
-    assets = Assets(library, tmp_path)
-    flanks = tuple(p for _, p in footpath_flanks(sketch, assets))
-    # The inner edges bound [180, 200]; both props extend into the shoulders of the cut.
-    assert [(p.template, p.x, p.y) for p in flanks] == [('T_Rock', 161.25, 200.), ('T_Rock', 218.75, 200.)]
-    assert [assets.posed(p).collision[0].point_gap((190., 200.)) for p in flanks] == [10., 10.]
-    ground = terrain.expand(plan, library, 97, 101, 30)
-    frame = terrain.design_frame(sketch, ground, 0, 30)
-    built = MapBuild(plan, frame.close(ground), None, Layout(()), sketch, frame, flanks,
-                     footprints=assets.occupied(flanks))
-    # The two flanks leave only the x=190 terrain sample free. The adjacent
-    # routing columns at x=180 and x=200 are occupied by the measured boxes.
-    assert {name: a.status for name, a in built.check_relations().items()} == {'foot': 'fail', 'tank': 'pass'}
-
-
 def test_failed_channel_draws_its_best_route_bottleneck(tmp_path):
     sketch = Design({
         'version': 2,
@@ -275,7 +230,7 @@ def test_level_boundary_keeps_one_opening():
         'borders': {
             'edge': {'line': [[0, 0], [450, 0], [450, 500], [0, 500], [0, 0]]},
             'trees': {'line': [[0, 200], [270, 290], [450, 290]], 'pass': [],
-                      'segments': {'gap': {'span': [310, 390], 'pass': ['foot']}}},
+                      'segments': {'gap': {'span': [310, 390], 'pass': ['foot', 'vehicle', 'amphibian']}}},
         },
         'relations': {
             'through': {'type': '通不通', 'from': 'woods', 'to': 'clearing',
@@ -301,6 +256,14 @@ def _split_design(*, height=4, coast=False, passage=None):
                    'north': {'height': height, 'use': 'park', 'at': [500, 600]}},
         'borders': {'frame': {'line': [[0, 0], [1000, 0], [1000, 800], [0, 800], [0, 0]]}, 'wall': wall},
     }
+
+
+def test_footpath_key_is_rejected():
+    data = _split_design(passage={'segments': {
+        'path': {'from': 'toe', 'to': 'crest', 'footpath': 'T_Rock'},
+    }})
+    with pytest.raises(ValueError, match='wall.path.*infantry-only openings are not supported'):
+        Design(data)
 
 
 def _expanded(sketch, plan=None, **options):
@@ -354,23 +317,6 @@ def test_sealed_shore_blocks_amphibians():
     assert (terrain.STEP_WORLD * 3 - built.ground.raw[69, 80] / rules.RAW_PER_WORLD) == 80
 
 
-def test_flank_order_ignores_json_key_order(tmp_path):
-    data = _split_design()
-    data['points'] = {f'{side}{x}': {'block': side, 'at': [x, y]}
-                      for side, y in [('south', 200), ('north', 600)] for x in (210, 710)}
-    segments = {str_name: {'from': f'south{x}', 'to': f'north{x}', 'footpath': 'T_Rock'}
-                for str_name, x in [('west', 210), ('east', 710)]}
-    library = {'kits': {'test': {'buildings': [], 'destructibles': [], 'props': [
-        {'template': 'T_Rock', 'geometry': {'shapes': [
-            {'Type': 'BOX', 'MajorRadius': 20, 'MinorRadius': 9}]}}]}},
-        'blocking': {'t_rock': {'cls': 'rockbig'}}}
-    outputs = []
-    for order in (segments, dict(reversed(tuple(segments.items())))):
-        data['borders']['wall']['segments'] = order
-        outputs.append([p.x for _, p in footpath_flanks(Design(data), Assets(library, tmp_path))])
-    assert outputs == [[180, 240, 680, 740]] * 2
-
-
 def test_handwritten_ramp_keeps_other_design_opening():
     data = _split_design(passage={'segments': {
         name: {'span': [x-50, x+50], 'pass': ['foot', 'vehicle', 'amphibian']}
@@ -413,27 +359,6 @@ def test_implicit_opening_id_is_documented_and_inherits_the_border_state():
     format_doc = Path(__file__).resolve().parents[2] / 'docs/mapgen/format.md'
     instructions = format_doc.read_text(encoding='utf-8')
     assert 'wall.road-street' in instructions and '显式过口保留自己的通行声明' in instructions
-
-
-def test_layout_rejects_flank_touching_a_nearby_road(tmp_path, monkeypatch):
-    monkeypatch.setattr(builder, 'CONTAINER', (111, 91, 5))
-    data = _split_design(height=3, passage={'pass': [], 'segments': {
-        'foot': {'from': 'toe', 'to': 'top', 'footpath': 'T_Rock'}}})
-    data['points'] = {'toe': {'block': 'south', 'at': [500, 200]},
-                      'top': {'block': 'north', 'at': [500, 600]}}
-    for block in data['blocks'].values():
-        block['ground_texture'] = 'Grass_Heidelberg01'
-    data['roads'] = {'lane': {'line': [[350, 430], [650, 430]], 'width': 'street',
-                              'ends': ['start', 'end']}}
-    shape = {'Type': 'BOX', 'MajorRadius': 20, 'MinorRadius': 20, 'Height': 30}
-    library = {'kits': {'Test_T': {'buildings': [], 'destructibles': [], 'props': [
-        {'template': 'T_Rock', 'geometry': {'shapes': [shape]}}]}},
-        'blocking': {'t_rock': {'cls': 'rockbig'}}}
-    catalogue, source = tmp_path / 'library.json', tmp_path / 'design.json'
-    catalogue.write_text(json.dumps(library))
-    source.write_text(json.dumps(data))
-    with pytest.raises(ValueError, match='T_Rock.*enters lane lane'):
-        builder.build(source, catalogue, kit='Test_T', level='layout')
 
 
 def test_missing_native_footprint_stops_layout(tmp_path, monkeypatch):

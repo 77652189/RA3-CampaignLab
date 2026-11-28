@@ -409,28 +409,27 @@ def _layout_dependencies(sketch, has_road_kit):
     buildings = any('protagonist' in spec or (name in frontage and spec['use'] in TOWN)
                     for name, spec in sketch.blocks.items() if spec.get('kind') != 'water')
     bridges = any(crosses_water(sketch, edge) for edge in road_edges)
-    flanks = any('footpath' in cut for spec in sketch.borders.values() for cut in spec.get('segments', {}).values())
     model_roads = sketch.roads.keys() if has_road_kit else set(unpainted_roads(sketch))
-    return buildings, bridges, flanks, model_roads
+    return buildings, bridges, model_roads
 
 
 def _requires_layout(grid, rel, dependencies):
-    buildings, bridges, flanks, model_roads = dependencies
+    buildings, bridges, model_roads = dependencies
     kind = rel['type']
     if kind == '罩住':
         return '需要布局：核对驻军楼和实路。'
     if kind == '看得见':
         # Layout objects can obscure a clear ray, but cannot clear one blocked by terrain.
-        if (buildings or bridges or flanks or model_roads) and grid.sight(
+        if (buildings or bridges or model_roads) and grid.sight(
                 grid.point(rel['from']), grid.point(rel['to'])):
             return '需要布局：核对布局物件对视线的遮挡。'
     elif kind == '放得下':
-        if (buildings or bridges or flanks or model_roads) and grid.room(rel['point'], rel['side']):
+        if (buildings or bridges or model_roads) and grid.room(rel['point'], rel['side']):
             return '需要布局：核对布局物件是否占用净地。'
     elif any(rel.get(key) in model_roads for key in ('via', 'only_via', 'without')):
         return '需要布局：核对实际道路所占的通行格。'
-    elif bridges or (rel['who'] != 'ship' and (buildings or flanks)):
-        return '需要布局：核对楼房、桥面或小径侧挡对通行的影响。'
+    elif bridges or (rel['who'] != 'ship' and buildings):
+        return '需要布局：核对楼房和桥面对通行的影响。'
     return ''
 
 

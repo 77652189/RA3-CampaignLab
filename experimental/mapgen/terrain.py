@@ -354,6 +354,8 @@ def from_design(sketch, plan, kit):
                     closed_edges.append((a, b))
             elif sketch.medium(left) == LAND:
                 diff = sketch.blocks[left]['height'] - sketch.blocks[right]['height']
+                if allowed and allowed != LAND:
+                    raise DesignError(name, 'opening', 'a land opening carries all ground units')
                 if not diff and allowed == frozenset():
                     closed_edges.append((a, b))
                 if diff and allowed:
@@ -368,9 +370,6 @@ def from_design(sketch, plan, kit):
                 raise DesignError(name, 'ramp', 'choose an opening along one straight cliff of constant rise')
             spec = sketch.borders[border]
             opening = spec.get('segments', {}).get(name.split('.')[-1], {}) if name != border else {}
-            allowed = sketch.base_pass[name]
-            if allowed != LAND and 'footpath' not in opening:
-                raise DesignError(name, 'ramp', 'name two landings and solid flanks for a footpath')
             width = opening.get('width', min(math.dist(a, b), spec.get('width', math.inf)))
             if width > math.dist(a, b) + 1e-7:
                 raise DesignError(name, 'ramp', 'ramp width exceeds its opening along the cliff')

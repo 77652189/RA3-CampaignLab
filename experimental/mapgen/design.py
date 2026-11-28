@@ -12,10 +12,7 @@ import re
 
 
 STEP_WORLD = 70
-# A footpath cut leaves a routing cell for the tread and room for a solid
-# shoulder on each side. A street ramp has two 90-unit lanes.
 ROUTING_CELL = 20
-FOOTPATH_WIDTH = 3 * ROUTING_CELL
 STREET_RAMP_WIDTH = 180
 ROAD_WIDTH = {"alley": 66.22, "street": 85.48, "avenue": 172.70}
 USE_ALIASES = {"老街": "oldtown", "老城": "oldtown", "town": "oldtown", "住宅": "residential",
@@ -44,6 +41,7 @@ def _fields(value, item, required="", optional=""):
     _need(isinstance(value, dict), item, "shape", "expected an object")
     missing = set(required.split()) - value.keys()
     unknown = value.keys() - set((required + " " + optional).split())
+    _need("footpath" not in unknown, item, "opening", "infantry-only openings are not supported")
     _need(not (missing or unknown), item, "fields",
           f"missing {sorted(missing)}, unknown {sorted(unknown)}")
 
@@ -210,11 +208,9 @@ def _spans(border, item, length, named_opening):
         sid = f"{item}.{name}"
         _id(name, sid)
         if isinstance(segment, dict) and ("from" in segment or "to" in segment):
-            _fields(segment, sid, "from to", "pass footpath width")
+            _fields(segment, sid, "from to pass", "width")
             if "width" in segment:
                 _width(segment["width"], sid)
-            _need(("pass" in segment) != ("footpath" in segment), sid, "opening",
-                  "choose a street passage or a footpath with solid flanks")
             start, end = named_opening(segment, sid)
         else:
             _fields(segment, sid, "span pass", "width")
@@ -227,7 +223,7 @@ def _spans(border, item, length, named_opening):
         _need(start < end <= length, sid, "span", f"span must fit the border length {length:g}")
         if "width" in segment:
             _width(segment["width"], sid)
-        allowed = frozenset({"foot"}) if "footpath" in segment else _pass(segment["pass"], sid)
+        allowed = _pass(segment["pass"], sid)
         spans[sid] = (start, end, allowed)
     spans = dict(sorted(spans.items(), key=lambda pair: pair[1][:2]))
     cursor = 0
@@ -429,15 +425,10 @@ class Design:
         toe, crest = (self.points[spec[end]] for end in ("from", "to"))
         a, b = tuple(toe["at"]), tuple(crest["at"])
         low, high = toe["block"], crest["block"]
-        footpath = "footpath" in spec
-        if footpath:
-            _text(spec["footpath"], name, "footpath")
         _need(self.medium(low) == self.medium(high) == LAND and low != high
               and (self.blocks[low]["height"] <= self.blocks[high]["height"]),
               name, "opening", "name two landings, from the lower side when they differ in height")
-        if not footpath:
-            _need(_pass(spec["pass"], name) == LAND, name, "ramp",
-                  "a street ramp carries all ground units; use footpath for solid flanks")
+        _need(_pass(spec["pass"], name) == LAND, name, "ramp", "a land opening carries all ground units")
         hits = {}
         for edge, start, _ in self.border_edges[border]:
             for p in _meet(a, b, *edge):
@@ -448,21 +439,12 @@ class Design:
         for edge, start, _ in self.border_edges[border]:
             if on_segment(point, *edge):
                 center = start + math.dist(edge[0], point)
-                if footpath:
-                    # Straight cuts use a routing cell centre, including when the
-                    # designer's line lands exactly between two routing cells.
-                    dx, dy = subtract(edge[1], edge[0])
-                    if not (dx and dy):
-                        axis = 0 if dx else 1
-                        at = point[axis]
-                        snapped = math.floor(at / ROUTING_CELL) * ROUTING_CELL + ROUTING_CELL / 2
-                        center += (snapped - at) * (1 if dx + dy > 0 else -1)
                 break
         same_height = self.blocks[low]["height"] == self.blocks[high]["height"]
-        width = FOOTPATH_WIDTH if footpath else spec.get("width", self.borders[border].get(
+        width = spec.get("width", self.borders[border].get(
             "width", ROAD_WIDTH["street"] if same_height else STREET_RAMP_WIDTH))
         lo, hi = center - width / 2, center + width / 2
-        if footpath or same_height:
+        if same_height:
             _need(all(set(self.sides[edge]) == {low, high}
                       for edge, start, end in self.border_edges[border] if start < hi and lo < end),
                   name, "opening", "the whole opening must join the named blocks")

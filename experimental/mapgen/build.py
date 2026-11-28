@@ -149,8 +149,8 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
     Design faces define the playable ground and supply the grade at a dry
     rectangular frame. Blocks can override the default kit for their surfaces, buildings
     and scenery. Road_kit supplies model roads; fronts gives measured civilian
-    front angles in radians. Sketch stops at terrain, layout adds roads, buildings
-    and flanks, and full adds surface paint, dressing and mood.
+    front angles in radians. Sketch stops at terrain, layout adds roads and buildings,
+    and full adds surface paint, dressing and mood.
     """
     if level not in ('sketch', 'layout', 'full'):
         raise ValueError(f'Unknown map build level: {level!r}')
@@ -190,14 +190,11 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
                 # The road markers and bridge generators are already represented by Roadbed.
                 native += tuple(p for p in roadbed.placements if p.side != 'road' and p.template != roads.BRIDGE_TEMPLATE)
             kits = {name: spec.get('kit', kit) for name, spec in sketch.blocks.items()}
-            flanks = tuple(dressing.footpath_flanks(sketch, assets))
-            scenery = tuple(prop for _, prop in flanks)
-        footprints = assets.occupied((*native, *scenery))
+        footprints = assets.occupied(native)
         if level != 'sketch':
             obstacles = tuple(s for obj in footprints for s in obj.placement + obj.collision)
             layout = buildings.BuildingPlanner(sketch, ground, catalogue, kits, fronts or {}, sage, border,
                                                obstacles).lock()
-            dressing.check_flanks(sketch, roadbed, layout, flanks, assets)
     if level == 'full':
         ground = paint.paint(plan, catalogue, ground, roadbed)
     if sketch is not None:
@@ -206,7 +203,7 @@ def build(design_file, library_file, plan=terrain.TerrainPlan(), *, kit=None, ro
         ground = frame.close(ground)
         if level == 'full':
             dressed = dressing.expand(sketch, ground, roadbed, layout, catalogue, kits, sage, border, frame,
-                                       assets=assets, native=footprints, flanks=flanks)
+                                       assets=assets, native=footprints)
             checks.check_dressing_routes(sketch, ground, roadbed, layout, border, frame,
                                          footprints, dressed.footprints)
             ground, scenery, footprints, slots = dressed.ground, dressed.pieces, dressed.footprints, dressed.slots

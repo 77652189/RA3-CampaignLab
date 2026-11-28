@@ -11,7 +11,7 @@ import re
 import numpy as np
 
 from experimental.mapgen.buildings import Footprint, NO_PATH_BLOCK, Shape, TOWN, geometry_shapes
-from experimental.mapgen.design import DesignError, ROUTING_CELL, point_in_ring
+from experimental.mapgen.design import DesignError, point_in_ring
 from experimental.mapgen.library import read_shape, sdk_xml, texture_kit
 from experimental.mapgen.paint import USE_CLASS
 from experimental.mapgen.roads import ROAD_WIDTH
@@ -173,45 +173,11 @@ def _guard_shapes(footprint, prop):
         Shape('CYLINDER', (prop.x, prop.y, 0.), CELL / 2, CELL / 2, 0.),)
 
 
-def footpath_flanks(sketch, assets):
-    """Use real solid props to frame the tread, with their SDK collision edges facing it."""
-    for border, spec in sketch.borders.items():
-        for item in sketch.spans[border]:
-            opening = spec.get('segments', {}).get(item.split('.', 1)[1], {})
-            if 'footpath' not in opening:
-                continue
-            asset = assets.get(opening['footpath'])
-            if asset is None or asset.blocking != 'rockbig' or len(asset.collision) != 1:
-                raise DesignError(item, 'footpath', 'choose a solid, uncrushable retail prop with one footprint')
-            shape, = asset.collision
-            sections = [(a, b) for a, b, _, _, section in sketch.border_sections(border) if section == item]
-            a, b = sections[0][0], sections[-1][1]
-            ux, uy, angle, length = _axes(a, b)
-            if any(abs((q[0] - p[0]) * uy - (q[1] - p[1]) * ux) > 1e-6 for p, q in sections):
-                raise DesignError(item, 'footpath', 'choose a straight stretch of the border')
-            center = _offset(a, angle, length / 2, 0)
-            if shape.half_x * 2 < (length - ROUTING_CELL) / 2:
-                raise DesignError(item, 'footpath', 'choose a prop that reaches from the tread to its shoulder')
-            for sign in (-1, 1):
-                x, y = _offset(center, angle, sign * (ROUTING_CELL / 2 + shape.half_x) - shape.center[0],
-                               -shape.center[1])
-                prop = Piece(opening['footpath'], x, y, angle)
-                yield item, prop
-
-
 def _guard(prop, kind, shapes, lanes):
     pad = CELL_PAD if kind not in NO_PATH_BLOCK else 0.
     for lane in lanes:
         if any(replace(lane, half_width=lane.half_width + pad).touches(s) for s in shapes):
             raise DesignError(lane.name, 'dressing', f'{prop.template} at ({prop.x:g}, {prop.y:g}) enters lane {lane.name}')
-
-
-def check_flanks(sketch, roadbed, layout, flanks, assets):
-    lanes = tuple(_lanes(sketch, layout, roadbed))
-    for opening, prop in flanks:
-        footprint = assets.posed(prop)
-        other = (lane for lane in lanes if lane.name != opening)
-        _guard(prop, footprint.blocking, footprint.collision, other)
 
 
 def _group(group, at, angle, locked=False, depth=1.):
@@ -326,7 +292,7 @@ class _Finish:
             if self.fits(block, p):
                 self.texture[j + row, i + col] = name
 
-    def dressing(self, flanks):
+    def dressing(self):
         slots = self.slots
         for name, patch in self.sketch.patches.items():
             slot = patch['slot']
@@ -344,7 +310,7 @@ class _Finish:
             _guard(prop, footprint.blocking, _guard_shapes(footprint, prop), self.lanes)
         added = set(self.texture.flat) - set(self.ground.rank)
         ground = replace(self.ground, textures=self.texture, rank=(*self.ground.rank, *sorted(added)))
-        return Dressing(ground, (*slots.values(), *flanks),
+        return Dressing(ground, tuple(slots.values()),
                         tuple((*key, *value) for key, value in self.counts.items()), slots,
                         (*self.fixed, *(footprint for _, footprint in posed)))
 
@@ -504,7 +470,7 @@ def _dress_frame(finish, block, cover, trees, rng):
 
 
 def expand(sketch, ground, roadbed, layout, library, kits, sage, border, frame=None, *, assets=None,
-           native=(), flanks=()):
+           native=()):
     """Place kit scenery after ground, roads, paint and building lock have been resolved."""
     assets = assets or Assets(library, sage)
     finish = _Finish(sketch, ground, roadbed, layout, assets, kits, border, frame, native)
@@ -542,4 +508,4 @@ def expand(sketch, ground, roadbed, layout, library, kits, sage, border, frame=N
             # A snow wood carries trees only, past the frame as inside it.
             _dress_frame(finish, block, () if spec['use'] == 'snow_woodland' else cover, trees,
                          Random(f'{sketch.block_seed(block)}:frame'))
-    return finish.dressing(tuple(prop for _, prop in flanks))
+    return finish.dressing()
