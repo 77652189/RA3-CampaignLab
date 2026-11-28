@@ -747,6 +747,9 @@ NOTES.update({f'全局常量/AIData.{f}': (NA, '程序不读：解析进 AIData�
 NOTES['全局常量/AIData.SupplyCenterSafeRadius'] = (NA, '只有一个脚本条件读（条件号 77，同《将军》SKIRMISH_SUPPLY_SOURCE_SAFE，'
                                                  'work/re/l4_aidata_readers.md）；原版 27 关没用过它，脚本目录里也没有，'
                                                  '我们的关卡写不出来')
+# the one retail ObjectFilterAsset in the AI's files is read only by InTroubleSkirmishFeedbackControl (presentation)
+NOTES.update({f'人格/Filter.{f}': (NA, '只在 CoopBasePersonality 的 ObjectFilterAsset 里，唯一引用它的是'
+                                      'InTroubleSkirmishFeedbackControl（盟友求救语音，纯表现）') for f in ('Rule', 'Include', 'Exclude')})
 
 
 def need(path, what):

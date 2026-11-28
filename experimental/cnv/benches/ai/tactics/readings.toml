@@ -1645,7 +1645,7 @@ expect = "(rows[39]['坦克在家'], rows[39]['步兵在家']) == (tanks, inf)"
 [[reading]]
 bench_id = "engine_aiteamfilter"
 id = "the_filters_kinds_take_whom_the_bench_sent"
-item = "AI 组队招人/ObjectFilter.Include"
+item = ["AI 组队招人/ObjectFilter.Include", "AI 组队招人/ObjectFilter.Exclude"]
 scene = {build = "aitfoki", check = "a", until = 41.0}
 each = [{build = "aitfoki", tanks = 4, inf = 0}, {build = "aitfokt", tanks = 0, inf = 0},
         {build = "aitfoke", tanks = 0, inf = 4}, {build = "aitfokn", tanks = 4, inf = 0}]
