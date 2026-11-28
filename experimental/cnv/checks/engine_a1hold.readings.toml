@@ -1,0 +1,21 @@
+# Bench readings of checks/engine_a1hold.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A1's 占点计数 / 燃烧瓶清楼 (docs/design/flow/mechanics.md), bench 2026-11-28 (A431). The bench's seconds run ~2 s
+# ahead of the timers: the seconds below sit inside each step on both clocks.
+
+[[reading]]
+id = "a1hold_a_script_total_of_owned_houses_follows_garrisons_in_out_and_killed"
+scene = {build = "engine_a1hold", check = "pts", until = 24}
+bench = "bench 11-28 pts 我占 敌占 到四 够数帧: s2-s4 3 0 0 0 | s5-s6 3 2 | s7 4 2 1 1 | s10-s12 3 2 1 45 | s13-s15 3 1 1 45 | s16- 4 1 1 47.."
+proves = "ContestableGarrisonContain + NAMED_OWNED_BY_PLAYER: a per-frame script total of the houses a side holds rises with each first passenger, falls when the last walks out or dies inside; a once script on total >= 4 fires once"
+expect = [
+  "[list(rows[s].values())[:3] for s in (4, 6, 9, 12, 22)] == [[3, 0, 0], [3, 2, 0], [4, 2, 1], [3, 2, 1], [4, 1, 1]]",
+  "rows[12]['够数帧'] == 45",
+]
+
+[[reading]]
+id = "a1hold_a_toggled_conscript_burns_a_garrison_out_one_by_one_and_an_untoggled_one_never"
+scenes = {m = {build = "engine_a1hold", check = "mol", until = 30}, a = {build = "engine_a1hold", check = "ai", until = 30}}
+bench = "bench 11-28 屋内 存活 切换 归属 (digits base high order removed switch, ones first) from s19: mol 33030 33030 101 11010, ai 3330 3330 10001 1110; a death about every 6 s"
+proves = "SovietAntiInfantryInfantry Molotov (DamageContainedNugget MaxUnitsToDamage 1): toggled, ordered or idle, it kills a garrison inside one at a time and the empty house goes back to the civilians; untoggled (the AK47) it harms no passenger and Soviet_1's AI does not toggle it"
+expect = "[[r[25][k] for k in ('屋内', '存活', '切换', '归属')] for r in (m, a)] == [[33030, 33030, 101, 11010], [3330, 3330, 10001, 1110]]"
+mismatch = "sim: no passenger burned (mol 33333 33333 101 11111, ai 33333 33333 10001 11111); bench as above"
