@@ -278,7 +278,7 @@ class PullData(SpecialPowerData):
 class PullToCaster(SpecialPower, interfaces.Teleport, interfaces.Update):
     """TeleportToCasterSpecialPower (A428, checks/engine_bcnpull.readings.toml; read in the program): the beacon pull. UnpackTime frames after the cast (rounded, the base unpack) the things
     of its power's own ObjectFilter within Radius of the point are put round the caster: the i-th of n at angle
-    2 pi i / n, MinDestinationRadius out, facing out. Not modelled: the search for a free spot out to
+    2 pi i / n, MinDestinationRadius out, facing out (b: one alone lands 35..40 east). Not modelled: the search for a free spot out to
     MaxDestinationRadius (INFERRED: the first one is free), the scan order, KillObjectsIfPlacedInBadSpot, the FX."""
     DATA = PullData
     PHASE = 'seq'

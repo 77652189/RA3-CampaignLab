@@ -2,8 +2,10 @@
 # A428 (bench 11-27): the beacon trooper's pull cast by script ('Test Go', SpecialPower_CNV_BcnPull_Pull). Rows count
 # frames from Go: 帧数; 第二行 = G1 in Near + 1000 x G2; 第三行 = the Peacekeeper + 1000 x the Soviet_1 Guardian;
 # 第四行 = the own Guardian 200 off the point + 1000 x the trooper in his start square.
-# Not a reading yet: b (G1 alone) is in Near from the 9th frame but in none of the four 50-boxes on the axes 40..140 off
-# him (s1: 29 0 0 21000) -- where it lands is unread; the simulator puts it 40 east (into E).
+# A429 b (G1 alone; boxes round him, three a row at steps 1 / 100 / 10000): 第二行 = NE NW SW quadrants; 第三行 = SE,
+# E40 (half side 12, 40 east), R45; 第四行 = R60 R100 Near. Not read: NE vs SE -- it lands on his y (the bench SE, the
+# simulator NE: the box edge). The older b grid (s1: 29 0 0 21000: not in the square 35, not in a box 40..140 east)
+# puts it 35..40 east; the simulator's 40.0 sits on that edge.
 
 [[reading]]
 id = "a_own_ones_in_the_radius_land_at_his_side_from_the_9th_frame_the_foe_and_the_far_one_stay"
@@ -16,3 +18,14 @@ are at his side from the 9th frame of the cast (UnpackTime 0.5 s = 8 frames); th
 let = {at = "lambda f: next(r for r in rows if r.get('帧数', 0) >= f)"}
 expect = ["at(25)['第二行'] == 1001 * (at(25)['帧数'] - 8)", "at(25)['第三行'] == at(25)['帧数'] - 8",
           "at(25)['第四行'] == 1000 * at(25)['帧数']"]
+
+[[reading]]
+id = "b_one_alone_lands_40_east_of_him_angle_0_from_the_9th_frame"
+scene = {build = "engine_bcnpull", check = "b", until = 4}
+item = ["物体模块 Behaviors/TeleportToCasterSpecialPower"]
+bench = "CampBcnPull b (run_queue 11-28): s1: 30 0 222222 222222 | s2: 45 0 373737 373737 | s3: 61 0 535353 535353"
+proves = """TeleportToCasterSpecialPower: the one pulled thing (n = 1, start angle 0) lands MinDestinationRadius east of \
+him (in the box 40 east and the square 45, in no west quadrant), from the 9th frame of the cast"""
+let = {at = "lambda f: next(r for r in rows if r.get('帧数', 0) >= f)", n = "lambda: at(25)['帧数'] - 8"}
+expect = ["at(25)['第二行'] // 100 == 0", "at(25)['第三行'] // 100 == 101 * n()",
+          "at(25)['第四行'] == 10101 * n()"]
