@@ -22,11 +22,13 @@ expect = ["abs(dark(i) - 10) <= 1", "abs(dark(j) - 40) <= 1"]
 
 [[reading]]
 id = "infilpow_a_scripted_disabler_darkens_its_owner_until_deleted"
+item = "物体模块 Behaviors/EnergyDisablingBehavior"
 scenes = {e = {build = "engine_infilpow", check = "e", until = 60}, f = {build = "engine_infilpow", check = "f", until = 70}}
-bench = "CREATE_NAMED EnergyDisabler on s1's team at 10 s: power 14 from s8 to the end (e, s62; it never times out); f deletes it 6 s after each make, every 20 s: dark s9-s14, s28-s33, s48-s53, s68-; the tower's hits stop while dark (e 3 from s7 on)"
-proves = "EnergyDisablingBehavior: a script-made EnergyDisabler cuts its owner's power at once and holds while it lives (LifetimeUpdate WaitForWakeUp: only the infiltration sets its life); NAMED_DELETE ends it"
-expect = ["all(r['power'] == 14 for r in e[12:60])", "all(r['power'] == 14 for r in f[11:14] + f[30:33] + f[50:53])",
-          "all(r['power'] == 101 for r in f[17:26] + f[36:46])"]
+bench = "e: power 101 through s7, then 14 through s62 after CREATE_NAMED EnergyDisabler on s1's team. f: repeated creation and deletion produce dark windows s9-s14, s28-s33, s48-s53, s68-s71; power returns to 101 between them"
+proves = "The retail EnergyDisabler blacks out its owner's single-plant grid while present, and deleting it restores power after each pulse. Exact transition frames and multiple plants or disablers are unmeasured"
+expect = ["all(r['power'] == 101 for r in e[2:6])", "all(r['power'] == 14 for r in e[12:60])",
+          "all(r['power'] == 14 for r in f[11:14] + f[30:33] + f[50:53])",
+          "all(r['power'] == 101 for r in f[17:26] + f[36:46] + f[56:66])"]
 
 [[reading]]
 id = "infilpow_an_emp_on_the_plant_darkens_the_grid_while_set"
