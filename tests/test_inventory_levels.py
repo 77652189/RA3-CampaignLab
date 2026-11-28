@@ -41,7 +41,7 @@ def test_the_level_scope_a_page_is_generated_from_the_items(tmp_path, monkeypatc
 
 
 def test_an_objects_words_naming_another_object_are_not_followed():
-    objs = {'tank': ('Tank', {'Behaviors': [('WeaponSetUpdate', 'w', {'gun', 'truck'})]}, None),
+    objs = {'tank': ('Tank', {'Behaviors': [('WeaponSetUpdate', 'w', {'gun', 'truck'}, ())]}, None),
             'truck': ('Truck', {}, None), 'shell': ('Shell', {}, None)}
     weapons = {'gun': ('Gun', ['ProjectileNugget'], {'shell'}, None)}
     got_o, got_w = inventory_levels.reach(['Tank'], objs, weapons)
@@ -49,7 +49,19 @@ def test_an_objects_words_naming_another_object_are_not_followed():
 
 
 def test_a_child_module_with_the_parents_id_replaces_it():
-    objs = {'base': ('Base', {'Body': [('ActiveBody', 'b', set())], 'Behaviors': [('Physics', 'p', set())]}, None),
-            'kid': ('Kid', {'Body': [('StructureBody', 'b', set())]}, 'base')}
-    assert [(g, t) for g, t, _, _ in inventory_levels.effective('kid', objs)] == \
+    objs = {'base': ('Base', {'Body': [('ActiveBody', 'b', set(), ())], 'Behaviors': [('Physics', 'p', set(), ())]},
+                     None),
+            'kid': ('Kid', {'Body': [('StructureBody', 'b', set(), ())]}, 'base')}
+    assert [(g, t) for g, t, *_ in inventory_levels.effective('kid', objs)] == \
         [('Behaviors', 'Physics'), ('Body', 'StructureBody')]
+
+
+def test_our_copy_of_a_retail_structure_counts_under_the_retail_name():
+    # A2's unsellable dam plant is AlliedPowerPlant's file renamed (units/unsellable.py): its EngineerContain is the
+    # measured generic form, so the level's scope names AlliedPowerPlant; a changed config has no retail twin
+    uses, _ = inventory_levels.level_uses('a2')
+    assert 'CNV_NoSell_AlliedPowerPlant' not in uses[(inventory_levels.MODULE, 'Behaviors/EngineerContain')]
+    key = ('Behaviors', 'EngineerContain')
+    sigs = inventory_levels.by_type(inventory_levels.effective('alliedpowerplant', inventory_levels.retail_tables()[0]))
+    assert inventory_levels.retail_twin('CNV_NoSell_AlliedPowerPlant', *key, sigs[key]) == 'AlliedPowerPlant'
+    assert inventory_levels.retail_twin('CNV_NoSell_AlliedPowerPlant', *key, (sigs[key][0][:-1] + ((),),)) is None

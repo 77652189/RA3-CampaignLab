@@ -26,6 +26,7 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign')) if p not in sys.path]
 
 import retailmodules as rm                       # noqa: E402
+from contain_audit import signature              # noqa: E402
 
 LEVELS = [f'a{k}' for k in range(1, 10)]         # the Allied 9 (missions/a1.py ...), as inventory_ai.LEVELS
 OUT = os.path.join(ROOT, 'docs', 'engine', 'inventory-levels-a.md')
@@ -41,7 +42,7 @@ def _words(el):
 
 
 def _read(root, path, objs, weapons, override=False):
-    """Add a file's GameObjects ({lower id: (id, {group: [(type, module id, words)]}, parent)}) and WeaponTemplates
+    """Add a file's GameObjects ({lower id: (id, {group: [(type, module id, words, signature)]}, parent)}) and WeaponTemplates
     ({lower id: (id, nugget types, words, parent)}); with override, an id already there is kept (CampaignOverrides,
     as retailmodules)."""
     for e in root.iter():
@@ -54,7 +55,8 @@ def _read(root, path, objs, weapons, override=False):
             for g in e:
                 if rm._tag(g) in rm.GROUPS:
                     own.setdefault(rm._tag(g), []).extend(
-                        (rm._tag(m), m.get('id') or m.get('ID') or '', _words(m)) for m in rm._group_modules(path, g))
+                        (rm._tag(m), m.get('id') or m.get('ID') or '', _words(m), signature(m))
+                        for m in rm._group_modules(path, g))
             objs[k] = (e.get('id'), own, (e.get('inheritFrom') or '').lower() or None)
         elif t == 'WeaponTemplate' and e.get('id'):
             k = e.get('id').lower()
@@ -102,22 +104,50 @@ def own_tables(units):
 
 
 def effective(k, objs, seen=()):
-    """[(group, type, module id, words)] in effect: the parent's first, a module with the same id replaced (retailmodules)."""
+    """[(group, type, module id, words, signature)] in effect: the parent's first, a module with the same id replaced
+    (retailmodules)."""
     if k not in objs or k in seen:
         return []
     _, own, parent = objs[k]
     mods = collections.defaultdict(list)
-    for g, t, i, w in (effective(parent, objs, seen + (k,)) if parent else []):
-        mods[g].append((t, i, w))
+    for g, *mod in (effective(parent, objs, seen + (k,)) if parent else []):
+        mods[g].append(tuple(mod))
     for g, lst in own.items():
         cur = mods[g]
-        for typ, mid, w in lst:
-            n = next((n for n, (_, i2, _) in enumerate(cur) if mid and i2 == mid), None)
+        for mod in lst:
+            n = next((n for n, old in enumerate(cur) if mod[1] and old[1] == mod[1]), None)
             if n is None:
-                cur.append((typ, mid, w))
+                cur.append(mod)
             else:
-                cur[n] = (typ, mid, w)
-    return [(g, t, i, w) for g in rm.GROUPS for (t, i, w) in mods.get(g, [])]
+                cur[n] = mod
+    return [(g, *mod) for g in rm.GROUPS for mod in mods.get(g, [])]
+
+
+def by_type(mods):
+    """{(group, type): sorted signatures}: an effective() list's modules of each type, all of them."""
+    out = collections.defaultdict(list)
+    for g, t, _, _, sig in mods:
+        out[(g, t)].append(sig)
+    return {k: tuple(sorted(v)) for k, v in out.items()}
+
+
+_twins = None
+
+
+def retail_twin(name, group, typ, sigs):
+    """A retail template whose effective modules of this type are exactly these (the one our template `name` is
+    named after when it is one of them), or None. Our copy of a retail structure (units/unsellable.py, a mission's
+    renamed barracks) carries that retail config, and the inventory's per-config forms (contain_audit) are exact
+    module signatures, so the copy counts under the retail name."""
+    global _twins
+    if _twins is None:
+        objs = retail_tables()[0]
+        _twins = collections.defaultdict(list)
+        for k in sorted(objs):
+            for key, s in by_type(effective(k, objs)).items():
+                _twins[key + (s,)].append(objs[k][0])
+    twins = _twins.get((group, typ, sigs), [])
+    return next((t for t in twins if t.lower() in name.lower()), twins[0] if twins else None)
 
 
 def nuggets(k, weapons, seen=()):
@@ -143,7 +173,7 @@ def reach(seeds, objs, weapons):
         k = todo.pop()
         if k in objs and k not in got_o:
             got_o.add(k)
-            todo += [w for _, _, _, words in effective(k, objs) for w in words if w in weapons]
+            todo += [w for _, _, _, words, _ in effective(k, objs) for w in words if w in weapons]
         elif k in weapons and k not in got_w:
             got_w.add(k)
             todo += [w for w in weapon_words(k, weapons) if w in objs or w in weapons]
@@ -170,9 +200,11 @@ def level_uses(level):
     placed = {o.template for o in list(getattr(m.map, 'OBJECTS', [])) + list(mm.objects)} | {u.id for u in mm.units}
     seeds = placed | {n for n in named if n.lower() in objs}
     got_o, got_w = reach(seeds, objs, weapons)
+    retail = retail_tables()[0]
     for k in sorted(got_o):
-        for g, t, _, _ in effective(k, objs):
-            out[(MODULE, f'{g}/{t}')].add(objs[k][0])
+        for (g, t), sigs in by_type(effective(k, objs)).items():
+            twin = objs[k] is not retail.get(k) and retail_twin(objs[k][0], g, t, sigs)
+            out[(MODULE, f'{g}/{t}')].add(twin or objs[k][0])
     for k in sorted(got_w):
         for t in set(nuggets(k, weapons)):
             out[(NUGGET, t)].add(weapons[k][0])

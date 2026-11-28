@@ -74,7 +74,7 @@ def scope():
         seeds = {t for t in placed | named if t.lower() in objs}
         got_o, got_w = L.reach(seeds, objs, weapons)
         for k in got_o:
-            for g, t, _, _ in L.effective(k, objs):
+            for g, t, *_ in L.effective(k, objs):
                 out[(I.MODULE, f'{g}/{t}')].setdefault(short, set()).add(objs[k][0])
         for k in got_w:
             for t in set(L.nuggets(k, weapons)):
