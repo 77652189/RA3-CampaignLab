@@ -282,7 +282,12 @@ let = {far = "first('到远厂')", near = "first('到近厂')"}
 expect = "far is not None and (near is None or far < near)"
 mismatch = """\
 bench aipriodef: two enemies in one tier, the game went for the farther plant (the player's, s25); the simulator \
-takes the nearest (Soviet_4's, s14) -- why NOT READ"""
+takes the nearest (Soviet_4's, s14). Bench 11-28 (tgt: lines, aipriodef and aitargetnear with ra3ext): the game \
+scans the player's structures first, then Soviet_4's, and takes the far plant although Soviet_4's south turret is \
+nearer (aitargetnear, the player owning all six: that turret) and the far plant's object id is the largest -- as \
+read (each enemy scanned scores the running nearest, a tie to the lowest id) the turret would win 1:1. INFERRED: the \
+game's enemy list holds players with nothing on the map between the two (scoring the far plant) that the \
+simulator's does not; which ones NOT READ"""
 
 [[reading]]
 bench_id = "engine_aiprio"
